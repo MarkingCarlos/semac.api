@@ -44,9 +44,12 @@ public class SecurityConfig {
     private static final String[] PAPEIS_FINANCEIRO = { "DIRETOR_SITE", "PRESIDENTE" };
 
     private final SecretKey chaveJwt;
+    private final List<String> origensCors;
 
-    public SecurityConfig(@Value("${jwt.secret}") String segredo) {
+    public SecurityConfig(@Value("${jwt.secret}") String segredo,
+                          @Value("${app.cors.origins:http://localhost:5173}") List<String> origensCors) {
         this.chaveJwt = new SecretKeySpec(segredo.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        this.origensCors = origensCors;
     }
 
     @Bean
@@ -100,7 +103,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        config.setAllowedOrigins(origensCors);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
 
