@@ -61,6 +61,9 @@ public class Pessoa {
     @OneToMany(mappedBy = "participante")
     private List<GanhadoresSorteio> ganhadoresSorteio = new ArrayList<>();
 
+    @Column(name = "comprovante_pagamento")
+    private String comprovantePagamento;
+
     @OneToMany(mappedBy = "pessoa")
     private List<CamisaPedido> camisaPedidos = new ArrayList<>();
 }
