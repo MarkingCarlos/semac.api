@@ -1,14 +1,17 @@
 package com.semac.java_api.service;
 
+import com.semac.java_api.dto.AtualizarPerfilDTO;
 import com.semac.java_api.dto.CamisetaParticipanteDTO;
 import com.semac.java_api.dto.InscricaoFinanceiraDTO;
 import com.semac.java_api.dto.ParticipanteResponseDTO;
+import com.semac.java_api.dto.PerfilResponseDTO;
 import com.semac.java_api.dto.PresencaParticipanteDTO;
 import com.semac.java_api.dto.TipoInscricaoResponseDTO;
 import com.semac.java_api.model.CamisaPedido;
 import com.semac.java_api.model.Pessoa;
 import com.semac.java_api.model.TipoInscricao;
 import com.semac.java_api.model.enums.Role;
+import com.semac.java_api.repository.CamisaPedidoRepository;
 import com.semac.java_api.repository.PessoaRepository;
 import com.semac.java_api.repository.TipoInscricaoRepository;
 import org.springframework.http.HttpStatus;
@@ -23,11 +26,14 @@ public class PessoaService {
 
     private final PessoaRepository pessoaRepository;
     private final TipoInscricaoRepository tipoInscricaoRepository;
+    private final CamisaPedidoRepository camisaPedidoRepository;
 
     public PessoaService(PessoaRepository pessoaRepository,
-                         TipoInscricaoRepository tipoInscricaoRepository) {
+                         TipoInscricaoRepository tipoInscricaoRepository,
+                         CamisaPedidoRepository camisaPedidoRepository) {
         this.pessoaRepository = pessoaRepository;
         this.tipoInscricaoRepository = tipoInscricaoRepository;
+        this.camisaPedidoRepository = camisaPedidoRepository;
     }
 
     /* Participantes do /admin: confirmados (role = PARTICIPANTE) e os
@@ -101,6 +107,70 @@ public class PessoaService {
                         "Pessoa não encontrada."));
         pessoa.setAtivo(ativo);
         return paraResposta(pessoaRepository.save(pessoa));
+    }
+
+    /* Perfil do próprio usuário logado (seção Início do /admin). O id vem
+       da claim do token, então a pessoa sempre existe — 404 só cobre o
+       caso de um token com id órfão. */
+    @Transactional(readOnly = true)
+    public PerfilResponseDTO buscarPerfil(Integer id) {
+        Pessoa pessoa = pessoaRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Usuário não encontrado."));
+        return paraPerfil(pessoa);
+    }
+
+    /* Atualiza os campos editáveis do próprio perfil: RA e a camiseta.
+       A comissão sempre tem um pedido de camiseta (escolhido na inscrição);
+       o orElse cria um só como salvaguarda. */
+    @Transactional
+    public PerfilResponseDTO atualizarPerfil(Integer id, AtualizarPerfilDTO dto) {
+        Pessoa pessoa = pessoaRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Usuário não encontrado."));
+
+        String ra = dto.ra() == null || dto.ra().isBlank() ? null : dto.ra().trim();
+        pessoa.setRa(ra);
+
+        CamisaPedido pedido = pessoa.getCamisaPedidos().stream()
+                .findFirst()
+                .orElseGet(() -> {
+                    CamisaPedido novo = new CamisaPedido();
+                    novo.setPessoa(pessoa);
+                    return novo;
+                });
+        pedido.setModelo(dto.modelo());
+        pedido.setTamanho(dto.tamanho());
+        camisaPedidoRepository.save(pedido);
+
+        pessoaRepository.save(pessoa);
+
+        // Constrói a resposta a partir do pedido salvo (a coleção lazy da
+        // pessoa pode não refletir um pedido recém-criado).
+        return new PerfilResponseDTO(
+                pessoa.getId(),
+                pessoa.getNome(),
+                pessoa.getEmail(),
+                pessoa.getRole() == null ? null : pessoa.getRole().name(),
+                pessoa.getRa(),
+                paraCamiseta(pedido)
+        );
+    }
+
+    private PerfilResponseDTO paraPerfil(Pessoa pessoa) {
+        CamisetaParticipanteDTO camiseta = pessoa.getCamisaPedidos().stream()
+                .findFirst()
+                .map(this::paraCamiseta)
+                .orElse(null);
+
+        return new PerfilResponseDTO(
+                pessoa.getId(),
+                pessoa.getNome(),
+                pessoa.getEmail(),
+                pessoa.getRole() == null ? null : pessoa.getRole().name(),
+                pessoa.getRa(),
+                camiseta
+        );
     }
 
     private ParticipanteResponseDTO paraResposta(Pessoa pessoa) {
