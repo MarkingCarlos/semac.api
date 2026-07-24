@@ -63,8 +63,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Públicos / abertos
                         .requestMatchers("/api/auth/login", "/api/inscricao").permitAll()
+                        // Perfil próprio: qualquer usuário autenticado (identificado pelo token)
+                        .requestMatchers(HttpMethod.GET, "/api/pessoa/me").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/pessoa/me").authenticated()
                         // Exclusivos do financeiro
                         .requestMatchers("/api/compra/**", "/api/fornecedor/**").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers("/api/caixa-fundunesp/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/inscricoes").hasAnyRole(PAPEIS_FINANCEIRO)
                         // Escrita de patrocínio/cota acontece só no financeiro (GET segue aberto)
                         .requestMatchers(HttpMethod.POST, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)

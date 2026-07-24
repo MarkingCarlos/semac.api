@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface PatrocinadorRepository extends JpaRepository<Patrocinador, Integer> {
     List<Patrocinador> findAllByOrderByNomeAsc();
+    boolean existsByCotaId(Integer cotaId);
 }

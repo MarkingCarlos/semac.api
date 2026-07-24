@@ -5,10 +5,12 @@ import com.semac.java_api.dto.CotaResponseDTO;
 import com.semac.java_api.exception.RecursoDuplicadoException;
 import com.semac.java_api.model.Cota;
 import com.semac.java_api.repository.CotaRepository;
+import com.semac.java_api.repository.PatrocinadorRepository;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -17,9 +19,12 @@ import java.util.List;
 public class CotaController {
 
     private final CotaRepository repository;
+    private final PatrocinadorRepository patrocinadorRepository;
 
-    public CotaController(CotaRepository repository) {
+    public CotaController(CotaRepository repository,
+                          PatrocinadorRepository patrocinadorRepository) {
         this.repository = repository;
+        this.patrocinadorRepository = patrocinadorRepository;
     }
 
     @GetMapping
@@ -64,6 +69,13 @@ public class CotaController {
     public ResponseEntity<Void> excluir(@PathVariable Integer id) {
         if (!repository.existsById(id)) {
             return ResponseEntity.notFound().build();
+        }
+        /* Sem esta checagem a FK estoura como DataIntegrityViolationException
+           e o handler global devolve "Já existe um registro com esses dados",
+           que não faz sentido para uma exclusão. */
+        if (patrocinadorRepository.existsByCotaId(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Há patrocinadores vinculados a esta cota. Altere a cota deles antes de excluí-la.");
         }
         repository.deleteById(id);
         return ResponseEntity.noContent().build();
