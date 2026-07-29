@@ -150,13 +150,37 @@ VITE_API_URL=https://api.semac.com.br
 ```
 e rode `npm run build`. Sem isso, o site tentaria falar com `localhost:8080`.
 
-### 5.3 Banco — `ddl-auto`
-Em produção evite `spring.jpa.hibernate.ddl-auto=update` mexendo no schema
-sozinho. Use `validate` (ou migrações via Flyway/Liquibase) e aplique o DDL
-manualmente. Defina por env:
-```env
-SPRING_JPA_HIBERNATE_DDL_AUTO=validate
-```
+### 5.3 Banco — Flyway (✅ resolvido)
+O projeto usa **Flyway** para controlar o schema — o Hibernate não altera
+mais o banco sozinho (`spring.jpa.hibernate.ddl-auto=validate`).
+
+- Migrations ficam em `src/main/resources/db/migration/`, nomeadas
+  `V<versão>__descricao.sql` (ex.: `V2__adiciona_coluna_x.sql`).
+- Ao subir, o Flyway roda automaticamente **antes** do Hibernate: aplica
+  qualquer migration pendente e só então o Hibernate valida se as
+  entidades batem com o schema resultante.
+- `spring.flyway.baseline-on-migrate=true` + `spring.flyway.baseline-version=1`
+  cobrem tanto um banco novo (roda `V1` do zero) quanto um banco que já
+  tinha o schema criado pelo Hibernate antes do Flyway existir (marca esse
+  schema existente como "já na versão 1", sem tentar recriar nada).
+
+**No dia do deploy em produção:**
+1. Garanta que o banco de produção **não tenha nenhuma migration aplicada
+   ainda** (é esperado — ele nunca rodou Flyway). Se o schema já existir lá
+   (por ex. você já rodou a aplicação em produção antes com `ddl-auto=update`),
+   o baseline cuida disso sozinho no primeiro start — não precisa rodar nada
+   manualmente.
+2. Se for um banco de produção **totalmente vazio** (primeira vez), o Flyway
+   vai criar o schema inteiro a partir da `V1__schema_inicial.sql` no primeiro
+   start da aplicação — também automático.
+3. Depois do primeiro deploy, confirme que a tabela `flyway_schema_history`
+   foi criada e tem uma linha de sucesso:
+   ```sql
+   SELECT version, description, success FROM flyway_schema_history;
+   ```
+4. **Dali em diante**, toda mudança de schema vira uma nova migration
+   (`V2__...sql`, `V3__...sql`) commitada no repositório — nunca edite
+   entidades esperando que o Hibernate crie a coluna/tabela sozinho.
 
 ### 5.4 HTTPS
 O token Bearer trafega no header `Authorization`. **Sirva tudo sob HTTPS**
@@ -171,7 +195,7 @@ texto puro.
 - [ ] `DB_USERNAME` / `DB_PASSWORD` / `SPRING_DATASOURCE_URL` definidos
 - [ ] CORS apontando para o domínio real do frontend (item 5.1)
 - [ ] `VITE_API_URL` definido no build do frontend (item 5.2)
-- [ ] `ddl-auto=validate` e schema aplicado (item 5.3)
+- [ ] Flyway rodou no primeiro start e `flyway_schema_history` tem a `V1` registrada (item 5.3)
 - [ ] Tudo sob HTTPS (item 5.4)
 - [ ] Nenhum segredo commitado no git
 
