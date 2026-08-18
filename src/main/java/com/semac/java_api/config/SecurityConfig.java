@@ -67,7 +67,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/me").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/pessoa/me").authenticated()
                         // Exclusivos do financeiro
-                        .requestMatchers("/api/compra/**", "/api/fornecedor/**").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers("/api/compra/**", "/api/fornecedor/**", "/api/cotacao/**", "/api/conjunto/**", "/api/variacao/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers("/api/caixa-fundunesp/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/inscricoes").hasAnyRole(PAPEIS_FINANCEIRO)
                         // Escrita de patrocínio/cota acontece só no financeiro (GET segue aberto)
