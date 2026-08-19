@@ -58,7 +58,7 @@ public class AuthController {
         String token = gerarToken(pessoa, role);
 
         return ResponseEntity.ok(
-                new LoginResponseDTO(token, pessoa.getId(), pessoa.getNome(), pessoa.getEmail(), role)
+                new LoginResponseDTO(token, pessoa.getId(), pessoa.getNome(), pessoa.getEmail(), role, pessoa.getUuid())
         );
     }
 
