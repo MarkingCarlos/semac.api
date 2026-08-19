@@ -6,7 +6,8 @@ import java.util.List;
    sensíveis (senha, cpf, uuid) — apenas o necessário para a listagem.
    `role` é null enquanto a inscrição aguarda confirmação.
    `camiseta` pode ser null se a pessoa não tiver pedido registrado.
-   `tipoInscricao` é o ingresso escolhido na confirmação (null se pendente). */
+   `tipoInscricao` é o ingresso escolhido na confirmação (null se pendente).
+   `nivel`/`xp` são atribuídos no mesmo momento (null se pendente). */
 public record ParticipanteResponseDTO(
         Integer id,
         String nome,
@@ -16,5 +17,7 @@ public record ParticipanteResponseDTO(
         String role,
         CamisetaParticipanteDTO camiseta,
         TipoInscricaoResponseDTO tipoInscricao,
+        NivelResponseDTO nivel,
+        Integer xp,
         List<PresencaParticipanteDTO> eventoParticipantes
 ) {}

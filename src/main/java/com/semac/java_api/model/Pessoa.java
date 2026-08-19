@@ -49,6 +49,17 @@ public class Pessoa {
     @JoinColumn(name = "tipo_inscricao_id")
     private TipoInscricao tipoInscricao;
 
+    /* Nível e xp acumulado (role = PARTICIPANTE). Atribuídos na
+       confirmação da inscrição (ver PessoaService.atribuirRole); o
+       acúmulo contínuo de xp por conquistas/presenças é uma entrega
+       futura. Null para pendentes e organizadores, mesmo ciclo de vida
+       de tipoInscricao. */
+    @ManyToOne
+    @JoinColumn(name = "nivel_id")
+    private Nivel nivel;
+
+    private Integer xp;
+
     @OneToMany(mappedBy = "participante")
     private List<EventoParticipante> eventoParticipantes = new ArrayList<>();
 

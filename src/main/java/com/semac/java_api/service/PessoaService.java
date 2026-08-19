@@ -3,15 +3,18 @@ package com.semac.java_api.service;
 import com.semac.java_api.dto.AtualizarPerfilDTO;
 import com.semac.java_api.dto.CamisetaParticipanteDTO;
 import com.semac.java_api.dto.InscricaoFinanceiraDTO;
+import com.semac.java_api.dto.NivelResponseDTO;
 import com.semac.java_api.dto.ParticipanteResponseDTO;
 import com.semac.java_api.dto.PerfilResponseDTO;
 import com.semac.java_api.dto.PresencaParticipanteDTO;
 import com.semac.java_api.dto.TipoInscricaoResponseDTO;
 import com.semac.java_api.model.CamisaPedido;
+import com.semac.java_api.model.Nivel;
 import com.semac.java_api.model.Pessoa;
 import com.semac.java_api.model.TipoInscricao;
 import com.semac.java_api.model.enums.Role;
 import com.semac.java_api.repository.CamisaPedidoRepository;
+import com.semac.java_api.repository.NivelRepository;
 import com.semac.java_api.repository.PessoaRepository;
 import com.semac.java_api.repository.TipoInscricaoRepository;
 import org.springframework.http.HttpStatus;
@@ -24,16 +27,25 @@ import java.util.List;
 @Service
 public class PessoaService {
 
+    /* Xp de boas-vindas atribuído na confirmação da inscrição. Valor
+       provisório — ajustar quando a diretoria decidir o XP inicial real.
+       Funciona com qualquer nível cadastrado com xpMinimo 0, já que
+       nesse caso qualquer xp não-negativo já cai no primeiro nível. */
+    private static final int XP_INICIAL_CONFIRMACAO = 100;
+
     private final PessoaRepository pessoaRepository;
     private final TipoInscricaoRepository tipoInscricaoRepository;
     private final CamisaPedidoRepository camisaPedidoRepository;
+    private final NivelRepository nivelRepository;
 
     public PessoaService(PessoaRepository pessoaRepository,
                          TipoInscricaoRepository tipoInscricaoRepository,
-                         CamisaPedidoRepository camisaPedidoRepository) {
+                         CamisaPedidoRepository camisaPedidoRepository,
+                         NivelRepository nivelRepository) {
         this.pessoaRepository = pessoaRepository;
         this.tipoInscricaoRepository = tipoInscricaoRepository;
         this.camisaPedidoRepository = camisaPedidoRepository;
+        this.nivelRepository = nivelRepository;
     }
 
     /* Participantes do /admin: confirmados (role = PARTICIPANTE) e os
@@ -74,8 +86,9 @@ public class PessoaService {
 
     /* Confirmação da inscrição: atribui o papel da pessoa. Aceita
        PARTICIPANTE ou qualquer papel de comissão (MEMBRO, DIRETOR_* e
-       PRESIDENTE). Para PARTICIPANTE, exige um tipo de ingresso válido;
-       para papéis de comissão, o ingresso é limpo. */
+       PRESIDENTE). Para PARTICIPANTE, exige um tipo de ingresso válido
+       e atribui o xp de boas-vindas + o nível correspondente; para
+       papéis de comissão, ingresso/xp/nível são limpos. */
     @Transactional
     public ParticipanteResponseDTO atribuirRole(Integer id, Role role, Integer tipoInscricaoId) {
         Pessoa pessoa = pessoaRepository.findById(id)
@@ -91,8 +104,17 @@ public class PessoaService {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                             "Tipo de ingresso inválido."));
             pessoa.setTipoInscricao(tipo);
+
+            Nivel nivelInicial = nivelRepository
+                    .findTopByXpMinimoLessThanEqualOrderByXpMinimoDesc(XP_INICIAL_CONFIRMACAO)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Cadastre ao menos um nível em Informações SEMAC antes de confirmar participantes."));
+            pessoa.setXp(XP_INICIAL_CONFIRMACAO);
+            pessoa.setNivel(nivelInicial);
         } else {
             pessoa.setTipoInscricao(null);
+            pessoa.setXp(null);
+            pessoa.setNivel(null);
         }
 
         pessoa.setRole(role);
@@ -190,6 +212,10 @@ public class PessoaService {
                         ingresso.getId(), ingresso.getNome(), ingresso.getValor(),
                         ingresso.getAno(), ingresso.getAtivo());
 
+        Nivel nivel = pessoa.getNivel();
+        NivelResponseDTO nivelResponse = nivel == null ? null
+                : new NivelResponseDTO(nivel.getId(), nivel.getNome(), nivel.getXpMinimo());
+
         return new ParticipanteResponseDTO(
                 pessoa.getId(),
                 pessoa.getNome(),
@@ -199,6 +225,8 @@ public class PessoaService {
                 pessoa.getRole() == null ? null : pessoa.getRole().name(),
                 camiseta,
                 tipoInscricao,
+                nivelResponse,
+                pessoa.getXp(),
                 presencas
         );
     }
