@@ -25,6 +25,12 @@ public class TipoEvento {
     @Column(nullable = false)
     private Integer pontos;
 
+    /* true = o participante escolhe entrar (minicurso, vagas limitadas);
+       false = evento aberto, em que todo participante confirmado é
+       pré-inscrito automaticamente. Ver V7__inscricao_minicurso.sql. */
+    @Column(name = "exige_inscricao", nullable = false)
+    private Boolean exigeInscricao = false;
+
     @OneToMany(mappedBy = "tipoEvento")
     private List<Evento> eventos = new ArrayList<>();
 }

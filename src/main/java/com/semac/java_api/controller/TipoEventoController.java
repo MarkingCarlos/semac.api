@@ -78,9 +78,11 @@ public class TipoEventoController {
     private void aplicar(TipoEvento tipo, TipoEventoRequestDTO dto) {
         tipo.setNome(dto.nome());
         tipo.setPontos(dto.pontos());
+        tipo.setExigeInscricao(Boolean.TRUE.equals(dto.exigeInscricao()));
     }
 
     private TipoEventoResponseDTO paraResposta(TipoEvento tipo) {
-        return new TipoEventoResponseDTO(tipo.getId(), tipo.getNome(), tipo.getPontos());
+        return new TipoEventoResponseDTO(tipo.getId(), tipo.getNome(), tipo.getPontos(),
+                Boolean.TRUE.equals(tipo.getExigeInscricao()));
     }
 }

@@ -20,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class EventoService {
@@ -28,28 +29,32 @@ public class EventoService {
     private final TipoEventoRepository tipoEventoRepository;
     private final PalestranteRepository palestranteRepository;
     private final EventoPalestranteRepository eventoPalestranteRepository;
+    private final InscricaoEventoService inscricaoEventoService;
 
     public EventoService(EventoRepository eventoRepository,
                          TipoEventoRepository tipoEventoRepository,
                          PalestranteRepository palestranteRepository,
-                         EventoPalestranteRepository eventoPalestranteRepository) {
+                         EventoPalestranteRepository eventoPalestranteRepository,
+                         InscricaoEventoService inscricaoEventoService) {
         this.eventoRepository = eventoRepository;
         this.tipoEventoRepository = tipoEventoRepository;
         this.palestranteRepository = palestranteRepository;
         this.eventoPalestranteRepository = eventoPalestranteRepository;
+        this.inscricaoEventoService = inscricaoEventoService;
     }
 
     @Transactional(readOnly = true)
     public List<EventoResponseDTO> listar() {
+        Map<Integer, Long> ocupacao = inscricaoEventoService.ocupacaoPorEvento();
         return eventoRepository.findAll().stream()
                 .sorted(Comparator.comparing(Evento::getDataHoraInicio))
-                .map(this::paraResposta)
+                .map(evento -> paraResposta(evento, ocupacao.getOrDefault(evento.getId(), 0L)))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public EventoResponseDTO buscar(Integer id) {
-        return paraResposta(carregar(id));
+        return montarResposta(carregar(id));
     }
 
     @Transactional
@@ -58,26 +63,64 @@ public class EventoService {
         aplicar(evento, dto);
         eventoRepository.save(evento);
         sincronizarPalestrantes(evento, dto.palestrantes());
-        return paraResposta(evento);
+        sincronizarPreInscricoes(evento, true);
+        return montarResposta(evento);
     }
 
     @Transactional
     public EventoResponseDTO atualizar(Integer id, EventoRequestDTO dto) {
         Evento evento = carregar(id);
+        boolean exigiaInscricao = exigeInscricao(evento);
         aplicar(evento, dto);
         eventoRepository.save(evento);
         sincronizarPalestrantes(evento, dto.palestrantes());
-        return paraResposta(evento);
+        sincronizarPreInscricoes(evento, exigiaInscricao);
+        return montarResposta(evento);
     }
 
     @Transactional
     public void excluir(Integer id) {
         Evento evento = carregar(id);
         removerPalestrantes(evento);
+        inscricaoEventoService.removerInscricoesDoEvento(id);
         eventoRepository.delete(evento);
     }
 
+    /* Resposta de um evento só, consultando a ocupação dele. */
+    @Transactional(readOnly = true)
+    public EventoResponseDTO montarResposta(Evento evento) {
+        return paraResposta(evento, inscricaoEventoService.ocupacaoDoEvento(evento.getId()));
+    }
+
+    /* Respostas de vários eventos com uma única consulta de ocupação,
+       preservando a ordem recebida. */
+    @Transactional(readOnly = true)
+    public List<EventoResponseDTO> montarRespostas(List<Evento> eventos) {
+        Map<Integer, Long> ocupacao = inscricaoEventoService.ocupacaoPorEvento();
+        return eventos.stream()
+                .map(evento -> paraResposta(evento, ocupacao.getOrDefault(evento.getId(), 0L)))
+                .toList();
+    }
+
     /* ── Auxiliares ─────────────────────────────────────────────── */
+
+    /* Mantém `evento_participante` coerente com o tipo do evento:
+       evento aberto entra automaticamente para todo participante
+       confirmado; evento que passou a exigir inscrição perde as
+       pré-inscrições automáticas (senão nasceria lotado). */
+    private void sincronizarPreInscricoes(Evento evento, boolean exigiaInscricao) {
+        boolean exigeAgora = exigeInscricao(evento);
+        if (!exigeAgora) {
+            inscricaoEventoService.preInscreverParticipantesNoEvento(evento);
+        } else if (!exigiaInscricao) {
+            inscricaoEventoService.removerPreInscricoesDoEvento(evento);
+        }
+    }
+
+    private boolean exigeInscricao(Evento evento) {
+        return evento.getTipoEvento() != null
+                && Boolean.TRUE.equals(evento.getTipoEvento().getExigeInscricao());
+    }
 
     private Evento carregar(Integer id) {
         return eventoRepository.findById(id)
@@ -138,10 +181,17 @@ public class EventoService {
         }
     }
 
-    private EventoResponseDTO paraResposta(Evento evento) {
+    private EventoResponseDTO paraResposta(Evento evento, long vagasOcupadas) {
         TipoEvento tipo = evento.getTipoEvento();
         TipoEventoResponseDTO tipoEvento = tipo == null ? null
-                : new TipoEventoResponseDTO(tipo.getId(), tipo.getNome(), tipo.getPontos());
+                : new TipoEventoResponseDTO(tipo.getId(), tipo.getNome(), tipo.getPontos(),
+                        Boolean.TRUE.equals(tipo.getExigeInscricao()));
+
+        /* Vagas restantes só existem onde a lotação é regra de negócio
+           (minicurso). Em evento aberto a capacidade é folgada e a
+           contagem só confundiria a interface. */
+        Integer vagasRestantes = !exigeInscricao(evento) ? null
+                : (int) Math.max(0, evento.getCapacidadeMaxima() - vagasOcupadas);
 
         // A partir do repositório (não da coleção em memória) para refletir
         // os vínculos recém-criados na mesma transação.
@@ -161,6 +211,7 @@ public class EventoService {
                 evento.getDataHoraInicio(),
                 evento.getDataHoraFim(),
                 evento.getCapacidadeMaxima(),
+                vagasRestantes,
                 palestrantes
         );
     }

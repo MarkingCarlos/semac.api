@@ -43,6 +43,8 @@ public class SecurityConfig {
 
     private static final String[] PAPEIS_FINANCEIRO = { "DIRETOR_SITE", "PRESIDENTE" };
 
+    private static final String PAPEL_PARTICIPANTE = "PARTICIPANTE";
+
     private final SecretKey chaveJwt;
     private final List<String> origensCors;
 
@@ -66,6 +68,10 @@ public class SecurityConfig {
                         // Perfil próprio: qualquer usuário autenticado (identificado pelo token)
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/me").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/pessoa/me").authenticated()
+                        // Agenda e escolha de minicurso: só o próprio participante confirmado
+                        .requestMatchers(HttpMethod.GET, "/api/evento/meus").hasRole(PAPEL_PARTICIPANTE)
+                        .requestMatchers(HttpMethod.POST, "/api/evento/*/inscricao").hasRole(PAPEL_PARTICIPANTE)
+                        .requestMatchers(HttpMethod.DELETE, "/api/evento/*/inscricao").hasRole(PAPEL_PARTICIPANTE)
                         // Exclusivos do financeiro
                         .requestMatchers("/api/compra/**", "/api/fornecedor/**", "/api/cotacao/**", "/api/conjunto/**", "/api/variacao/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers("/api/caixa-fundunesp/**").hasAnyRole(PAPEIS_FINANCEIRO)

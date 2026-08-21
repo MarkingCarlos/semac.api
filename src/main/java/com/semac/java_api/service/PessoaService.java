@@ -37,15 +37,18 @@ public class PessoaService {
     private final TipoInscricaoRepository tipoInscricaoRepository;
     private final CamisaPedidoRepository camisaPedidoRepository;
     private final NivelRepository nivelRepository;
+    private final InscricaoEventoService inscricaoEventoService;
 
     public PessoaService(PessoaRepository pessoaRepository,
                          TipoInscricaoRepository tipoInscricaoRepository,
                          CamisaPedidoRepository camisaPedidoRepository,
-                         NivelRepository nivelRepository) {
+                         NivelRepository nivelRepository,
+                         InscricaoEventoService inscricaoEventoService) {
         this.pessoaRepository = pessoaRepository;
         this.tipoInscricaoRepository = tipoInscricaoRepository;
         this.camisaPedidoRepository = camisaPedidoRepository;
         this.nivelRepository = nivelRepository;
+        this.inscricaoEventoService = inscricaoEventoService;
     }
 
     /* Participantes do /admin: confirmados (role = PARTICIPANTE) e os
@@ -118,7 +121,19 @@ public class PessoaService {
         }
 
         pessoa.setRole(role);
-        return paraResposta(pessoaRepository.save(pessoa));
+        Pessoa salva = pessoaRepository.save(pessoa);
+
+        /* Participante confirmado já entra em todos os eventos abertos
+           (palestra, mesa redonda, debate); quem vira comissão sai deles,
+           porque organizador não pontua nem ocupa vaga. Minicurso fica
+           de fora: é escolha do participante na área /participantes. */
+        if (role == Role.PARTICIPANTE) {
+            inscricaoEventoService.preInscreverEmEventosAbertos(salva);
+        } else {
+            inscricaoEventoService.removerInscricoesDoParticipante(salva.getId());
+        }
+
+        return paraResposta(salva);
     }
 
     /* Ativa/desativa uma pessoa (ex.: suspender membro da comissão). */
