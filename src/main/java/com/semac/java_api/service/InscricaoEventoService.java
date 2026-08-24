@@ -1,5 +1,6 @@
 package com.semac.java_api.service;
 
+import com.semac.java_api.dto.PresencaConfirmadaDTO;
 import com.semac.java_api.model.Evento;
 import com.semac.java_api.model.EventoParticipante;
 import com.semac.java_api.model.Pessoa;
@@ -188,6 +189,52 @@ public class InscricaoEventoService {
         }
 
         eventoParticipanteRepository.delete(inscricao);
+    }
+
+    /* ── Check-in por QR code (ferramenta /checkin) ──────────────── */
+
+    /* Marca presença a partir do uuid do crachá do participante (leitura
+       de câmera). "Não cadastrado" cobre tanto uuid inexistente quanto
+       pessoa sem inscrição nesse evento específico — para quem opera o
+       check-in os dois casos pedem a mesma ação (busca manual ou
+       confirmar a inscrição na secretaria), então a mensagem é a mesma. */
+    @Transactional
+    public PresencaConfirmadaDTO registrarPresencaPorUuid(Integer eventoId, String uuid) {
+        Pessoa participante = pessoaRepository.findByUuid(uuid)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Este participante não está cadastrado para esse evento."));
+        return marcarPresente(eventoId, participante);
+    }
+
+    /* Confirmação manual (busca por nome/e-mail na ferramenta /checkin,
+       quando a leitura do QR falha). O participante já foi identificado
+       visualmente pela lista, então basta o id. */
+    @Transactional
+    public PresencaConfirmadaDTO registrarPresencaPorId(Integer eventoId, Integer participanteId) {
+        Pessoa participante = pessoaRepository.findById(participanteId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Este participante não está cadastrado para esse evento."));
+        return marcarPresente(eventoId, participante);
+    }
+
+    private PresencaConfirmadaDTO marcarPresente(Integer eventoId, Pessoa participante) {
+        EventoParticipante inscricao = eventoParticipanteRepository
+                .findById(new EventoParticipantePK(eventoId, participante.getId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Este participante não está cadastrado para esse evento."));
+
+        if (inscricao.getStatus() == StatusPresenca.PRESENTE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Presença já registrada para " + participante.getNome() + " nesta palestra.");
+        }
+
+        inscricao.setStatus(StatusPresenca.PRESENTE);
+        eventoParticipanteRepository.save(inscricao);
+
+        String infoAdicional = participante.getTipoInscricao() != null
+                ? participante.getTipoInscricao().getNome()
+                : participante.getEmail();
+        return new PresencaConfirmadaDTO(participante.getNome(), infoAdicional);
     }
 
     /* ── Auxiliares ─────────────────────────────────────────────── */

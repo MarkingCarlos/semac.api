@@ -2,9 +2,12 @@ package com.semac.java_api.controller;
 
 import com.semac.java_api.dto.EventoResponseDTO;
 import com.semac.java_api.dto.MeuEventoResponseDTO;
+import com.semac.java_api.dto.PresencaConfirmadaDTO;
+import com.semac.java_api.dto.RegistrarPresencaRequestDTO;
 import com.semac.java_api.model.EventoParticipante;
 import com.semac.java_api.service.EventoService;
 import com.semac.java_api.service.InscricaoEventoService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -68,6 +71,25 @@ public class InscricaoEventoController {
     public ResponseEntity<Void> cancelar(@AuthenticationPrincipal Jwt jwt, @PathVariable Integer id) {
         inscricaoEventoService.cancelar(idDoToken(jwt), id);
         return ResponseEntity.noContent().build();
+    }
+
+    /* Marca presença a partir do uuid lido no QR code do crachá — usado
+       pela ferramenta /checkin durante o evento. Sem @AuthenticationPrincipal
+       de propósito: o módulo /admin ainda não tem auth obrigatória no
+       backend (ver SecurityConfig), o controle de acesso fica na rota do
+       frontend (exige temAcessoAdmin()). */
+    @PostMapping("/{id}/presenca")
+    public PresencaConfirmadaDTO registrarPresencaPorQr(@PathVariable Integer id,
+                                                         @Valid @RequestBody RegistrarPresencaRequestDTO dto) {
+        return inscricaoEventoService.registrarPresencaPorUuid(id, dto.uuid());
+    }
+
+    /* Confirmação manual de presença (busca por nome/e-mail), para quando
+       a leitura do QR falha ou o participante não tem o crachá em mãos. */
+    @PostMapping("/{id}/presenca/{participanteId}")
+    public PresencaConfirmadaDTO registrarPresencaManual(@PathVariable Integer id,
+                                                          @PathVariable Integer participanteId) {
+        return inscricaoEventoService.registrarPresencaPorId(id, participanteId);
     }
 
     /* Extrai o id da pessoa da claim `id` do token (gravada no login). */
