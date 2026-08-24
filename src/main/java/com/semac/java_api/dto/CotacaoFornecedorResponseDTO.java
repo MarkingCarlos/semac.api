@@ -5,5 +5,6 @@ import java.math.BigDecimal;
 public record CotacaoFornecedorResponseDTO(
         Integer id,
         Integer fornecedorId,
-        BigDecimal valorUnitario
+        BigDecimal valorUnitario,
+        BigDecimal frete
 ) {}

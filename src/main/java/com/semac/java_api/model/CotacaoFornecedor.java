@@ -30,4 +30,9 @@ public class CotacaoFornecedor {
 
     @Column(name = "valor_unitario", nullable = false, precision = 10, scale = 2)
     private BigDecimal valorUnitario;
+
+    /* Frete cobrado por este fornecedor para este item — nem todo
+       fornecedor cobra, então zero é o padrão. */
+    @Column(name = "frete", nullable = false, precision = 10, scale = 2)
+    private BigDecimal frete = BigDecimal.ZERO;
 }

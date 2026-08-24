@@ -95,6 +95,7 @@ public class CotacaoController {
             CotacaoFornecedor existente = existentesPorFornecedor.remove(linhaDto.fornecedorId());
             if (existente != null) {
                 existente.setValorUnitario(linhaDto.valorUnitario());
+                existente.setFrete(linhaDto.freteOuZero());
                 resultado.add(existente);
             } else {
                 Fornecedor fornecedor = fornecedorRepository.findById(linhaDto.fornecedorId())
@@ -104,6 +105,7 @@ public class CotacaoController {
                 nova.setCotacao(cotacao);
                 nova.setFornecedor(fornecedor);
                 nova.setValorUnitario(linhaDto.valorUnitario());
+                nova.setFrete(linhaDto.freteOuZero());
                 resultado.add(nova);
             }
         }
@@ -117,7 +119,8 @@ public class CotacaoController {
                 .map(linha -> new CotacaoFornecedorResponseDTO(
                         linha.getId(),
                         linha.getFornecedor().getId(),
-                        linha.getValorUnitario()
+                        linha.getValorUnitario(),
+                        linha.getFrete()
                 ))
                 .toList();
         return new CotacaoResponseDTO(
