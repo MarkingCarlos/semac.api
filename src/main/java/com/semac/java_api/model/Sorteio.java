@@ -26,6 +26,10 @@ public class Sorteio {
     @JoinColumn(name = "organizador_id", nullable = false)
     private Pessoa organizador;
 
+    @ManyToOne
+    @JoinColumn(name = "brinde_id")
+    private Brinde brinde;
+
     @Column(name = "realizado_em", nullable = false)
     private LocalDateTime realizadoEm;
 }
