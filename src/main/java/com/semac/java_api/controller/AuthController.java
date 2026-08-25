@@ -42,8 +42,10 @@ public class AuthController {
        passwordEncoder.matches — o hash nunca é "descriptografado".
        Por segurança, credenciais inválidas e usuário inexistente
        devolvem a mesma resposta 401 (não revela se o e-mail existe).
-       Em caso de sucesso, devolve um Bearer token (JWT) com a claim
-       `role`, usada para autorizar as rotas protegidas. */
+       Senha correta em conta que ainda não pode entrar (inscrição
+       pendente ou acesso suspenso) devolve 403 com a mensagem explicando
+       o motivo. Em caso de sucesso, devolve um Bearer token (JWT) com a
+       claim `role`, usada para autorizar as rotas protegidas. */
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequestDTO dto) {
         Optional<Pessoa> encontrada = pessoaRepository.findByEmail(dto.email());
@@ -54,7 +56,26 @@ public class AuthController {
         }
 
         Pessoa pessoa = encontrada.get();
-        String role = pessoa.getRole() == null ? null : pessoa.getRole().name();
+
+        /* Senha certa, mas a conta ainda não pode entrar. Os dois casos abaixo
+           só são avaliados depois do matches: quem erra a senha continua
+           recebendo o mesmo 401 e não descobre que o e-mail existe.
+
+           role nula = inscrição aguardando a confirmação de um organizador;
+           sem papel não há área nenhuma para acessar. */
+        if (pessoa.getRole() == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErroRespostaDTO("Estamos validando sua inscrição. Volte mais tarde."));
+        }
+
+        /* ativo = false: acesso suspenso pelo /admin. O registro é preservado
+           (histórico), mas a pessoa não entra mais. */
+        if (Boolean.FALSE.equals(pessoa.getAtivo())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErroRespostaDTO("Seu acesso está suspenso. Procure a organização da SEMAC."));
+        }
+
+        String role = pessoa.getRole().name();
         String token = gerarToken(pessoa, role);
 
         return ResponseEntity.ok(
@@ -72,11 +93,8 @@ public class AuthController {
                 .claim("id", pessoa.getId())
                 .claim("nome", pessoa.getNome());
 
-        // role pode ser null enquanto a inscrição aguarda confirmação;
-        // sem a claim, o usuário não recebe nenhuma autoridade.
-        if (role != null) {
-            claims.claim("role", role);
-        }
+        // O login barra quem não tem papel, então a claim sempre existe.
+        claims.claim("role", role);
 
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
         return jwtEncoder.encode(JwtEncoderParameters.from(header, claims.build())).getTokenValue();
