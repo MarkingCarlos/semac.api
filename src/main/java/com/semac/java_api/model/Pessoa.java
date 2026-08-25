@@ -54,6 +54,11 @@ public class Pessoa {
        acúmulo contínuo de xp por conquistas/presenças é uma entrega
        futura. Null para pendentes e organizadores, mesmo ciclo de vida
        de tipoInscricao. */
+    /* Diárias escolhidas no cadastro, quando o ingresso é cobrado por dia.
+       Null para ingresso de valor fixo e para organizadores. */
+    @Column(name = "dias_inscricao")
+    private Integer diasInscricao;
+
     @ManyToOne
     @JoinColumn(name = "nivel_id")
     private Nivel nivel;

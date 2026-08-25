@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -82,9 +83,20 @@ public class PessoaService {
                         pessoa.getId(),
                         pessoa.getNome(),
                         pessoa.getTipoInscricao().getNome(),
-                        pessoa.getTipoInscricao().getValor(),
+                        valorDaInscricao(pessoa),
                         pessoa.getTipoInscricao().getAno()))
                 .toList();
+    }
+
+    /* Ingresso de diária é cobrado por dia: o valor cadastrado vale por
+       diária e o total sai da quantidade escolhida no cadastro. */
+    private BigDecimal valorDaInscricao(Pessoa pessoa) {
+        TipoInscricao ingresso = pessoa.getTipoInscricao();
+        if (!Boolean.TRUE.equals(ingresso.getPorDia())) {
+            return ingresso.getValor();
+        }
+        int dias = pessoa.getDiasInscricao() == null ? 1 : pessoa.getDiasInscricao();
+        return ingresso.getValor().multiply(BigDecimal.valueOf(dias));
     }
 
     /* Confirmação da inscrição: atribui o papel da pessoa. Aceita
@@ -116,6 +128,7 @@ public class PessoaService {
             pessoa.setNivel(nivelInicial);
         } else {
             pessoa.setTipoInscricao(null);
+            pessoa.setDiasInscricao(null);
             pessoa.setXp(null);
             pessoa.setNivel(null);
         }
@@ -215,17 +228,20 @@ public class PessoaService {
                 .map(ep -> new PresencaParticipanteDTO(ep.getStatus().name()))
                 .toList();
 
-        // Camiseta da inscrição: usa o primeiro pedido registrado (se houver).
-        CamisetaParticipanteDTO camiseta = pessoa.getCamisaPedidos().stream()
-                .findFirst()
+        /* Todas as camisetas pedidas: um ingresso pode incluir mais de uma
+           grátis, e ainda cabem avulsas. `camiseta` segue sendo a primeira,
+           para as colunas que mostram só uma. */
+        List<CamisetaParticipanteDTO> camisetas = pessoa.getCamisaPedidos().stream()
                 .map(this::paraCamiseta)
-                .orElse(null);
+                .toList();
+        CamisetaParticipanteDTO camiseta = camisetas.isEmpty() ? null : camisetas.get(0);
 
         TipoInscricao ingresso = pessoa.getTipoInscricao();
         TipoInscricaoResponseDTO tipoInscricao = ingresso == null ? null
                 : new TipoInscricaoResponseDTO(
                         ingresso.getId(), ingresso.getNome(), ingresso.getValor(),
-                        ingresso.getAno(), ingresso.getAtivo());
+                        ingresso.getAno(), ingresso.getAtivo(), ingresso.getCamisetasGratis(),
+                        ingresso.getPorDia(), ingresso.getMaxDias());
 
         Nivel nivel = pessoa.getNivel();
         NivelResponseDTO nivelResponse = nivel == null ? null
@@ -239,7 +255,9 @@ public class PessoaService {
                 pessoa.getAtivo(),
                 pessoa.getRole() == null ? null : pessoa.getRole().name(),
                 camiseta,
+                camisetas,
                 tipoInscricao,
+                pessoa.getDiasInscricao(),
                 nivelResponse,
                 pessoa.getXp(),
                 presencas

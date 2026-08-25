@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -77,11 +78,24 @@ public class TipoInscricaoController {
         tipo.setValor(dto.valor());
         tipo.setAno(dto.ano());
         tipo.setAtivo(dto.ativo() == null ? Boolean.TRUE : dto.ativo());
+        tipo.setCamisetasGratis(dto.camisetasGratis() == null ? 0 : dto.camisetasGratis());
+
+        // maxDias só faz sentido em ingresso de diária: fora disso é zerado
+        // para não deixar resíduo quando o admin desmarca a opção.
+        boolean porDia = Boolean.TRUE.equals(dto.porDia());
+        tipo.setPorDia(porDia);
+        tipo.setMaxDias(porDia ? dto.maxDias() : null);
+
+        if (porDia && dto.maxDias() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Informe o máximo de diárias do ingresso.");
+        }
     }
 
     private TipoInscricaoResponseDTO paraResposta(TipoInscricao tipo) {
         return new TipoInscricaoResponseDTO(
-                tipo.getId(), tipo.getNome(), tipo.getValor(), tipo.getAno(), tipo.getAtivo()
+                tipo.getId(), tipo.getNome(), tipo.getValor(), tipo.getAno(), tipo.getAtivo(),
+                tipo.getCamisetasGratis(), tipo.getPorDia(), tipo.getMaxDias()
         );
     }
 }

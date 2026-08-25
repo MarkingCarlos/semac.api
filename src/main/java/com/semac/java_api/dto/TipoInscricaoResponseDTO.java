@@ -7,5 +7,8 @@ public record TipoInscricaoResponseDTO(
         String nome,
         BigDecimal valor,
         Integer ano,
-        Boolean ativo
+        Boolean ativo,
+        Integer camisetasGratis,
+        Boolean porDia,
+        Integer maxDias
 ) {}

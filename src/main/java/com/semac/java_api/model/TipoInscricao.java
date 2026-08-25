@@ -35,4 +35,17 @@ public class TipoInscricao {
 
     @Column(nullable = false)
     private Boolean ativo = true;
+
+    /* Quantas camisetas gratuitas este ingresso inclui. 0 = sem direito;
+       o participante ainda pode comprar avulsas (ver CamisetaExtra). */
+    @Column(name = "camisetas_gratis", nullable = false)
+    private Integer camisetasGratis = 0;
+
+    /* Ingresso cobrado por diária: o valor acima é o preço de UM dia e o
+       total sai de valor x dias escolhidos. `maxDias` limita a escolha. */
+    @Column(name = "por_dia", nullable = false)
+    private Boolean porDia = false;
+
+    @Column(name = "max_dias")
+    private Integer maxDias;
 }
