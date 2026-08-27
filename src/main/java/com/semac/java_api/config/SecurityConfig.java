@@ -84,6 +84,9 @@ public class SecurityConfig {
                         // Preço da camiseta avulsa — editado em Informações SEMAC. O GET
                         // segue aberto: o cadastro público precisa do preço.
                         .requestMatchers(HttpMethod.PUT, "/api/camiseta-extra").hasAnyRole(PAPEIS_FINANCEIRO)
+                        // Meta de doação — editada em Informações SEMAC. O GET segue
+                        // aberto: a página pública de doação precisa da meta.
+                        .requestMatchers(HttpMethod.PUT, "/api/meta-doacao").hasAnyRole(PAPEIS_FINANCEIRO)
                         // Escrita de níveis de participante — gerenciada em Informações SEMAC (GET segue aberto)
                         .requestMatchers(HttpMethod.POST, "/api/nivel/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.PUT, "/api/nivel/**").hasAnyRole(PAPEIS_FINANCEIRO)
