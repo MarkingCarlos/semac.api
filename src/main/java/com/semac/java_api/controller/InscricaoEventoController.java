@@ -75,9 +75,9 @@ public class InscricaoEventoController {
 
     /* Marca presença a partir do uuid lido no QR code do crachá — usado
        pela ferramenta /checkin durante o evento. Sem @AuthenticationPrincipal
-       de propósito: o módulo /admin ainda não tem auth obrigatória no
-       backend (ver SecurityConfig), o controle de acesso fica na rota do
-       frontend (exige temAcessoAdmin()). */
+       porque não precisa identificar quem faz o check-in, só quem foi
+       encontrado; o acesso à rota em si é restrito a papéis de comissão
+       via SecurityConfig (hasAnyRole(PAPEIS_ADMIN)). */
     @PostMapping("/{id}/presenca")
     public PresencaConfirmadaDTO registrarPresencaPorQr(@PathVariable Integer id,
                                                          @Valid @RequestBody RegistrarPresencaRequestDTO dto) {

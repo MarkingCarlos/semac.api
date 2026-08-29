@@ -9,6 +9,7 @@ import com.semac.java_api.model.enums.StatusPresenca;
 import com.semac.java_api.model.pk.EventoParticipantePK;
 import com.semac.java_api.repository.EventoParticipanteRepository;
 import com.semac.java_api.repository.EventoRepository;
+import com.semac.java_api.repository.NivelRepository;
 import com.semac.java_api.repository.PessoaRepository;
 import com.semac.java_api.repository.projection.InscritosEventoView;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -43,16 +45,27 @@ public class InscricaoEventoService {
     private static final Set<StatusPresenca> STATUS_OCUPA_VAGA =
             Set.of(StatusPresenca.INSCRITO, StatusPresenca.PRESENTE);
 
+    /* Regra de atraso no check-in (ver marcarPresente): abaixo de
+       ATRASO_METADE_XP_MINUTOS credita o xp cheio do tipo de evento; a
+       partir daí e até ATRASO_ZERO_XP_MINUTOS (exclusive), metade; a
+       partir de ATRASO_ZERO_XP_MINUTOS, a presença é registrada mas sem
+       xp. Hardcoded por ora — mesmo padrão usado nas regras de conquista. */
+    private static final long ATRASO_METADE_XP_MINUTOS = 20;
+    private static final long ATRASO_ZERO_XP_MINUTOS = 30;
+
     private final EventoRepository eventoRepository;
     private final EventoParticipanteRepository eventoParticipanteRepository;
     private final PessoaRepository pessoaRepository;
+    private final NivelRepository nivelRepository;
 
     public InscricaoEventoService(EventoRepository eventoRepository,
                                   EventoParticipanteRepository eventoParticipanteRepository,
-                                  PessoaRepository pessoaRepository) {
+                                  PessoaRepository pessoaRepository,
+                                  NivelRepository nivelRepository) {
         this.eventoRepository = eventoRepository;
         this.eventoParticipanteRepository = eventoParticipanteRepository;
         this.pessoaRepository = pessoaRepository;
+        this.nivelRepository = nivelRepository;
     }
 
     /* ── Ocupação (usada para calcular vagas restantes) ──────────── */
@@ -228,13 +241,51 @@ public class InscricaoEventoService {
                     "Presença já registrada para " + participante.getNome() + " nesta palestra.");
         }
 
+        LocalDateTime agora = LocalDateTime.now();
+        Evento evento = inscricao.getEvento();
+        long atrasoMinutos = Math.max(0,
+                Duration.between(evento.getDataHoraInicio(), agora).toMinutes());
+        int xpCreditado = calcularXpCreditado(evento, atrasoMinutos);
+
         inscricao.setStatus(StatusPresenca.PRESENTE);
+        inscricao.setPresencaEm(agora);
+        inscricao.setXpCreditado(xpCreditado);
         eventoParticipanteRepository.save(inscricao);
+
+        if (xpCreditado > 0) {
+            creditarXp(participante, xpCreditado);
+        }
 
         String infoAdicional = participante.getTipoInscricao() != null
                 ? participante.getTipoInscricao().getNome()
                 : participante.getEmail();
-        return new PresencaConfirmadaDTO(participante.getNome(), infoAdicional);
+        return new PresencaConfirmadaDTO(participante.getNome(), infoAdicional, xpCreditado, atrasoMinutos);
+    }
+
+    /* Xp cheio do tipo de evento; metade a partir de ATRASO_METADE_XP_MINUTOS
+       (arredondado pra baixo); zero a partir de ATRASO_ZERO_XP_MINUTOS —
+       a presença continua registrada, só o xp que muda. */
+    private int calcularXpCreditado(Evento evento, long atrasoMinutos) {
+        int pontosBase = evento.getTipoEvento().getPontos();
+        if (atrasoMinutos >= ATRASO_ZERO_XP_MINUTOS) {
+            return 0;
+        }
+        if (atrasoMinutos >= ATRASO_METADE_XP_MINUTOS) {
+            return pontosBase / 2;
+        }
+        return pontosBase;
+    }
+
+    /* Soma o xp na pessoa e recalcula o nível correspondente, mesmo
+       critério usado na confirmação da inscrição (ver
+       PessoaService.atribuirRole). */
+    private void creditarXp(Pessoa participante, int xpCreditado) {
+        int xpAtual = participante.getXp() == null ? 0 : participante.getXp();
+        int novoXp = xpAtual + xpCreditado;
+        participante.setXp(novoXp);
+        nivelRepository.findTopByXpMinimoLessThanEqualOrderByXpMinimoDesc(novoXp)
+                .ifPresent(participante::setNivel);
+        pessoaRepository.save(participante);
     }
 
     /* ── Auxiliares ─────────────────────────────────────────────── */

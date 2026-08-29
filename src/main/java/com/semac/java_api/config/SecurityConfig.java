@@ -43,6 +43,13 @@ public class SecurityConfig {
 
     private static final String[] PAPEIS_FINANCEIRO = { "DIRETOR_SITE", "PRESIDENTE" };
 
+    /* Qualquer papel de comissão — espelha PAPEIS_ADMIN do frontend
+       (auth/sessao.js). Financeiro (acima) é um subconjunto: quem tem
+       acesso financeiro também tem acesso admin. */
+    private static final String[] PAPEIS_ADMIN = {
+            "MEMBRO", "DIRETOR_CONTEUDO", "DIRETOR_PATROCINIO", "DIRETOR_APOIO", "DIRETOR_SITE", "PRESIDENTE"
+    };
+
     private static final String PAPEL_PARTICIPANTE = "PARTICIPANTE";
 
     private final SecretKey chaveJwt;
@@ -91,7 +98,22 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/nivel/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.PUT, "/api/nivel/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.DELETE, "/api/nivel/**").hasAnyRole(PAPEIS_FINANCEIRO)
-                        // Demais (site público + /admin, ainda sem auth) seguem abertos
+                        // Exclusivos do /admin (qualquer papel de comissão). GET /api/evento e
+                        // GET /api/tipo-inscricao seguem abertos de propósito — alimentam a
+                        // programação pública e o cadastro em /inscricoes, respectivamente.
+                        .requestMatchers(HttpMethod.GET, "/api/pessoa/participantes", "/api/pessoa/comissao").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.PATCH, "/api/pessoa/*/role", "/api/pessoa/*/ativo").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.POST, "/api/evento").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.PUT, "/api/evento/*").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.DELETE, "/api/evento/*").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.POST, "/api/evento/*/presenca", "/api/evento/*/presenca/*").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers("/api/tipo-evento/**").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers("/api/brinde/**").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers("/api/sorteio/**").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.POST, "/api/tipo-inscricao").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.PUT, "/api/tipo-inscricao/*").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.DELETE, "/api/tipo-inscricao/*").hasAnyRole(PAPEIS_ADMIN)
+                        // Demais (site público) seguem abertos
                         .anyRequest().permitAll()
                 )
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(conversorAutenticacao())));

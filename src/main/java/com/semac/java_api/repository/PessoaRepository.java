@@ -18,4 +18,10 @@ public interface PessoaRepository extends JpaRepository<Pessoa, Integer> {
        recém-inscritos aguardando confirmação (role = NULL). Exclui
        organizadores (demais roles). Ordenado por nome. */
     List<Pessoa> findByRoleIsNullOrRoleOrderByNomeAsc(Role role);
+
+    /* Posição no ranking de xp: quantos participantes têm xp maior que o
+       informado (a posição é essa contagem + 1) e o total de participantes,
+       usados pelo card de nível em /participantes. */
+    long countByRoleAndXpGreaterThan(Role role, Integer xp);
+    long countByRole(Role role);
 }

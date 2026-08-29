@@ -197,14 +197,7 @@ public class PessoaService {
 
         // Constrói a resposta a partir do pedido salvo (a coleção lazy da
         // pessoa pode não refletir um pedido recém-criado).
-        return new PerfilResponseDTO(
-                pessoa.getId(),
-                pessoa.getNome(),
-                pessoa.getEmail(),
-                pessoa.getRole() == null ? null : pessoa.getRole().name(),
-                pessoa.getRa(),
-                paraCamiseta(pedido)
-        );
+        return paraPerfil(pessoa, paraCamiseta(pedido));
     }
 
     private PerfilResponseDTO paraPerfil(Pessoa pessoa) {
@@ -212,6 +205,31 @@ public class PessoaService {
                 .findFirst()
                 .map(this::paraCamiseta)
                 .orElse(null);
+        return paraPerfil(pessoa, camiseta);
+    }
+
+    private PerfilResponseDTO paraPerfil(Pessoa pessoa, CamisetaParticipanteDTO camiseta) {
+        Nivel nivel = pessoa.getNivel();
+        NivelResponseDTO nivelResponse = nivel == null ? null
+                : new NivelResponseDTO(nivel.getId(), nivel.getNome(), nivel.getXpMinimo());
+
+        String proximoNivelNome = null;
+        Integer xpFaltante = null;
+        Integer posicaoRanking = null;
+        Integer totalRanking = null;
+
+        if (pessoa.getRole() == Role.PARTICIPANTE && pessoa.getXp() != null) {
+            int xp = pessoa.getXp();
+            Nivel proximoNivel = nivelRepository
+                    .findTopByXpMinimoGreaterThanOrderByXpMinimoAsc(xp)
+                    .orElse(null);
+            if (proximoNivel != null) {
+                proximoNivelNome = proximoNivel.getNome();
+                xpFaltante = proximoNivel.getXpMinimo() - xp;
+            }
+            posicaoRanking = (int) pessoaRepository.countByRoleAndXpGreaterThan(Role.PARTICIPANTE, xp) + 1;
+            totalRanking = (int) pessoaRepository.countByRole(Role.PARTICIPANTE);
+        }
 
         return new PerfilResponseDTO(
                 pessoa.getId(),
@@ -219,7 +237,13 @@ public class PessoaService {
                 pessoa.getEmail(),
                 pessoa.getRole() == null ? null : pessoa.getRole().name(),
                 pessoa.getRa(),
-                camiseta
+                camiseta,
+                pessoa.getXp(),
+                nivelResponse,
+                proximoNivelNome,
+                xpFaltante,
+                posicaoRanking,
+                totalRanking
         );
     }
 
