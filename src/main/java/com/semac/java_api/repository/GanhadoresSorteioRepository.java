@@ -10,4 +10,5 @@ public interface GanhadoresSorteioRepository extends JpaRepository<GanhadoresSor
     List<GanhadoresSorteio> findByParticipante_Id(Integer participanteId);
     boolean existsByParticipante_Id(Integer participanteId);
     Optional<GanhadoresSorteio> findBySorteio_Id(Integer sorteioId);
+    void deleteByParticipante_Id(Integer participanteId);
 }

@@ -9,4 +9,5 @@ import java.util.List;
 public interface ParticipanteConquistaRepository extends JpaRepository<ParticipanteConquista, ParticipanteConquistaPK> {
     List<ParticipanteConquista> findByPk_ParticipanteId(Integer participanteId);
     boolean existsByPk_ParticipanteIdAndPk_ConquistaId(Integer participanteId, Integer conquistaId);
+    void deleteByPk_ParticipanteId(Integer participanteId);
 }

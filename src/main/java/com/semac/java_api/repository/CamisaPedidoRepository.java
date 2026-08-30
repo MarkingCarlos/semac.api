@@ -10,6 +10,7 @@ import java.util.List;
 public interface CamisaPedidoRepository extends JpaRepository<CamisaPedido, Integer> {
 
     List<CamisaPedido> findByPessoaId(Integer pessoaId);
+    void deleteByPessoaId(Integer pessoaId);
 
     @Query("SELECT c.tamanho AS tamanho, c.modelo AS modelo, COUNT(c) AS total " +
            "FROM CamisaPedido c GROUP BY c.tamanho, c.modelo")

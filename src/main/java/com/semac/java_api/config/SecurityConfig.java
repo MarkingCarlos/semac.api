@@ -103,6 +103,7 @@ public class SecurityConfig {
                         // programação pública e o cadastro em /inscricoes, respectivamente.
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/participantes", "/api/pessoa/comissao").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.PATCH, "/api/pessoa/*/role", "/api/pessoa/*/ativo").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.DELETE, "/api/pessoa/*").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.POST, "/api/evento").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.PUT, "/api/evento/*").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.DELETE, "/api/evento/*").hasAnyRole(PAPEIS_ADMIN)

@@ -13,9 +13,13 @@ import com.semac.java_api.model.Nivel;
 import com.semac.java_api.model.Pessoa;
 import com.semac.java_api.model.TipoInscricao;
 import com.semac.java_api.model.enums.Role;
+import com.semac.java_api.repository.CaixaFundunespRepository;
 import com.semac.java_api.repository.CamisaPedidoRepository;
+import com.semac.java_api.repository.GanhadoresSorteioRepository;
 import com.semac.java_api.repository.NivelRepository;
+import com.semac.java_api.repository.ParticipanteConquistaRepository;
 import com.semac.java_api.repository.PessoaRepository;
+import com.semac.java_api.repository.SorteioRepository;
 import com.semac.java_api.repository.TipoInscricaoRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -39,17 +43,29 @@ public class PessoaService {
     private final CamisaPedidoRepository camisaPedidoRepository;
     private final NivelRepository nivelRepository;
     private final InscricaoEventoService inscricaoEventoService;
+    private final SorteioRepository sorteioRepository;
+    private final CaixaFundunespRepository caixaFundunespRepository;
+    private final ParticipanteConquistaRepository participanteConquistaRepository;
+    private final GanhadoresSorteioRepository ganhadoresSorteioRepository;
 
     public PessoaService(PessoaRepository pessoaRepository,
                          TipoInscricaoRepository tipoInscricaoRepository,
                          CamisaPedidoRepository camisaPedidoRepository,
                          NivelRepository nivelRepository,
-                         InscricaoEventoService inscricaoEventoService) {
+                         InscricaoEventoService inscricaoEventoService,
+                         SorteioRepository sorteioRepository,
+                         CaixaFundunespRepository caixaFundunespRepository,
+                         ParticipanteConquistaRepository participanteConquistaRepository,
+                         GanhadoresSorteioRepository ganhadoresSorteioRepository) {
         this.pessoaRepository = pessoaRepository;
         this.tipoInscricaoRepository = tipoInscricaoRepository;
         this.camisaPedidoRepository = camisaPedidoRepository;
         this.nivelRepository = nivelRepository;
         this.inscricaoEventoService = inscricaoEventoService;
+        this.sorteioRepository = sorteioRepository;
+        this.caixaFundunespRepository = caixaFundunespRepository;
+        this.participanteConquistaRepository = participanteConquistaRepository;
+        this.ganhadoresSorteioRepository = ganhadoresSorteioRepository;
     }
 
     /* Participantes do /admin: confirmados (role = PARTICIPANTE) e os
@@ -157,6 +173,35 @@ public class PessoaService {
                         "Pessoa não encontrada."));
         pessoa.setAtivo(ativo);
         return paraResposta(pessoaRepository.save(pessoa));
+    }
+
+    /* Exclui definitivamente um participante ou membro da comissão (ação
+       irreversível — para preservar histórico, prefira "Desativar").
+       Bloqueada se a pessoa for responsável por registros de auditoria que
+       não podem ficar órfãos: sorteios que organizou (organizador_id é
+       NOT NULL) e o último ajuste do caixa do Fundunesp. Os demais vínculos
+       (camisetas, inscrições em eventos, conquistas e prêmios ganhos) são
+       apagados junto, por serem exclusivos dessa pessoa. */
+    @Transactional
+    public void excluir(Integer id) {
+        Pessoa pessoa = pessoaRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Pessoa não encontrada."));
+
+        if (sorteioRepository.existsByOrganizador_Id(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Esta pessoa organizou sorteios e não pode ser excluída. Desative-a em vez disso.");
+        }
+        if (caixaFundunespRepository.existsByAtualizadoPor_Id(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Esta pessoa fez ajustes no caixa do Fundunesp e não pode ser excluída. Desative-a em vez disso.");
+        }
+
+        camisaPedidoRepository.deleteByPessoaId(id);
+        inscricaoEventoService.removerInscricoesDoParticipante(id);
+        participanteConquistaRepository.deleteByPk_ParticipanteId(id);
+        ganhadoresSorteioRepository.deleteByParticipante_Id(id);
+        pessoaRepository.delete(pessoa);
     }
 
     /* Perfil do próprio usuário logado (seção Início do /admin). O id vem

@@ -80,4 +80,10 @@ public class PessoaController {
                                                 @Valid @RequestBody AtivoRequestDTO dto) {
         return pessoaService.definirAtivo(id, dto.ativo());
     }
+
+    /* Exclui definitivamente um participante ou membro da comissão. */
+    @DeleteMapping("/{id}")
+    public void excluir(@PathVariable Integer id) {
+        pessoaService.excluir(id);
+    }
 }
