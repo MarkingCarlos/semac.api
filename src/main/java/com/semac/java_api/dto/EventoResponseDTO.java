@@ -12,6 +12,7 @@ public record EventoResponseDTO(
         TipoEventoResponseDTO tipoEvento,
         String local,
         String descricao,
+        TrilhaResponseDTO trilha,
         LocalDateTime dataHoraInicio,
         LocalDateTime dataHoraFim,
         Integer capacidadeMaxima,

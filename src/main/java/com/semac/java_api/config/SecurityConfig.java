@@ -108,6 +108,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/evento/*").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.POST, "/api/evento/*/presenca", "/api/evento/*/presenca/*").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers("/api/tipo-evento/**").hasAnyRole(PAPEIS_ADMIN)
+                        // GET /api/trilha segue aberto — alimenta o filtro da programação pública
+                        .requestMatchers(HttpMethod.POST, "/api/trilha").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.PUT, "/api/trilha/*").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.DELETE, "/api/trilha/*").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers("/api/brinde/**").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers("/api/sorteio/**").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.POST, "/api/tipo-inscricao").hasAnyRole(PAPEIS_ADMIN)

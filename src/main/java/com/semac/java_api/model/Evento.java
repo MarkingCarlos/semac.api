@@ -37,6 +37,10 @@ public class Evento {
     private String descricao;
 
     @ManyToOne
+    @JoinColumn(name = "trilha_id")
+    private Trilha trilha;
+
+    @ManyToOne
     @JoinColumn(name = "tipo_evento_id", nullable = false)
     private TipoEvento tipoEvento;
 

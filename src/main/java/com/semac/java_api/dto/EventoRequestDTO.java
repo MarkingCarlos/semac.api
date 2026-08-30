@@ -16,6 +16,7 @@ public record EventoRequestDTO(
         @NotNull Integer tipoEventoId,
         String local,
         String descricao,
+        Integer trilhaId,
         @NotNull LocalDateTime dataHoraInicio,
         @NotNull LocalDateTime dataHoraFim,
         @NotNull @Positive Integer capacidadeMaxima,

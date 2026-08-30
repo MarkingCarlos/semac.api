@@ -36,3 +36,5 @@ build/
 
 ### VS Code ###
 .vscode/
+/.run/Frontend Vite.run.xml
+/.run/SEMAC Completo.run.xml

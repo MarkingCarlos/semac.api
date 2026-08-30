@@ -4,15 +4,18 @@ import com.semac.java_api.dto.EventoRequestDTO;
 import com.semac.java_api.dto.EventoResponseDTO;
 import com.semac.java_api.dto.PalestranteDTO;
 import com.semac.java_api.dto.TipoEventoResponseDTO;
+import com.semac.java_api.dto.TrilhaResponseDTO;
 import com.semac.java_api.model.Evento;
 import com.semac.java_api.model.EventoPalestrante;
 import com.semac.java_api.model.Palestrante;
 import com.semac.java_api.model.TipoEvento;
+import com.semac.java_api.model.Trilha;
 import com.semac.java_api.model.pk.EventoPalestrantePK;
 import com.semac.java_api.repository.EventoPalestranteRepository;
 import com.semac.java_api.repository.EventoRepository;
 import com.semac.java_api.repository.PalestranteRepository;
 import com.semac.java_api.repository.TipoEventoRepository;
+import com.semac.java_api.repository.TrilhaRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,17 +30,20 @@ public class EventoService {
 
     private final EventoRepository eventoRepository;
     private final TipoEventoRepository tipoEventoRepository;
+    private final TrilhaRepository trilhaRepository;
     private final PalestranteRepository palestranteRepository;
     private final EventoPalestranteRepository eventoPalestranteRepository;
     private final InscricaoEventoService inscricaoEventoService;
 
     public EventoService(EventoRepository eventoRepository,
                          TipoEventoRepository tipoEventoRepository,
+                         TrilhaRepository trilhaRepository,
                          PalestranteRepository palestranteRepository,
                          EventoPalestranteRepository eventoPalestranteRepository,
                          InscricaoEventoService inscricaoEventoService) {
         this.eventoRepository = eventoRepository;
         this.tipoEventoRepository = tipoEventoRepository;
+        this.trilhaRepository = trilhaRepository;
         this.palestranteRepository = palestranteRepository;
         this.eventoPalestranteRepository = eventoPalestranteRepository;
         this.inscricaoEventoService = inscricaoEventoService;
@@ -137,9 +143,21 @@ public class EventoService {
         evento.setTipoEvento(tipoEvento);
         evento.setLocal(dto.local());
         evento.setDescricao(dto.descricao());
+        evento.setTrilha(resolverTrilha(dto.trilhaId()));
         evento.setDataHoraInicio(dto.dataHoraInicio());
         evento.setDataHoraFim(dto.dataHoraFim());
         evento.setCapacidadeMaxima(dto.capacidadeMaxima());
+    }
+
+    /* Trilha é opcional (ex: coffee break não tem uma). Quando informada,
+       precisa existir — mesma regra de validação do tipo de evento. */
+    private Trilha resolverTrilha(Integer trilhaId) {
+        if (trilhaId == null) {
+            return null;
+        }
+        return trilhaRepository.findById(trilhaId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Trilha inválida."));
     }
 
     /* Palestrantes são "inline" do evento (sem reuso na interface): a cada
@@ -187,6 +205,10 @@ public class EventoService {
                 : new TipoEventoResponseDTO(tipo.getId(), tipo.getNome(), tipo.getPontos(),
                         Boolean.TRUE.equals(tipo.getExigeInscricao()));
 
+        Trilha trilha = evento.getTrilha();
+        TrilhaResponseDTO trilhaDto = trilha == null ? null
+                : new TrilhaResponseDTO(trilha.getId(), trilha.getNome());
+
         /* Vagas restantes só existem onde a lotação é regra de negócio
            (minicurso). Em evento aberto a capacidade é folgada e a
            contagem só confundiria a interface. */
@@ -208,6 +230,7 @@ public class EventoService {
                 tipoEvento,
                 evento.getLocal(),
                 evento.getDescricao(),
+                trilhaDto,
                 evento.getDataHoraInicio(),
                 evento.getDataHoraFim(),
                 evento.getCapacidadeMaxima(),
