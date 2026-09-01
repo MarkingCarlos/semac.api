@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,7 +16,7 @@ public record EventoRequestDTO(
         @NotBlank String nome,
         @NotNull Integer tipoEventoId,
         String local,
-        String descricao,
+        @Size(max = 1000) String descricao,
         Integer trilhaId,
         @NotNull LocalDateTime dataHoraInicio,
         @NotNull LocalDateTime dataHoraFim,
