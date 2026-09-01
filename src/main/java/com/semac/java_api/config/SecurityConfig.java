@@ -83,6 +83,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/compra/**", "/api/fornecedor/**", "/api/cotacao/**", "/api/conjunto/**", "/api/variacao/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers("/api/caixa-fundunesp/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/inscricoes").hasAnyRole(PAPEIS_FINANCEIRO)
+                        // Editar quantas camisetas uma pessoa tem (grátis/inclusas ou avulsas) —
+                        // mesmo acesso do financeiro, tanto para comissão quanto para participantes.
+                        .requestMatchers(HttpMethod.PUT, "/api/pessoa/*/camisetas").hasAnyRole(PAPEIS_FINANCEIRO)
                         // Escrita de patrocínio/cota acontece só no financeiro (GET segue aberto)
                         .requestMatchers(HttpMethod.POST, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.PUT, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)

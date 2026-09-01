@@ -29,4 +29,10 @@ public class CamisaPedido {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Modelo modelo;
+
+    /* Se essa camiseta foi comprada à parte (true) ou está inclusa no
+       ingresso/kit (false). Editável no /admin por DIRETOR_SITE/PRESIDENTE
+       — ver PessoaService.atualizarCamisetas. */
+    @Column(nullable = false)
+    private Boolean avulsa = false;
 }

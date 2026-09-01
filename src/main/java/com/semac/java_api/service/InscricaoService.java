@@ -70,14 +70,19 @@ public class InscricaoService {
 
         Pessoa salva = pessoaRepository.save(pessoa);
 
-        // Uma linha por camiseta — o banco não distingue grátis de avulsa.
-        camisetas.forEach(item -> {
+        // Uma linha por camiseta. As `inclusas` primeiras (nessa mesma ordem,
+        // que é a ordem em que o cadastro monta a lista — grátis primeiro,
+        // avulsas depois) ficam gratuitas; o resto é avulsa.
+        int inclusas = ingresso.getCamisetasGratis() == null ? 0 : ingresso.getCamisetasGratis();
+        for (int i = 0; i < camisetas.size(); i++) {
+            CamisetaPedidoDTO item = camisetas.get(i);
             CamisaPedido camisa = new CamisaPedido();
             camisa.setPessoa(salva);
             camisa.setModelo(item.modelo());
             camisa.setTamanho(item.tamanho());
+            camisa.setAvulsa(i >= inclusas);
             camisaPedidoRepository.save(camisa);
-        });
+        }
 
         return new PessoaResponseDTO(salva.getId(), salva.getUuid(), salva.getNome(), salva.getEmail());
     }

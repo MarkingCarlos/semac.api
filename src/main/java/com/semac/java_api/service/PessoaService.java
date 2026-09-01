@@ -1,6 +1,7 @@
 package com.semac.java_api.service;
 
 import com.semac.java_api.dto.AtualizarPerfilDTO;
+import com.semac.java_api.dto.CamisetaAdminDTO;
 import com.semac.java_api.dto.CamisetaParticipanteDTO;
 import com.semac.java_api.dto.InscricaoFinanceiraDTO;
 import com.semac.java_api.dto.NivelResponseDTO;
@@ -293,16 +294,24 @@ public class PessoaService {
     }
 
     private ParticipanteResponseDTO paraResposta(Pessoa pessoa) {
+        /* Todas as camisetas pedidas: um ingresso pode incluir mais de uma
+           grátis/inclusa, e ainda cabem avulsas. */
+        List<CamisetaParticipanteDTO> camisetas = pessoa.getCamisaPedidos().stream()
+                .map(this::paraCamiseta)
+                .toList();
+        return paraResposta(pessoa, camisetas);
+    }
+
+    /* Mesma resposta, mas com as camisetas informadas explicitamente em vez
+       de lidas da coleção lazy da pessoa — necessário logo após um
+       replace-all (atualizarCamisetas), quando essa coleção pode não
+       refletir ainda o que acabou de ser salvo. */
+    private ParticipanteResponseDTO paraResposta(Pessoa pessoa, List<CamisetaParticipanteDTO> camisetas) {
         List<PresencaParticipanteDTO> presencas = pessoa.getEventoParticipantes().stream()
                 .map(ep -> new PresencaParticipanteDTO(ep.getStatus().name()))
                 .toList();
 
-        /* Todas as camisetas pedidas: um ingresso pode incluir mais de uma
-           grátis, e ainda cabem avulsas. `camiseta` segue sendo a primeira,
-           para as colunas que mostram só uma. */
-        List<CamisetaParticipanteDTO> camisetas = pessoa.getCamisaPedidos().stream()
-                .map(this::paraCamiseta)
-                .toList();
+        // `camiseta` segue sendo a primeira, para as colunas que mostram só uma.
         CamisetaParticipanteDTO camiseta = camisetas.isEmpty() ? null : camisetas.get(0);
 
         TipoInscricao ingresso = pessoa.getTipoInscricao();
@@ -334,6 +343,38 @@ public class PessoaService {
     }
 
     private CamisetaParticipanteDTO paraCamiseta(CamisaPedido pedido) {
-        return new CamisetaParticipanteDTO(pedido.getModelo().name(), pedido.getTamanho().name());
+        return new CamisetaParticipanteDTO(pedido.getModelo().name(), pedido.getTamanho().name(), pedido.getAvulsa());
+    }
+
+    /* Substitui a lista inteira de camisetas da pessoa pela enviada
+       (replace-all) — editor do /admin, restrito a DIRETOR_SITE/PRESIDENTE
+       (ver SecurityConfig). Cobre tanto participante quanto comissão: dá
+       pra marcar qualquer camiseta como avulsa, mesmo de alguém da
+       comissão, que antes era sempre grátis por regra fixa no código. */
+    @Transactional
+    public ParticipanteResponseDTO atualizarCamisetas(Integer id, List<CamisetaAdminDTO> camisetas) {
+        Pessoa pessoa = pessoaRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Pessoa não encontrada."));
+
+        camisaPedidoRepository.deleteByPessoaId(id);
+
+        List<CamisaPedido> novos = camisetas.stream()
+                .map(item -> {
+                    CamisaPedido pedido = new CamisaPedido();
+                    pedido.setPessoa(pessoa);
+                    pedido.setModelo(item.modelo());
+                    pedido.setTamanho(item.tamanho());
+                    pedido.setAvulsa(item.avulsa());
+                    return pedido;
+                })
+                .toList();
+        camisaPedidoRepository.saveAll(novos);
+
+        // Resposta construída a partir da lista recém-salva — a coleção
+        // lazy da pessoa pode não refletir o replace-all ainda nesta
+        // transação (mesmo cuidado de atualizarPerfil).
+        List<CamisetaParticipanteDTO> resposta = novos.stream().map(this::paraCamiseta).toList();
+        return paraResposta(pessoa, resposta);
     }
 }
