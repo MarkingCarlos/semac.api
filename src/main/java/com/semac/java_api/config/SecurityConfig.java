@@ -47,7 +47,7 @@ public class SecurityConfig {
        (auth/sessao.js). Financeiro (acima) é um subconjunto: quem tem
        acesso financeiro também tem acesso admin. */
     private static final String[] PAPEIS_ADMIN = {
-            "MEMBRO", "DIRETOR_CONTEUDO", "DIRETOR_PATROCINIO", "DIRETOR_APOIO", "DIRETOR_SITE", "PRESIDENTE"
+            "MEMBRO", "DIRETOR_CONTEUDO", "DIRETOR_PATROCINIO", "DIRETOR_APOIO", "DIRETOR_MARKETING", "DIRETOR_SITE", "PRESIDENTE"
     };
 
     private static final String PAPEL_PARTICIPANTE = "PARTICIPANTE";
@@ -102,6 +102,7 @@ public class SecurityConfig {
                         // GET /api/tipo-inscricao seguem abertos de propósito — alimentam a
                         // programação pública e o cadastro em /inscricoes, respectivamente.
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/participantes", "/api/pessoa/comissao").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/api/relatorio/**").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.PATCH, "/api/pessoa/*/role", "/api/pessoa/*/ativo").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.DELETE, "/api/pessoa/*").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.POST, "/api/evento").hasAnyRole(PAPEIS_ADMIN)
