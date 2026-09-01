@@ -338,7 +338,8 @@ public class PessoaService {
                 pessoa.getDiasInscricao(),
                 nivelResponse,
                 pessoa.getXp(),
-                presencas
+                presencas,
+                pessoa.getComprovantePagamento() != null
         );
     }
 
@@ -376,5 +377,23 @@ public class PessoaService {
         // transação (mesmo cuidado de atualizarPerfil).
         List<CamisetaParticipanteDTO> resposta = novos.stream().map(this::paraCamiseta).toList();
         return paraResposta(pessoa, resposta);
+    }
+
+    /* Nome do arquivo do comprovante de pagamento da pessoa, salvo em disco
+       por InscricaoController no cadastro. Usado por PessoaController para
+       servir o arquivo (GET /api/pessoa/{id}/comprovante) — quem confirma a
+       inscrição precisa poder ver o que foi enviado. 404 tanto se a pessoa
+       não existe quanto se ela não anexou nada. */
+    @Transactional(readOnly = true)
+    public String buscarNomeComprovante(Integer id) {
+        Pessoa pessoa = pessoaRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Pessoa não encontrada."));
+        String nome = pessoa.getComprovantePagamento();
+        if (nome == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Esta pessoa não anexou comprovante de pagamento.");
+        }
+        return nome;
     }
 }

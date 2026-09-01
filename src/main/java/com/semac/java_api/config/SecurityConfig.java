@@ -105,6 +105,8 @@ public class SecurityConfig {
                         // GET /api/tipo-inscricao seguem abertos de propósito — alimentam a
                         // programação pública e o cadastro em /inscricoes, respectivamente.
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/participantes", "/api/pessoa/comissao").hasAnyRole(PAPEIS_ADMIN)
+                        // Comprovante de pagamento — quem confirma inscrição precisa poder ver
+                        .requestMatchers(HttpMethod.GET, "/api/pessoa/*/comprovante").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.GET, "/api/relatorio/**").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.PATCH, "/api/pessoa/*/role", "/api/pessoa/*/ativo").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.DELETE, "/api/pessoa/*").hasAnyRole(PAPEIS_ADMIN)

@@ -36,11 +36,16 @@ public class RelatorioService {
 
     /* Camisetas a comprar: soma de tudo que já foi pedido no cadastro
        (participantes e comissão), dividido entre "dadas" (inclusas no
-       ingresso/kit) e "avulsas" (compra à parte), e entre "comissão" e
-       "participantes" pelo role da pessoa. Dadas/avulsas vem direto do
-       campo `avulsa` de cada CamisaPedido — editável no /admin por
+       ingresso/kit) e "avulsas" (compra à parte). Dadas/avulsas vem direto
+       do campo `avulsa` de cada CamisaPedido — editável no /admin por
        DIRETOR_SITE/PRESIDENTE (ver PessoaService.atualizarCamisetas), não é
        mais calculado comparando com o ingresso.
+
+       "Comissão" × "participantes" (seção Por perfil) não é simplesmente o
+       role de quem pediu: toda avulsa é do modelo de participante, mesmo
+       quando quem compra é da comissão — a camiseta exclusiva da comissão é
+       só a inclusa no kit. Por isso só as dadas entram pelo role; toda
+       avulsa cai em "participantes".
 
        O financeiro (receita/custo/lucro) considera só as avulsas — as
        dadas já estão cobertas pelo preço do ingresso. Receita usa o preço
@@ -57,14 +62,15 @@ public class RelatorioService {
             int total = linha.getTotal().intValue();
             totalGeral += total;
 
-            if (!Boolean.TRUE.equals(linha.getAvulsa())) {
-                totalDadas += total;
-            }
-
-            if (linha.getRole() == Role.PARTICIPANTE) {
+            if (Boolean.TRUE.equals(linha.getAvulsa())) {
                 totalParticipantes += total;
             } else {
-                totalComissao += total;
+                totalDadas += total;
+                if (linha.getRole() == Role.PARTICIPANTE) {
+                    totalParticipantes += total;
+                } else {
+                    totalComissao += total;
+                }
             }
         }
 

@@ -9,12 +9,21 @@ import com.semac.java_api.dto.ParticipanteResponseDTO;
 import com.semac.java_api.dto.PerfilResponseDTO;
 import com.semac.java_api.service.PessoaService;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.net.MalformedURLException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 @RestController
@@ -22,6 +31,9 @@ import java.util.List;
 public class PessoaController {
 
     private final PessoaService pessoaService;
+
+    @Value("${app.upload.dir}")
+    private String uploadDir;
 
     public PessoaController(PessoaService pessoaService) {
         this.pessoaService = pessoaService;
@@ -94,5 +106,44 @@ public class PessoaController {
     public ParticipanteResponseDTO atualizarCamisetas(@PathVariable Integer id,
                                                        @Valid @RequestBody AtualizarCamisetasRequestDTO dto) {
         return pessoaService.atualizarCamisetas(id, dto.camisetas());
+    }
+
+    /* Serve o comprovante de pagamento anexado no cadastro — quem confirma
+       a inscrição (qualquer papel de comissão, ver SecurityConfig) precisa
+       poder ver o que a pessoa enviou antes de aprovar. */
+    @GetMapping("/{id}/comprovante")
+    public ResponseEntity<Resource> buscarComprovante(@PathVariable Integer id) {
+        String nomeArquivo = pessoaService.buscarNomeComprovante(id);
+        Path caminho = Paths.get(uploadDir).resolve(nomeArquivo);
+
+        Resource recurso;
+        try {
+            recurso = new UrlResource(caminho.toUri());
+        } catch (MalformedURLException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erro ao ler o comprovante.");
+        }
+        if (!recurso.exists()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Arquivo do comprovante não encontrado.");
+        }
+
+        return ResponseEntity.ok()
+                .contentType(mediaTypeDoComprovante(nomeArquivo))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + nomeArquivo + "\"")
+                .body(recurso);
+    }
+
+    /* Extensões aceitas no upload (accept="image/*,application/pdf" em
+       BoxInscricao.jsx). Extensão fora dessa lista (não deveria acontecer)
+       cai em octet-stream — o navegador oferece download em vez de exibir. */
+    private MediaType mediaTypeDoComprovante(String nomeArquivo) {
+        String extensao = nomeArquivo.substring(nomeArquivo.lastIndexOf('.') + 1).toLowerCase();
+        return switch (extensao) {
+            case "png" -> MediaType.IMAGE_PNG;
+            case "jpg", "jpeg" -> MediaType.IMAGE_JPEG;
+            case "webp" -> MediaType.parseMediaType("image/webp");
+            case "gif" -> MediaType.IMAGE_GIF;
+            case "pdf" -> MediaType.APPLICATION_PDF;
+            default -> MediaType.APPLICATION_OCTET_STREAM;
+        };
     }
 }

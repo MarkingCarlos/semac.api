@@ -10,7 +10,9 @@ import java.util.List;
    ou compra avulsas, tem vários pedidos.
    `tipoInscricao` é o ingresso escolhido no cadastro, podendo ser trocado
    na confirmação; `dias` acompanha ingresso de diária.
-   `nivel`/`xp` são atribuídos na confirmação (null se pendente). */
+   `nivel`/`xp` são atribuídos na confirmação (null se pendente).
+   `temComprovante` diz se a pessoa anexou comprovante de pagamento no
+   cadastro (o arquivo em si vem de GET /api/pessoa/{id}/comprovante). */
 public record ParticipanteResponseDTO(
         Integer id,
         String nome,
@@ -24,5 +26,6 @@ public record ParticipanteResponseDTO(
         Integer dias,
         NivelResponseDTO nivel,
         Integer xp,
-        List<PresencaParticipanteDTO> eventoParticipantes
+        List<PresencaParticipanteDTO> eventoParticipantes,
+        Boolean temComprovante
 ) {}
