@@ -16,7 +16,7 @@ public record EventoRequestDTO(
         @NotBlank String nome,
         @NotNull Integer tipoEventoId,
         String local,
-        @Size(max = 1000) String descricao,
+        @Size(max = 2000) String descricao,
         Integer trilhaId,
         @NotNull LocalDateTime dataHoraInicio,
         @NotNull LocalDateTime dataHoraFim,

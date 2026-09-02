@@ -34,7 +34,7 @@ public class Evento {
     @Column(name = "capacidade_maxima", nullable = false)
     private Integer capacidadeMaxima;
 
-    @Column(length = 1000)
+    @Column(length = 2000)
     private String descricao;
 
     @ManyToOne

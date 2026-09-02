@@ -22,6 +22,7 @@ public class Palestrante {
     @Column(nullable = false)
     private String nome;
 
+    @Column(length = 2000)
     private String descricao;
 
     @OneToMany(mappedBy = "palestrante")

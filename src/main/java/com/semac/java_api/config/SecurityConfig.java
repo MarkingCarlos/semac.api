@@ -26,6 +26,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 
 /* Autenticação por Bearer token (JWT HS256). O login gera o token; cada
@@ -49,6 +50,12 @@ public class SecurityConfig {
     private static final String[] PAPEIS_ADMIN = {
             "MEMBRO", "DIRETOR_CONTEUDO", "DIRETOR_PATROCINIO", "DIRETOR_APOIO", "DIRETOR_MARKETING", "DIRETOR_SITE", "PRESIDENTE"
     };
+
+    /* Papéis de comissão exceto MEMBRO — brindes e relatórios são
+       restritos aos diretores/presidente. Derivado de PAPEIS_ADMIN para
+       que um novo papel adicionado lá já entre aqui automaticamente. */
+    private static final String[] PAPEIS_ADMIN_SEM_MEMBRO =
+            Arrays.stream(PAPEIS_ADMIN).filter(p -> !"MEMBRO".equals(p)).toArray(String[]::new);
 
     private static final String PAPEL_PARTICIPANTE = "PARTICIPANTE";
 
@@ -86,11 +93,11 @@ public class SecurityConfig {
                         // Editar quantas camisetas uma pessoa tem (grátis/inclusas ou avulsas) —
                         // mesmo acesso do financeiro, tanto para comissão quanto para participantes.
                         .requestMatchers(HttpMethod.PUT, "/api/pessoa/*/camisetas").hasAnyRole(PAPEIS_FINANCEIRO)
-                        // Escrita de patrocínio/cota acontece só no financeiro (GET segue aberto)
-                        .requestMatchers(HttpMethod.POST, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)
-                        .requestMatchers(HttpMethod.PUT, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)
-                        .requestMatchers(HttpMethod.PATCH, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)
-                        .requestMatchers(HttpMethod.DELETE, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)
+                        // Escrita de patrocínio/cota/doador acontece só no financeiro (GET segue aberto)
+                        .requestMatchers(HttpMethod.POST, "/api/patrocinador/**", "/api/cota/**", "/api/doador/**").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers(HttpMethod.PUT, "/api/patrocinador/**", "/api/cota/**", "/api/doador/**").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers(HttpMethod.PATCH, "/api/patrocinador/**", "/api/cota/**", "/api/doador/**").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers(HttpMethod.DELETE, "/api/patrocinador/**", "/api/cota/**", "/api/doador/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         // Preço da camiseta avulsa — editado em Informações SEMAC. O GET
                         // segue aberto: o cadastro público precisa do preço.
                         .requestMatchers(HttpMethod.PUT, "/api/camiseta-extra").hasAnyRole(PAPEIS_FINANCEIRO)
@@ -107,7 +114,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/participantes", "/api/pessoa/comissao").hasAnyRole(PAPEIS_ADMIN)
                         // Comprovante de pagamento — quem confirma inscrição precisa poder ver
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/*/comprovante").hasAnyRole(PAPEIS_ADMIN)
-                        .requestMatchers(HttpMethod.GET, "/api/relatorio/**").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/api/relatorio/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers(HttpMethod.PATCH, "/api/pessoa/*/role", "/api/pessoa/*/ativo").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.DELETE, "/api/pessoa/*").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.POST, "/api/evento").hasAnyRole(PAPEIS_ADMIN)
@@ -119,7 +126,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/trilha").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.PUT, "/api/trilha/*").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.DELETE, "/api/trilha/*").hasAnyRole(PAPEIS_ADMIN)
-                        .requestMatchers("/api/brinde/**").hasAnyRole(PAPEIS_ADMIN)
+                        // MEMBRO pode ver e usar brindes no sorteio, mas não gerenciá-los
+                        .requestMatchers(HttpMethod.GET, "/api/brinde/**").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.POST, "/api/brinde/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
+                        .requestMatchers(HttpMethod.PUT, "/api/brinde/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
+                        .requestMatchers(HttpMethod.DELETE, "/api/brinde/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers("/api/sorteio/**").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.POST, "/api/tipo-inscricao").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.PUT, "/api/tipo-inscricao/*").hasAnyRole(PAPEIS_ADMIN)
