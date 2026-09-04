@@ -10,12 +10,23 @@ import com.semac.java_api.model.enums.StatusPagamento;
 import com.semac.java_api.repository.CotaRepository;
 import com.semac.java_api.repository.PatrocinadorRepository;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.MalformedURLException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -25,6 +36,9 @@ public class PatrocinadorController {
 
     private final PatrocinadorRepository patrocinadorRepository;
     private final CotaRepository cotaRepository;
+
+    @Value("${app.upload.dir.logos}")
+    private String uploadDirLogos;
 
     public PatrocinadorController(PatrocinadorRepository patrocinadorRepository,
                                   CotaRepository cotaRepository) {
@@ -91,6 +105,78 @@ public class PatrocinadorController {
         }
         patrocinadorRepository.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /* Envia (ou substitui) a logo do patrocinador — usado pelo formulário
+       de Finanças. Mesmo padrão de upload do comprovante de inscrição
+       (InscricaoController), mas numa pasta própria (app.upload.dir.logos)
+       já que a logo é pública, diferente do comprovante. */
+    @PostMapping("/{id}/logo")
+    public ResponseEntity<PatrocinadorResponseDTO> enviarLogo(
+            @PathVariable Integer id,
+            @RequestParam("arquivo") MultipartFile arquivo
+    ) {
+        Patrocinador patrocinador = patrocinadorRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Patrocinador não encontrado."));
+
+        try {
+            Path dir = Paths.get(uploadDirLogos);
+            Files.createDirectories(dir);
+
+            String original = arquivo.getOriginalFilename();
+            String ext = (original != null && original.contains("."))
+                    ? original.substring(original.lastIndexOf('.'))
+                    : "";
+            String nomeArquivo = "patrocinador-" + id + "_" + System.currentTimeMillis() + ext;
+
+            arquivo.transferTo(dir.resolve(nomeArquivo));
+
+            patrocinador.setLogoUrl(nomeArquivo);
+            return ResponseEntity.ok(paraResposta(patrocinadorRepository.save(patrocinador)));
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erro ao salvar a logo.");
+        }
+    }
+
+    /* Serve a logo do patrocinador — público, é usado direto num <img src>
+       tanto no site quanto no preview do formulário de Finanças. */
+    @GetMapping("/{id}/logo")
+    public ResponseEntity<Resource> buscarLogo(@PathVariable Integer id) {
+        Patrocinador patrocinador = patrocinadorRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Patrocinador não encontrado."));
+
+        String nomeArquivo = patrocinador.getLogoUrl();
+        if (nomeArquivo == null || nomeArquivo.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Este patrocinador não tem logo.");
+        }
+
+        Path caminho = Paths.get(uploadDirLogos).resolve(nomeArquivo);
+        Resource recurso;
+        try {
+            recurso = new UrlResource(caminho.toUri());
+        } catch (MalformedURLException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erro ao ler a logo.");
+        }
+        if (!recurso.exists()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Arquivo da logo não encontrado.");
+        }
+
+        return ResponseEntity.ok()
+                .contentType(mediaTypeDaLogo(nomeArquivo))
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
+                .body(recurso);
+    }
+
+    private MediaType mediaTypeDaLogo(String nomeArquivo) {
+        String extensao = nomeArquivo.substring(nomeArquivo.lastIndexOf('.') + 1).toLowerCase();
+        return switch (extensao) {
+            case "png" -> MediaType.IMAGE_PNG;
+            case "jpg", "jpeg" -> MediaType.IMAGE_JPEG;
+            case "webp" -> MediaType.parseMediaType("image/webp");
+            case "gif" -> MediaType.IMAGE_GIF;
+            case "svg" -> MediaType.parseMediaType("image/svg+xml");
+            default -> MediaType.APPLICATION_OCTET_STREAM;
+        };
     }
 
     /* ── Mapeamento ──────────────────────────────────────────────── */
