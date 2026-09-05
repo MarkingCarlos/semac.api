@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -61,6 +62,7 @@ public class InscricaoService {
         pessoa.setRa(dto.ra());
         pessoa.setAtivo(true);
         pessoa.setRole(null);
+        pessoa.setInscritoEm(LocalDateTime.now());
 
         /* O ingresso já fica gravado no cadastro — é ele que define quantas
            camisetas a pessoa levou e quanto pagou. O organizador ainda pode

@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,6 +42,11 @@ public class Pessoa {
 
     @Column(nullable = false)
     private Boolean ativo = true;
+
+    /* Preenchido em InscricaoService.cadastrar. Cadastros anteriores à
+       coluna (V22) ficam null — não há como saber a data real deles. */
+    @Column(name = "inscrito_em")
+    private LocalDateTime inscritoEm;
 
     @Enumerated(EnumType.STRING)
     private Role role;

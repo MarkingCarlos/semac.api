@@ -407,6 +407,7 @@ public class PessoaService {
                 pessoa.getRa(),
                 pessoa.getAtivo(),
                 pessoa.getRole() == null ? null : pessoa.getRole().name(),
+                pessoa.getInscritoEm(),
                 camiseta,
                 camisetas,
                 tipoInscricao,

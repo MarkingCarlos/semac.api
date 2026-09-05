@@ -1,5 +1,6 @@
 package com.semac.java_api.dto;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /* Visão de um participante para a tabela do /admin. Não expõe dados
@@ -15,7 +16,9 @@ import java.util.List;
    cadastro (o arquivo em si vem de GET /api/pessoa/{id}/comprovante).
    `formaPagamento` é "PIX", "CARTAO" ou null (ainda não pagou nada);
    `pagamentoCartao` só vem preenchido quando formaPagamento = "CARTAO" —
-   é a evidência que substitui o comprovante nesse caso. */
+   é a evidência que substitui o comprovante nesse caso.
+   `inscritoEm` é a data/hora do cadastro público — null para cadastros
+   anteriores à coluna (ver Pessoa.inscritoEm). */
 public record ParticipanteResponseDTO(
         Integer id,
         String nome,
@@ -23,6 +26,7 @@ public record ParticipanteResponseDTO(
         String ra,
         Boolean ativo,
         String role,
+        LocalDateTime inscritoEm,
         CamisetaParticipanteDTO camiseta,
         List<CamisetaParticipanteDTO> camisetas,
         TipoInscricaoResponseDTO tipoInscricao,
