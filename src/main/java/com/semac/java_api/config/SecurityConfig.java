@@ -107,6 +107,10 @@ public class SecurityConfig {
                         // Meta de doação — editada em Informações SEMAC. O GET segue
                         // aberto: a página pública de doação precisa da meta.
                         .requestMatchers(HttpMethod.PUT, "/api/meta-doacao").hasAnyRole(PAPEIS_FINANCEIRO)
+                        // Liga/desliga o botão "Inscreva-se" da Home — editado em
+                        // Informações SEMAC. O GET segue aberto: a Home pública precisa
+                        // saber se mostra o botão.
+                        .requestMatchers(HttpMethod.PUT, "/api/configuracao-inscricao").hasAnyRole(PAPEIS_FINANCEIRO)
                         // Escrita de níveis de participante — gerenciada em Informações SEMAC (GET segue aberto)
                         .requestMatchers(HttpMethod.POST, "/api/nivel/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.PUT, "/api/nivel/**").hasAnyRole(PAPEIS_FINANCEIRO)
