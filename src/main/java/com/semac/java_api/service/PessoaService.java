@@ -28,6 +28,7 @@ import com.semac.java_api.repository.SorteioRepository;
 import com.semac.java_api.repository.TipoInscricaoRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -414,6 +415,23 @@ public class PessoaService {
         // transação (mesmo cuidado de atualizarPerfil).
         List<CamisetaParticipanteDTO> resposta = novos.stream().map(this::paraCamiseta).toList();
         return paraResposta(pessoa, resposta);
+    }
+
+    /* Registra mais uma tentativa de cobrança no cartão (aprovada, recusada
+       ou em análise) e devolve o total acumulado. REQUIRES_NEW: precisa
+       commitar isolado da transação de PagamentoCartaoService.criarPagamento,
+       que é revertida quando a Mercado Pago recusa a chamada em si (erro de
+       rede/API) — sem isso, forçar esse tipo de erro deixaria a tentativa
+       de fora da contagem usada para travar carding. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public int registrarTentativaCartao(Integer pessoaId) {
+        Pessoa pessoa = pessoaRepository.findById(pessoaId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Inscrição não encontrada."));
+        int tentativas = pessoa.getTentativasCartao() + 1;
+        pessoa.setTentativasCartao(tentativas);
+        pessoaRepository.save(pessoa);
+        return tentativas;
     }
 
     /* Nome do arquivo do comprovante de pagamento da pessoa, salvo em disco

@@ -105,6 +105,12 @@ public class Pessoa {
     @Column(name = "valor_cobrado", precision = 10, scale = 2)
     private BigDecimal valorCobrado;
 
+    /* Quantas vezes o cartão foi cobrado para esta inscrição (aprovado,
+       recusado ou em análise) — ver PagamentoCartaoService.
+       LIMITE_TENTATIVAS_CARTAO trava novas tentativas acima disso. */
+    @Column(name = "tentativas_cartao", nullable = false)
+    private Integer tentativasCartao = 0;
+
     @OneToMany(mappedBy = "pessoa")
     private List<CamisaPedido> camisaPedidos = new ArrayList<>();
 }

@@ -32,6 +32,12 @@ public class PagamentoCartaoService {
     private static final Logger log = LoggerFactory.getLogger(PagamentoCartaoService.class);
     private static final String STATUS_APROVADO = "approved";
 
+    /* Trava carding: sem isso, um cartão recusado podia ser tentado de
+       novo indefinidamente, com tokens diferentes, no mesmo pessoaUuid —
+       usando a Mercado Pago da SEMAC como oráculo grátis pra validar
+       números de cartão roubados. */
+    private static final int LIMITE_TENTATIVAS_CARTAO = 5;
+
     private final PessoaRepository pessoaRepository;
     private final PessoaService pessoaService;
 
@@ -48,6 +54,15 @@ public class PagamentoCartaoService {
         if (STATUS_APROVADO.equals(pessoa.getMpStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Esta inscrição já tem um pagamento aprovado.");
         }
+
+        if (pessoa.getTentativasCartao() >= LIMITE_TENTATIVAS_CARTAO) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                    "Número máximo de tentativas de pagamento por cartão atingido para esta inscrição. Use o Pix.");
+        }
+
+        // Commitada em transação própria (ver PessoaService.registrarTentativaCartao)
+        // antes de chamar a Mercado Pago, pra contar mesmo se a chamada falhar.
+        pessoa.setTentativasCartao(pessoaService.registrarTentativaCartao(pessoa.getId()));
 
         BigDecimal total = pessoaService.calcularValorTotalInscricao(pessoa);
 
