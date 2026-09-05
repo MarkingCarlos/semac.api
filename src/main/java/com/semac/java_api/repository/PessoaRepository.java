@@ -25,4 +25,9 @@ public interface PessoaRepository extends JpaRepository<Pessoa, Integer> {
        usados pelo card de nível em /participantes. */
     long countByRoleAndXpGreaterThan(Role role, Integer xp);
     long countByRole(Role role);
+
+    /* Ranking completo (aba Ranking em /participantes): só quem já tem xp
+       atribuído, do maior pro menor. Empate = posição sequencial (a posição
+       final é calculada pelo índice na lista, não por essa query). */
+    List<Pessoa> findByRoleAndXpIsNotNullOrderByXpDesc(Role role);
 }

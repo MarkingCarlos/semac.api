@@ -1,14 +1,18 @@
 package com.semac.java_api.service;
 
+import com.semac.java_api.dto.AtualizarCamisetaPerfilDTO;
 import com.semac.java_api.dto.AtualizarPerfilDTO;
 import com.semac.java_api.dto.CamisetaAdminDTO;
 import com.semac.java_api.dto.CamisetaParticipanteDTO;
+import com.semac.java_api.dto.CamisetaPerfilDTO;
 import com.semac.java_api.dto.InscricaoFinanceiraDTO;
 import com.semac.java_api.dto.NivelResponseDTO;
 import com.semac.java_api.dto.PagamentoCartaoInfoDTO;
 import com.semac.java_api.dto.ParticipanteResponseDTO;
 import com.semac.java_api.dto.PerfilResponseDTO;
 import com.semac.java_api.dto.PresencaParticipanteDTO;
+import com.semac.java_api.dto.RankingParticipanteDTO;
+import com.semac.java_api.dto.RankingResponseDTO;
 import com.semac.java_api.dto.TipoInscricaoResponseDTO;
 import com.semac.java_api.model.CamisaPedido;
 import com.semac.java_api.model.CamisetaExtra;
@@ -33,6 +37,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -247,9 +254,10 @@ public class PessoaService {
         return paraPerfil(pessoa);
     }
 
-    /* Atualiza os campos editáveis do próprio perfil: RA e a camiseta.
-       A comissão sempre tem um pedido de camiseta (escolhido na inscrição);
-       o orElse cria um só como salvaguarda. */
+    /* Atualiza os campos editáveis do próprio perfil: RA e o modelo/tamanho
+       das camisetas já existentes. Não cria nem apaga camiseta — o `id`
+       enviado precisa bater exatamente com o conjunto de camisa_pedido da
+       pessoa (nem a mais, nem a menos), senão 400. */
     @Transactional
     public PerfilResponseDTO atualizarPerfil(Integer id, AtualizarPerfilDTO dto) {
         Pessoa pessoa = pessoaRepository.findById(id)
@@ -258,34 +266,43 @@ public class PessoaService {
 
         String ra = dto.ra() == null || dto.ra().isBlank() ? null : dto.ra().trim();
         pessoa.setRa(ra);
-
-        CamisaPedido pedido = pessoa.getCamisaPedidos().stream()
-                .findFirst()
-                .orElseGet(() -> {
-                    CamisaPedido novo = new CamisaPedido();
-                    novo.setPessoa(pessoa);
-                    return novo;
-                });
-        pedido.setModelo(dto.modelo());
-        pedido.setTamanho(dto.tamanho());
-        camisaPedidoRepository.save(pedido);
-
         pessoaRepository.save(pessoa);
 
-        // Constrói a resposta a partir do pedido salvo (a coleção lazy da
-        // pessoa pode não refletir um pedido recém-criado).
-        return paraPerfil(pessoa, paraCamiseta(pedido));
+        List<CamisaPedido> existentes = camisaPedidoRepository.findByPessoaId(id);
+        if (existentes.size() != dto.camisetas().size()
+                || !existentes.stream().map(CamisaPedido::getId)
+                        .allMatch(existenteId -> dto.camisetas().stream()
+                                .anyMatch(item -> item.id().equals(existenteId)))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Não é possível adicionar ou remover camisetas por aqui.");
+        }
+
+        for (AtualizarCamisetaPerfilDTO item : dto.camisetas()) {
+            CamisaPedido pedido = existentes.stream()
+                    .filter(p -> p.getId().equals(item.id()))
+                    .findFirst()
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Camiseta não encontrada."));
+            pedido.setModelo(item.modelo());
+            pedido.setTamanho(item.tamanho());
+        }
+        camisaPedidoRepository.saveAll(existentes);
+
+        // Constrói a resposta a partir da lista recém-salva — a coleção
+        // lazy da pessoa pode não refletir a atualização ainda nesta
+        // transação (mesmo cuidado de atualizarCamisetas).
+        List<CamisetaPerfilDTO> camisetas = existentes.stream().map(this::paraCamisetaPerfil).toList();
+        return paraPerfil(pessoa, camisetas);
     }
 
     private PerfilResponseDTO paraPerfil(Pessoa pessoa) {
-        CamisetaParticipanteDTO camiseta = pessoa.getCamisaPedidos().stream()
-                .findFirst()
-                .map(this::paraCamiseta)
-                .orElse(null);
-        return paraPerfil(pessoa, camiseta);
+        List<CamisetaPerfilDTO> camisetas = pessoa.getCamisaPedidos().stream()
+                .map(this::paraCamisetaPerfil)
+                .toList();
+        return paraPerfil(pessoa, camisetas);
     }
 
-    private PerfilResponseDTO paraPerfil(Pessoa pessoa, CamisetaParticipanteDTO camiseta) {
+    private PerfilResponseDTO paraPerfil(Pessoa pessoa, List<CamisetaPerfilDTO> camisetas) {
         Nivel nivel = pessoa.getNivel();
         NivelResponseDTO nivelResponse = nivel == null ? null
                 : new NivelResponseDTO(nivel.getId(), nivel.getNome(), nivel.getXpMinimo());
@@ -314,7 +331,7 @@ public class PessoaService {
                 pessoa.getEmail(),
                 pessoa.getRole() == null ? null : pessoa.getRole().name(),
                 pessoa.getRa(),
-                camiseta,
+                camisetas,
                 pessoa.getXp(),
                 nivelResponse,
                 proximoNivelNome,
@@ -322,6 +339,28 @@ public class PessoaService {
                 posicaoRanking,
                 totalRanking
         );
+    }
+
+    /* Ranking completo (aba Ranking em /participantes). Só leitura — o id do
+       usuário logado (idLogado) entra apenas pra marcar `voce` na resposta,
+       nunca é usado pra filtrar ou alterar dado de ninguém. */
+    public RankingResponseDTO buscarRanking(Integer idLogado) {
+        List<Pessoa> participantes = pessoaRepository.findByRoleAndXpIsNotNullOrderByXpDesc(Role.PARTICIPANTE);
+
+        List<RankingParticipanteDTO> lista = new ArrayList<>();
+        for (int i = 0; i < participantes.size(); i++) {
+            Pessoa pessoa = participantes.get(i);
+            lista.add(new RankingParticipanteDTO(
+                    i + 1,
+                    pessoa.getNome(),
+                    pessoa.getXp(),
+                    pessoa.getId().equals(idLogado)
+            ));
+        }
+
+        String atualizadoEm = LocalTime.now().format(DateTimeFormatter.ofPattern("HH'h'mm"));
+
+        return new RankingResponseDTO(lista, lista.size(), atualizadoEm);
     }
 
     private ParticipanteResponseDTO paraResposta(Pessoa pessoa) {
@@ -383,6 +422,10 @@ public class PessoaService {
 
     private CamisetaParticipanteDTO paraCamiseta(CamisaPedido pedido) {
         return new CamisetaParticipanteDTO(pedido.getModelo().name(), pedido.getTamanho().name(), pedido.getAvulsa());
+    }
+
+    private CamisetaPerfilDTO paraCamisetaPerfil(CamisaPedido pedido) {
+        return new CamisetaPerfilDTO(pedido.getId(), pedido.getModelo().name(), pedido.getTamanho().name(), pedido.getAvulsa());
     }
 
     /* Substitui a lista inteira de camisetas da pessoa pela enviada

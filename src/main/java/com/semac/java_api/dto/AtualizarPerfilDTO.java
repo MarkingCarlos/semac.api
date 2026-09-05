@@ -1,15 +1,18 @@
 package com.semac.java_api.dto;
 
-import com.semac.java_api.model.enums.Modelo;
-import com.semac.java_api.model.enums.Tamanho;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.List;
+
 /* Campos que o usuário pode alterar no próprio perfil (seção Início):
-   RA (opcional) e a camiseta (modelo + tamanho, obrigatórios). Modelo e
-   Tamanho chegam como os nomes dos enums (ex.: "BABY_LOOK", "M"); um
-   valor inválido é rejeitado com 400 já na desserialização. */
+   RA (opcional) e a lista de camisetas (edição só — modelo/tamanho de
+   cada uma). `camisetas` precisa trazer exatamente os mesmos `id`s que a
+   pessoa já tem (nem a mais, nem a menos): essa rota nunca cria nem
+   apaga camiseta, e nunca altera `avulsa` — isso é exclusivo do editor
+   do admin (PUT /api/pessoa/{id}/camisetas). Lista vazia é válida para
+   quem não tem nenhuma camiseta registrada. */
 public record AtualizarPerfilDTO(
         String ra,
-        @NotNull(message = "Selecione o tipo da camiseta.") Modelo modelo,
-        @NotNull(message = "Selecione o tamanho da camiseta.") Tamanho tamanho
+        @NotNull(message = "Informe as camisetas.") @Valid List<AtualizarCamisetaPerfilDTO> camisetas
 ) {}

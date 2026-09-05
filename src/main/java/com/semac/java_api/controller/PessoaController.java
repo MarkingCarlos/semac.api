@@ -7,6 +7,7 @@ import com.semac.java_api.dto.AtualizarPerfilDTO;
 import com.semac.java_api.dto.InscricaoFinanceiraDTO;
 import com.semac.java_api.dto.ParticipanteResponseDTO;
 import com.semac.java_api.dto.PerfilResponseDTO;
+import com.semac.java_api.dto.RankingResponseDTO;
 import com.semac.java_api.service.PessoaService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -62,6 +63,15 @@ public class PessoaController {
     @GetMapping("/me")
     public PerfilResponseDTO meuPerfil(@AuthenticationPrincipal Jwt jwt) {
         return pessoaService.buscarPerfil(idDoToken(jwt));
+    }
+
+    /* Ranking de XP (aba Ranking em /participantes). Só leitura — o id do
+       usuário logado vem da claim do token só pra marcar quem é "você" na
+       resposta; não existe forma de consultar ou alterar a posição/XP de
+       outra pessoa por essa rota. */
+    @GetMapping("/ranking")
+    public RankingResponseDTO ranking(@AuthenticationPrincipal Jwt jwt) {
+        return pessoaService.buscarRanking(idDoToken(jwt));
     }
 
     /* Atualiza os campos editáveis do próprio perfil (RA e camiseta). */

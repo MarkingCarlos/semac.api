@@ -84,8 +84,9 @@ public class SecurityConfig {
                         // Perfil próprio: qualquer usuário autenticado (identificado pelo token)
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/me").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/pessoa/me").authenticated()
-                        // Agenda e escolha de minicurso: só o próprio participante confirmado
+                        // Agenda, escolha de minicurso e ranking: só o próprio participante confirmado
                         .requestMatchers(HttpMethod.GET, "/api/evento/meus").hasRole(PAPEL_PARTICIPANTE)
+                        .requestMatchers(HttpMethod.GET, "/api/pessoa/ranking").hasRole(PAPEL_PARTICIPANTE)
                         .requestMatchers(HttpMethod.POST, "/api/evento/*/inscricao").hasRole(PAPEL_PARTICIPANTE)
                         .requestMatchers(HttpMethod.DELETE, "/api/evento/*/inscricao").hasRole(PAPEL_PARTICIPANTE)
                         // Exclusivos do financeiro
