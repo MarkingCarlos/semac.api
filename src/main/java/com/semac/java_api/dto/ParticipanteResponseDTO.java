@@ -12,7 +12,10 @@ import java.util.List;
    na confirmação; `dias` acompanha ingresso de diária.
    `nivel`/`xp` são atribuídos na confirmação (null se pendente).
    `temComprovante` diz se a pessoa anexou comprovante de pagamento no
-   cadastro (o arquivo em si vem de GET /api/pessoa/{id}/comprovante). */
+   cadastro (o arquivo em si vem de GET /api/pessoa/{id}/comprovante).
+   `formaPagamento` é "PIX", "CARTAO" ou null (ainda não pagou nada);
+   `pagamentoCartao` só vem preenchido quando formaPagamento = "CARTAO" —
+   é a evidência que substitui o comprovante nesse caso. */
 public record ParticipanteResponseDTO(
         Integer id,
         String nome,
@@ -27,5 +30,7 @@ public record ParticipanteResponseDTO(
         NivelResponseDTO nivel,
         Integer xp,
         List<PresencaParticipanteDTO> eventoParticipantes,
-        Boolean temComprovante
+        Boolean temComprovante,
+        String formaPagamento,
+        PagamentoCartaoInfoDTO pagamentoCartao
 ) {}

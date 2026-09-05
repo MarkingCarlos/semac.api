@@ -11,6 +11,7 @@ public interface PessoaRepository extends JpaRepository<Pessoa, Integer> {
     Optional<Pessoa> findByEmail(String email);
     Optional<Pessoa> findByCpf(String cpf);
     Optional<Pessoa> findByUuid(String uuid);
+    Optional<Pessoa> findByMpPaymentId(Long mpPaymentId);
     List<Pessoa> findAllByRole(Role role);
     List<Pessoa> findAllByRoleNot(Role role);
 

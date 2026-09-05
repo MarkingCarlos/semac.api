@@ -13,6 +13,10 @@ public interface CamisaPedidoRepository extends JpaRepository<CamisaPedido, Inte
     List<CamisaPedido> findByPessoaId(Integer pessoaId);
     void deleteByPessoaId(Integer pessoaId);
 
+    /* Quantas camisetas avulsas (fora as inclusas no ingresso) a pessoa
+       pediu — usado para recalcular o valor total da inscrição no cartão. */
+    long countByPessoaIdAndAvulsaTrue(Integer pessoaId);
+
     /* Só entram pedidos de pessoas confirmadas (role != null) — inscrições
        ainda aguardando confirmação no /admin não contam no relatório. */
     @Query("SELECT c.tamanho AS tamanho, c.modelo AS modelo, COUNT(c) AS total " +

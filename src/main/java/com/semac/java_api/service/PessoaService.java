@@ -5,17 +5,21 @@ import com.semac.java_api.dto.CamisetaAdminDTO;
 import com.semac.java_api.dto.CamisetaParticipanteDTO;
 import com.semac.java_api.dto.InscricaoFinanceiraDTO;
 import com.semac.java_api.dto.NivelResponseDTO;
+import com.semac.java_api.dto.PagamentoCartaoInfoDTO;
 import com.semac.java_api.dto.ParticipanteResponseDTO;
 import com.semac.java_api.dto.PerfilResponseDTO;
 import com.semac.java_api.dto.PresencaParticipanteDTO;
 import com.semac.java_api.dto.TipoInscricaoResponseDTO;
 import com.semac.java_api.model.CamisaPedido;
+import com.semac.java_api.model.CamisetaExtra;
 import com.semac.java_api.model.Nivel;
 import com.semac.java_api.model.Pessoa;
 import com.semac.java_api.model.TipoInscricao;
+import com.semac.java_api.model.enums.FormaPagamento;
 import com.semac.java_api.model.enums.Role;
 import com.semac.java_api.repository.CaixaFundunespRepository;
 import com.semac.java_api.repository.CamisaPedidoRepository;
+import com.semac.java_api.repository.CamisetaExtraRepository;
 import com.semac.java_api.repository.GanhadoresSorteioRepository;
 import com.semac.java_api.repository.NivelRepository;
 import com.semac.java_api.repository.ParticipanteConquistaRepository;
@@ -42,6 +46,7 @@ public class PessoaService {
     private final PessoaRepository pessoaRepository;
     private final TipoInscricaoRepository tipoInscricaoRepository;
     private final CamisaPedidoRepository camisaPedidoRepository;
+    private final CamisetaExtraRepository camisetaExtraRepository;
     private final NivelRepository nivelRepository;
     private final InscricaoEventoService inscricaoEventoService;
     private final SorteioRepository sorteioRepository;
@@ -52,6 +57,7 @@ public class PessoaService {
     public PessoaService(PessoaRepository pessoaRepository,
                          TipoInscricaoRepository tipoInscricaoRepository,
                          CamisaPedidoRepository camisaPedidoRepository,
+                         CamisetaExtraRepository camisetaExtraRepository,
                          NivelRepository nivelRepository,
                          InscricaoEventoService inscricaoEventoService,
                          SorteioRepository sorteioRepository,
@@ -61,6 +67,7 @@ public class PessoaService {
         this.pessoaRepository = pessoaRepository;
         this.tipoInscricaoRepository = tipoInscricaoRepository;
         this.camisaPedidoRepository = camisaPedidoRepository;
+        this.camisetaExtraRepository = camisetaExtraRepository;
         this.nivelRepository = nivelRepository;
         this.inscricaoEventoService = inscricaoEventoService;
         this.sorteioRepository = sorteioRepository;
@@ -114,6 +121,29 @@ public class PessoaService {
         }
         int dias = pessoa.getDiasInscricao() == null ? 1 : pessoa.getDiasInscricao();
         return ingresso.getValor().multiply(BigDecimal.valueOf(dias));
+    }
+
+    /* Total real da inscrição: ingresso (valorDaInscricao acima) + camisetas
+       avulsas × preço vigente no ano do ingresso. Usado só para cobrar o
+       cartão (PagamentoCartaoService) — nunca confia em valor vindo do
+       cliente. Se houver avulsa sem preço cadastrado para o ano, falha em
+       vez de cobrar zero: subcobrar silenciosamente é pior que recusar. */
+    @Transactional(readOnly = true)
+    public BigDecimal calcularValorTotalInscricao(Pessoa pessoa) {
+        BigDecimal totalIngresso = valorDaInscricao(pessoa);
+
+        long avulsas = camisaPedidoRepository.countByPessoaIdAndAvulsaTrue(pessoa.getId());
+        if (avulsas == 0) {
+            return totalIngresso;
+        }
+
+        Integer ano = pessoa.getTipoInscricao().getAno();
+        BigDecimal precoAvulsa = camisetaExtraRepository.findByAno(ano)
+                .map(CamisetaExtra::getValor)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Preço da camiseta avulsa não cadastrado para " + ano + "."));
+
+        return totalIngresso.add(precoAvulsa.multiply(BigDecimal.valueOf(avulsas)));
     }
 
     /* Confirmação da inscrição: atribui o papel da pessoa. Aceita
@@ -325,6 +355,11 @@ public class PessoaService {
         NivelResponseDTO nivelResponse = nivel == null ? null
                 : new NivelResponseDTO(nivel.getId(), nivel.getNome(), nivel.getXpMinimo());
 
+        PagamentoCartaoInfoDTO pagamentoCartao = pessoa.getFormaPagamento() != FormaPagamento.CARTAO ? null
+                : new PagamentoCartaoInfoDTO(
+                        pessoa.getMpPaymentId(), pessoa.getMpStatus(), pessoa.getMpStatusDetail(),
+                        pessoa.getParcelas(), pessoa.getValorCobrado());
+
         return new ParticipanteResponseDTO(
                 pessoa.getId(),
                 pessoa.getNome(),
@@ -339,7 +374,9 @@ public class PessoaService {
                 nivelResponse,
                 pessoa.getXp(),
                 presencas,
-                pessoa.getComprovantePagamento() != null
+                pessoa.getComprovantePagamento() != null,
+                pessoa.getFormaPagamento() == null ? null : pessoa.getFormaPagamento().name(),
+                pagamentoCartao
         );
     }
 

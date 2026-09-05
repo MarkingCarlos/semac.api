@@ -79,6 +79,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Públicos / abertos
                         .requestMatchers("/api/auth/login", "/api/inscricao").permitAll()
+                        // Cobrança do cartão — chamada logo após o cadastro público acima
+                        .requestMatchers(HttpMethod.POST, "/api/pagamento/cartao").permitAll()
                         // Perfil próprio: qualquer usuário autenticado (identificado pelo token)
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/me").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/pessoa/me").authenticated()
@@ -114,6 +116,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/participantes", "/api/pessoa/comissao").hasAnyRole(PAPEIS_ADMIN)
                         // Comprovante de pagamento — quem confirma inscrição precisa poder ver
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/*/comprovante").hasAnyRole(PAPEIS_ADMIN)
+                        // Reconsulta de status do pagamento no cartão — mesmo público do comprovante acima
+                        .requestMatchers(HttpMethod.GET, "/api/pagamento/cartao/*/status").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.GET, "/api/relatorio/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers(HttpMethod.PATCH, "/api/pessoa/*/role", "/api/pessoa/*/ativo").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.DELETE, "/api/pessoa/*").hasAnyRole(PAPEIS_ADMIN)

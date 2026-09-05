@@ -1,9 +1,11 @@
 package com.semac.java_api.model;
 
+import com.semac.java_api.model.enums.FormaPagamento;
 import com.semac.java_api.model.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -79,6 +81,29 @@ public class Pessoa {
 
     @Column(name = "comprovante_pagamento")
     private String comprovantePagamento;
+
+    /* Pagamento por cartão (Mercado Pago) — alternativa ao Pix acima.
+       Preenchidos só quando formaPagamento = CARTAO; ver PagamentoCartaoService.
+       mpStatus guarda o valor cru devolvido pela Mercado Pago (approved,
+       rejected, in_process...), não um enum próprio: esse vocabulário é
+       da Mercado Pago e pode mudar. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "forma_pagamento")
+    private FormaPagamento formaPagamento;
+
+    @Column(name = "mp_payment_id")
+    private Long mpPaymentId;
+
+    @Column(name = "mp_status")
+    private String mpStatus;
+
+    @Column(name = "mp_status_detail")
+    private String mpStatusDetail;
+
+    private Integer parcelas;
+
+    @Column(name = "valor_cobrado", precision = 10, scale = 2)
+    private BigDecimal valorCobrado;
 
     @OneToMany(mappedBy = "pessoa")
     private List<CamisaPedido> camisaPedidos = new ArrayList<>();
