@@ -423,7 +423,8 @@ public class PessoaService {
                 : new TipoInscricaoResponseDTO(
                         ingresso.getId(), ingresso.getNome(), ingresso.getValor(),
                         ingresso.getAno(), ingresso.getAtivo(), ingresso.getCamisetasGratis(),
-                        ingresso.getPorDia(), ingresso.getMaxDias());
+                        ingresso.getPorDia(), ingresso.getMaxDias(),
+                        ingresso.getCodigo() != null && !ingresso.getCodigo().isBlank());
 
         Nivel nivel = pessoa.getNivel();
         NivelResponseDTO nivelResponse = nivel == null ? null

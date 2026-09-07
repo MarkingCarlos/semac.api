@@ -48,4 +48,11 @@ public class TipoInscricao {
 
     @Column(name = "max_dias")
     private Integer maxDias;
+
+    /* Código exigido no cadastro público para este ingresso (ex.: ingressos
+       de comissão, pra impedir que qualquer um se auto-inscreva nesse
+       tipo). Null/branco = sem exigência. Nunca é exposto em nenhuma
+       resposta da API — só o booleano `codigoDefinido` (ver
+       TipoInscricaoController.paraResposta). */
+    private String codigo;
 }

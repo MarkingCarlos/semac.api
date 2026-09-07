@@ -2,6 +2,8 @@ package com.semac.java_api.controller;
 
 import com.semac.java_api.dto.TipoInscricaoRequestDTO;
 import com.semac.java_api.dto.TipoInscricaoResponseDTO;
+import com.semac.java_api.dto.VerificarCodigoIngressoDTO;
+import com.semac.java_api.dto.VerificarCodigoIngressoRespostaDTO;
 import com.semac.java_api.exception.RecursoDuplicadoException;
 import com.semac.java_api.model.TipoInscricao;
 import com.semac.java_api.repository.TipoInscricaoRepository;
@@ -73,6 +75,19 @@ public class TipoInscricaoController {
         return ResponseEntity.noContent().build();
     }
 
+    /* Verificação pública do código de acesso, usada pelo cadastro em
+       /inscricoes para bloquear o avanço da etapa de ingresso antes do
+       envio final (que revalida do mesmo jeito em InscricaoService —
+       esta rota é só conveniência de UX, não é a barreira de segurança).
+       Nunca revela o código real, só se bateu ou não. */
+    @PostMapping("/{id}/verificar-codigo")
+    public VerificarCodigoIngressoRespostaDTO verificarCodigo(@PathVariable Integer id,
+                                                              @RequestBody VerificarCodigoIngressoDTO dto) {
+        TipoInscricao tipo = repository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ingresso não encontrado."));
+        return new VerificarCodigoIngressoRespostaDTO(codigoBate(tipo, dto.codigo()));
+    }
+
     private void aplicar(TipoInscricao tipo, TipoInscricaoRequestDTO dto) {
         tipo.setNome(dto.nome());
         tipo.setValor(dto.valor());
@@ -90,12 +105,28 @@ public class TipoInscricaoController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Informe o máximo de diárias do ingresso.");
         }
+
+        // O código nunca volta numa resposta (ver TipoInscricaoResponseDTO),
+        // então só mexe nele quando o front sinaliza que o campo foi
+        // tocado — senão editar outro campo apagaria o código já salvo.
+        if (Boolean.TRUE.equals(dto.alterarCodigo())) {
+            String novoCodigo = dto.codigo() == null ? null : dto.codigo().trim();
+            tipo.setCodigo(novoCodigo == null || novoCodigo.isBlank() ? null : novoCodigo);
+        }
+    }
+
+    private boolean codigoBate(TipoInscricao tipo, String candidato) {
+        if (tipo.getCodigo() == null || tipo.getCodigo().isBlank()) {
+            return true;
+        }
+        return tipo.getCodigo().equals(candidato == null ? null : candidato.trim());
     }
 
     private TipoInscricaoResponseDTO paraResposta(TipoInscricao tipo) {
+        boolean codigoDefinido = tipo.getCodigo() != null && !tipo.getCodigo().isBlank();
         return new TipoInscricaoResponseDTO(
                 tipo.getId(), tipo.getNome(), tipo.getValor(), tipo.getAno(), tipo.getAtivo(),
-                tipo.getCamisetasGratis(), tipo.getPorDia(), tipo.getMaxDias()
+                tipo.getCamisetasGratis(), tipo.getPorDia(), tipo.getMaxDias(), codigoDefinido
         );
     }
 }

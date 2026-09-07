@@ -52,6 +52,7 @@ public class InscricaoService {
         validarUnesp(dto);
 
         TipoInscricao ingresso = ingressoValido(dto.tipoInscricaoId());
+        validarCodigoIngresso(ingresso, dto.codigoIngresso());
         Integer dias = diasValidos(ingresso, dto.dias());
         List<CamisetaPedidoDTO> camisetas = camisetasValidas(ingresso, dto.camisetas());
 
@@ -106,6 +107,22 @@ public class InscricaoService {
         if (!raOk || !emailOk) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Estudantes da UNESP devem informar RA e um e-mail @unesp.br.");
+        }
+    }
+
+    /* Ingressos com código configurado (ex.: comissão) só aceitam cadastro
+       com o código exato — combate gente de fora se auto-inscrevendo
+       nesse tipo. A verificação em POST /api/tipo-inscricao/{id}/verificar-codigo
+       é só conveniência de UX; esta aqui é a barreira real. */
+    private void validarCodigoIngresso(TipoInscricao ingresso, String codigoInformado) {
+        String codigoExigido = ingresso.getCodigo();
+        if (codigoExigido == null || codigoExigido.isBlank()) {
+            return;
+        }
+        String informado = codigoInformado == null ? null : codigoInformado.trim();
+        if (!codigoExigido.equals(informado)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Código de acesso inválido para este ingresso.");
         }
     }
 

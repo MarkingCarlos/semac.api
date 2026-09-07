@@ -24,6 +24,7 @@ public record InscricaoRequestDTO(
         String ra,
         @NotBlank @Pattern(regexp = "\\d{10,11}", message = "Telefone inválido.") String telefone,
         boolean ehUnesp,
+        String codigoIngresso,
         @NotNull Integer tipoInscricaoId,
         @Min(1) Integer dias,
         @Valid List<CamisetaPedidoDTO> camisetas

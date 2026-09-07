@@ -141,6 +141,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/brinde/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers(HttpMethod.DELETE, "/api/brinde/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers("/api/sorteio/**").hasAnyRole(PAPEIS_ADMIN)
+                        // Verificação do código de acesso do ingresso — pública de propósito,
+                        // usada pelo cadastro em /inscricoes; nunca revela o código real.
+                        .requestMatchers(HttpMethod.POST, "/api/tipo-inscricao/*/verificar-codigo").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/tipo-inscricao").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.PUT, "/api/tipo-inscricao/*").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.DELETE, "/api/tipo-inscricao/*").hasAnyRole(PAPEIS_ADMIN)

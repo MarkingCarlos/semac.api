@@ -9,7 +9,12 @@ import java.math.BigDecimal;
 
 /* `camisetasGratis` é quantas camisetas o ingresso inclui (0 = nenhuma).
    `porDia` marca ingresso de diária: `valor` passa a ser o preço de um dia
-   e `maxDias` limita quantos dias podem ser escolhidos no cadastro. */
+   e `maxDias` limita quantos dias podem ser escolhidos no cadastro.
+   `codigo`/`alterarCodigo`: o código nunca volta numa resposta da API
+   (ver TipoInscricaoResponseDTO), então o front não tem como reenviar o
+   valor atual ao editar outro campo. `alterarCodigo=true` é o sinal
+   explícito de que `codigo` deve ser aplicado (branco = remove a
+   exigência); `false` preserva o que já estava salvo. */
 public record TipoInscricaoRequestDTO(
         @NotBlank String nome,
         @NotNull @PositiveOrZero BigDecimal valor,
@@ -17,5 +22,7 @@ public record TipoInscricaoRequestDTO(
         Boolean ativo,
         @PositiveOrZero Integer camisetasGratis,
         Boolean porDia,
-        @Min(1) Integer maxDias
+        @Min(1) Integer maxDias,
+        String codigo,
+        Boolean alterarCodigo
 ) {}

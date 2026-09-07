@@ -2,6 +2,8 @@ package com.semac.java_api.dto;
 
 import java.math.BigDecimal;
 
+/* `codigoDefinido` diz se este ingresso exige código no cadastro público —
+   o valor do código em si nunca é exposto por essa API. */
 public record TipoInscricaoResponseDTO(
         Integer id,
         String nome,
@@ -10,5 +12,6 @@ public record TipoInscricaoResponseDTO(
         Boolean ativo,
         Integer camisetasGratis,
         Boolean porDia,
-        Integer maxDias
+        Integer maxDias,
+        Boolean codigoDefinido
 ) {}
