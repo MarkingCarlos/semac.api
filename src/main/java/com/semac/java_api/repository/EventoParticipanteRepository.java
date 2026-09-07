@@ -16,6 +16,11 @@ public interface EventoParticipanteRepository extends JpaRepository<EventoPartic
     List<EventoParticipante> findByPk_ParticipanteId(Integer participanteId);
     List<EventoParticipante> findByPk_EventoIdAndStatus(Integer eventoId, StatusPresenca status);
 
+    /* Usada para bloquear a desconfirmação: se a pessoa já teve presença
+       registrada em algum evento, desconfirmar apagaria esse histórico e o
+       xp já creditado por ele (ver PessoaService.desconfirmar). */
+    boolean existsByPk_ParticipanteIdAndStatus(Integer participanteId, StatusPresenca status);
+
     /* Vaga ocupada = quem está inscrito ou já teve presença registrada.
        AUSENTE não conta: o status vira AUSENTE quando o evento termina
        sem check-in, e nesse ponto a vaga não existe mais. */

@@ -49,6 +49,8 @@ public class InscricaoService {
             throw new RecursoDuplicadoException("Este CPF já está cadastrado.");
         }
 
+        validarUnesp(dto);
+
         TipoInscricao ingresso = ingressoValido(dto.tipoInscricaoId());
         Integer dias = diasValidos(ingresso, dto.dias());
         List<CamisetaPedidoDTO> camisetas = camisetasValidas(ingresso, dto.camisetas());
@@ -60,6 +62,7 @@ public class InscricaoService {
         pessoa.setSenha(passwordEncoder.encode(dto.senha()));
         pessoa.setUuid(UUID.randomUUID().toString());
         pessoa.setRa(dto.ra());
+        pessoa.setTelefone(dto.telefone());
         pessoa.setAtivo(true);
         pessoa.setRole(null);
         pessoa.setInscritoEm(LocalDateTime.now());
@@ -90,6 +93,21 @@ public class InscricaoService {
     }
 
     /* ── Validações ──────────────────────────────────────────────── */
+
+    /* Marcou "sou da UNESP": RA e e-mail institucional passam a ser
+       obrigatórios. O checkbox em si não é persistido (ver Pessoa) — é só
+       o gatilho desta regra. */
+    private void validarUnesp(InscricaoRequestDTO dto) {
+        if (!dto.ehUnesp()) {
+            return;
+        }
+        boolean raOk = dto.ra() != null && !dto.ra().isBlank();
+        boolean emailOk = dto.email() != null && dto.email().toLowerCase().endsWith("@unesp.br");
+        if (!raOk || !emailOk) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Estudantes da UNESP devem informar RA e um e-mail @unesp.br.");
+        }
+    }
 
     private TipoInscricao ingressoValido(Integer id) {
         TipoInscricao ingresso = tipoInscricaoRepository.findById(id)

@@ -97,6 +97,12 @@ public class PessoaController {
         return pessoaService.atribuirRole(id, dto.role(), dto.tipoInscricaoId());
     }
 
+    /* Desfaz a confirmação: volta a pessoa para "aguardando confirmação". */
+    @PatchMapping("/{id}/desconfirmar")
+    public ParticipanteResponseDTO desconfirmar(@PathVariable Integer id) {
+        return pessoaService.desconfirmar(id);
+    }
+
     /* Ativa/desativa uma pessoa (ex.: suspender membro da comissão). */
     @PatchMapping("/{id}/ativo")
     public ParticipanteResponseDTO definirAtivo(@PathVariable Integer id,

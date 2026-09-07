@@ -40,6 +40,8 @@ public class Pessoa {
 
     private String ra;
 
+    private String telefone;
+
     @Column(nullable = false)
     private Boolean ativo = true;
 

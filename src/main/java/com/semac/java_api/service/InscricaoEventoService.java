@@ -128,6 +128,14 @@ public class InscricaoEventoService {
         eventoParticipanteRepository.deleteByPk_ParticipanteId(participanteId);
     }
 
+    /* Usada para bloquear a desconfirmação (ver PessoaService.desconfirmar):
+       se a pessoa já fez check-in em algum evento, apagar as inscrições
+       perderia esse histórico e o xp já creditado por ele. */
+    @Transactional(readOnly = true)
+    public boolean possuiPresencaRegistrada(Integer participanteId) {
+        return eventoParticipanteRepository.existsByPk_ParticipanteIdAndStatus(participanteId, StatusPresenca.PRESENTE);
+    }
+
     /* ── Escolha de minicurso pelo participante ──────────────────── */
 
     @Transactional(readOnly = true)

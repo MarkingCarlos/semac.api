@@ -124,7 +124,7 @@ public class SecurityConfig {
                         // Reconsulta de status do pagamento no cartão — mesmo público do comprovante acima
                         .requestMatchers(HttpMethod.GET, "/api/pagamento/cartao/*/status").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.GET, "/api/relatorio/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
-                        .requestMatchers(HttpMethod.PATCH, "/api/pessoa/*/role", "/api/pessoa/*/ativo").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.PATCH, "/api/pessoa/*/role", "/api/pessoa/*/ativo", "/api/pessoa/*/desconfirmar").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.DELETE, "/api/pessoa/*").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.POST, "/api/evento").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.PUT, "/api/evento/*").hasAnyRole(PAPEIS_ADMIN)

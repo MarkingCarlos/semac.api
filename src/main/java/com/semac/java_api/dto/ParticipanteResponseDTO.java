@@ -24,6 +24,7 @@ public record ParticipanteResponseDTO(
         String nome,
         String email,
         String ra,
+        String telefone,
         Boolean ativo,
         String role,
         LocalDateTime inscritoEm,

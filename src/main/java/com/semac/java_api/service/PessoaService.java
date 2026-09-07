@@ -204,6 +204,40 @@ public class PessoaService {
         return paraResposta(salva);
     }
 
+    /* Desfaz a confirmação: volta a pessoa para "aguardando confirmação"
+       (role = NULL), zerando ingresso/xp/nível como na confirmação de
+       comissão, e removendo as inscrições em eventos. Bloqueada se já
+       houver presença registrada em algum evento — apagar isso perderia
+       histórico e xp já creditado (ver InscricaoEventoService.marcarPresente),
+       então o correto é remover a presença manualmente antes, se for
+       mesmo o caso. */
+    @Transactional
+    public ParticipanteResponseDTO desconfirmar(Integer id) {
+        Pessoa pessoa = pessoaRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Pessoa não encontrada."));
+
+        if (pessoa.getRole() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Esta pessoa já está aguardando confirmação.");
+        }
+        if (inscricaoEventoService.possuiPresencaRegistrada(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Não é possível desconfirmar: já há presença registrada em evento(s).");
+        }
+
+        pessoa.setRole(null);
+        pessoa.setTipoInscricao(null);
+        pessoa.setDiasInscricao(null);
+        pessoa.setXp(null);
+        pessoa.setNivel(null);
+        Pessoa salva = pessoaRepository.save(pessoa);
+
+        inscricaoEventoService.removerInscricoesDoParticipante(id);
+
+        return paraResposta(salva);
+    }
+
     /* Ativa/desativa uma pessoa (ex.: suspender membro da comissão). */
     @Transactional
     public ParticipanteResponseDTO definirAtivo(Integer id, boolean ativo) {
@@ -405,6 +439,7 @@ public class PessoaService {
                 pessoa.getNome(),
                 pessoa.getEmail(),
                 pessoa.getRa(),
+                pessoa.getTelefone(),
                 pessoa.getAtivo(),
                 pessoa.getRole() == null ? null : pessoa.getRole().name(),
                 pessoa.getInscritoEm(),
