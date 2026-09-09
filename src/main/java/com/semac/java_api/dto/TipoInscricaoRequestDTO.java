@@ -14,7 +14,9 @@ import java.math.BigDecimal;
    (ver TipoInscricaoResponseDTO), então o front não tem como reenviar o
    valor atual ao editar outro campo. `alterarCodigo=true` é o sinal
    explícito de que `codigo` deve ser aplicado (branco = remove a
-   exigência); `false` preserva o que já estava salvo. */
+   exigência); `false` preserva o que já estava salvo.
+   `restritoUnesp` esconde o ingresso pra quem não marcou "Sou da UNESP" no
+   cadastro público (ver TipoInscricaoController e InscricaoService). */
 public record TipoInscricaoRequestDTO(
         @NotBlank String nome,
         @NotNull @PositiveOrZero BigDecimal valor,
@@ -24,5 +26,6 @@ public record TipoInscricaoRequestDTO(
         Boolean porDia,
         @Min(1) Integer maxDias,
         String codigo,
-        Boolean alterarCodigo
+        Boolean alterarCodigo,
+        Boolean restritoUnesp
 ) {}

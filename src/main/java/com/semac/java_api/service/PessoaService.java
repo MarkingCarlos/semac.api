@@ -424,7 +424,8 @@ public class PessoaService {
                         ingresso.getId(), ingresso.getNome(), ingresso.getValor(),
                         ingresso.getAno(), ingresso.getAtivo(), ingresso.getCamisetasGratis(),
                         ingresso.getPorDia(), ingresso.getMaxDias(),
-                        ingresso.getCodigo() != null && !ingresso.getCodigo().isBlank());
+                        ingresso.getCodigo() != null && !ingresso.getCodigo().isBlank(),
+                        ingresso.getRestritoUnesp());
 
         Nivel nivel = pessoa.getNivel();
         NivelResponseDTO nivelResponse = nivel == null ? null

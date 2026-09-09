@@ -42,6 +42,13 @@ public class Pessoa {
 
     private String telefone;
 
+    /* Marcado no cadastro público (ver InscricaoRequestDTO.ehUnesp). Além de
+       exigir RA e e-mail @unesp.br na hora (InscricaoService.validarUnesp),
+       agora fica salvo — é o que permite telas administrativas identificarem
+       quem é da UNESP depois do cadastro. */
+    @Column(name = "eh_unesp", nullable = false)
+    private Boolean ehUnesp = false;
+
     @Column(nullable = false)
     private Boolean ativo = true;
 

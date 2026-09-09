@@ -94,6 +94,7 @@ public class TipoInscricaoController {
         tipo.setAno(dto.ano());
         tipo.setAtivo(dto.ativo() == null ? Boolean.TRUE : dto.ativo());
         tipo.setCamisetasGratis(dto.camisetasGratis() == null ? 0 : dto.camisetasGratis());
+        tipo.setRestritoUnesp(dto.restritoUnesp() == null ? Boolean.FALSE : dto.restritoUnesp());
 
         // maxDias só faz sentido em ingresso de diária: fora disso é zerado
         // para não deixar resíduo quando o admin desmarca a opção.
@@ -126,7 +127,8 @@ public class TipoInscricaoController {
         boolean codigoDefinido = tipo.getCodigo() != null && !tipo.getCodigo().isBlank();
         return new TipoInscricaoResponseDTO(
                 tipo.getId(), tipo.getNome(), tipo.getValor(), tipo.getAno(), tipo.getAtivo(),
-                tipo.getCamisetasGratis(), tipo.getPorDia(), tipo.getMaxDias(), codigoDefinido
+                tipo.getCamisetasGratis(), tipo.getPorDia(), tipo.getMaxDias(), codigoDefinido,
+                tipo.getRestritoUnesp()
         );
     }
 }

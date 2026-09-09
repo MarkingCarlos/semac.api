@@ -53,6 +53,7 @@ public class InscricaoService {
 
         TipoInscricao ingresso = ingressoValido(dto.tipoInscricaoId());
         validarCodigoIngresso(ingresso, dto.codigoIngresso());
+        validarRestricaoUnesp(ingresso, dto.ehUnesp());
         Integer dias = diasValidos(ingresso, dto.dias());
         List<CamisetaPedidoDTO> camisetas = camisetasValidas(ingresso, dto.camisetas());
 
@@ -64,6 +65,7 @@ public class InscricaoService {
         pessoa.setUuid(UUID.randomUUID().toString());
         pessoa.setRa(dto.ra());
         pessoa.setTelefone(dto.telefone());
+        pessoa.setEhUnesp(dto.ehUnesp());
         pessoa.setAtivo(true);
         pessoa.setRole(null);
         pessoa.setInscritoEm(LocalDateTime.now());
@@ -96,8 +98,8 @@ public class InscricaoService {
     /* ── Validações ──────────────────────────────────────────────── */
 
     /* Marcou "sou da UNESP": RA e e-mail institucional passam a ser
-       obrigatórios. O checkbox em si não é persistido (ver Pessoa) — é só
-       o gatilho desta regra. */
+       obrigatórios (o valor do checkbox em si é persistido em
+       Pessoa.ehUnesp, ver cadastrar() acima). */
     private void validarUnesp(InscricaoRequestDTO dto) {
         if (!dto.ehUnesp()) {
             return;
@@ -123,6 +125,18 @@ public class InscricaoService {
         if (!codigoExigido.equals(informado)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Código de acesso inválido para este ingresso.");
+        }
+    }
+
+    /* Ingressos marcados restritoUnesp (ex.: desconto de permanência,
+       comissão) só aceitam cadastro de quem marcou "Sou da UNESP". O
+       filtro em BoxInscricao.jsx já esconde esses ingressos da lista pra
+       quem não marcou — esta é a barreira real, igual ao código de acesso
+       acima, contra quem chamar a API direto. */
+    private void validarRestricaoUnesp(TipoInscricao ingresso, boolean ehUnesp) {
+        if (Boolean.TRUE.equals(ingresso.getRestritoUnesp()) && !ehUnesp) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Este ingresso é exclusivo para estudantes da UNESP.");
         }
     }
 

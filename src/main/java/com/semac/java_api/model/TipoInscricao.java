@@ -55,4 +55,11 @@ public class TipoInscricao {
        resposta da API — só o booleano `codigoDefinido` (ver
        TipoInscricaoController.paraResposta). */
     private String codigo;
+
+    /* Ingresso exclusivo para alunos da UNESP (ex.: desconto de
+       permanência, comissão). Some da lista pública em BoxInscricao.jsx
+       pra quem não marcou "Sou da UNESP" na etapa 1, e InscricaoService
+       rejeita o cadastro mesmo se alguém chamar a API direto. */
+    @Column(name = "restrito_unesp", nullable = false)
+    private Boolean restritoUnesp = false;
 }

@@ -14,8 +14,10 @@ import java.util.List;
    gravado já aqui (o organizador ainda pode trocá-lo na confirmação).
    `dias` só se aplica a ingresso de diária; `camisetas` traz uma entrada
    por camiseta pedida — as gratuitas do ingresso e as avulsas.
-   `ehUnesp` não é persistido (ver Pessoa) — só dispara, em
-   InscricaoService.validarUnesp, a exigência de RA e e-mail @unesp.br. */
+   `ehUnesp` dispara, em InscricaoService.validarUnesp, a exigência de RA e
+   e-mail @unesp.br, e em validarRestricaoUnesp barra ingressos marcados
+   restritoUnesp para quem não marcou; o valor também fica salvo em
+   Pessoa.ehUnesp. */
 public record InscricaoRequestDTO(
         @NotBlank String nome,
         @NotBlank String cpf,
