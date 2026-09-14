@@ -3,6 +3,7 @@ package com.semac.java_api.service;
 import com.semac.java_api.dto.OrcamentoResponseDTO;
 import com.semac.java_api.dto.PrevisaoCategoriaResponseDTO;
 import com.semac.java_api.dto.PrevisaoItemResponseDTO;
+import com.semac.java_api.dto.InscricaoFinanceiraDTO;
 import com.semac.java_api.dto.PrevisaoResumoDTO;
 import com.semac.java_api.model.*;
 import com.semac.java_api.model.enums.ContaFinanceira;
@@ -41,6 +42,7 @@ public class PrevisaoService {
     private final PatrocinadorRepository patrocinadorRepository;
     private final DoadorRepository doadorRepository;
     private final CaixaRepository caixaRepository;
+    private final PessoaService pessoaService;
 
     public PrevisaoService(PrevisaoItemRepository itemRepository,
                            PrevisaoCategoriaRepository categoriaRepository,
@@ -48,7 +50,8 @@ public class PrevisaoService {
                            CompraRepository compraRepository,
                            PatrocinadorRepository patrocinadorRepository,
                            DoadorRepository doadorRepository,
-                           CaixaRepository caixaRepository) {
+                           CaixaRepository caixaRepository,
+                           PessoaService pessoaService) {
         this.itemRepository = itemRepository;
         this.categoriaRepository = categoriaRepository;
         this.orcamentoRepository = orcamentoRepository;
@@ -56,6 +59,7 @@ public class PrevisaoService {
         this.patrocinadorRepository = patrocinadorRepository;
         this.doadorRepository = doadorRepository;
         this.caixaRepository = caixaRepository;
+        this.pessoaService = pessoaService;
     }
 
     /* ── Escala ──────────────────────────────────────────────────── */
@@ -175,6 +179,22 @@ public class PrevisaoService {
                         .toList();
 
         /* ── Por conta ── */
+
+        /* As inscrições são a única entrada sem conta própria: `pessoa` e
+           `tipo_inscricao` não têm esse campo. Por decisão da comissão,
+           todo pagamento de inscrição cai na conta da comissão.
+
+           Se um dia algum ingresso passar a ser pago direto à FUNDUNESP,
+           esta regra silenciosamente dará saldo errado — o caminho certo
+           então é uma coluna `conta` em `tipo_inscricao`, não um segundo
+           `if` aqui.
+
+           O valor vem de PessoaService para não reimplementar a regra de
+           ingresso por diária (valor × dias). */
+        BigDecimal totalInscricoes = pessoaService.listarInscricoes().stream()
+                .map(InscricaoFinanceiraDTO::valor)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         List<PrevisaoResumoDTO.ContaResumoDTO> contas = new ArrayList<>();
         for (ContaFinanceira conta : ContaFinanceira.values()) {
             BigDecimal caixaInicial = caixaRepository.findByConta(conta)
@@ -191,7 +211,8 @@ public class PrevisaoService {
                     .add(doadorRepository.findAll().stream()
                             .filter(d -> d.getConta() == conta)
                             .map(Doador::getValor)
-                            .reduce(BigDecimal.ZERO, BigDecimal::add));
+                            .reduce(BigDecimal.ZERO, BigDecimal::add))
+                    .add(conta == ContaFinanceira.COMISSAO ? totalInscricoes : BigDecimal.ZERO);
 
             BigDecimal saidas = compras.stream()
                     .filter(c -> c.getConta() == conta)
