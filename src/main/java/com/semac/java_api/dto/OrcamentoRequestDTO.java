@@ -5,7 +5,6 @@ import jakarta.validation.constraints.PositiveOrZero;
 
 /* Sem teto: ele é derivado do saldo da conta da comissão, não digitado. */
 public record OrcamentoRequestDTO(
-        @NotNull @PositiveOrZero Integer inscritosPrevistos,
         @NotNull @PositiveOrZero Integer membrosComissao,
         @NotNull @PositiveOrZero Integer palestrantesPrevistos
 ) {}

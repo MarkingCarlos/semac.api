@@ -62,7 +62,7 @@ public class PrevisaoItemController {
     public ResponseEntity<PrevisaoItemResponseDTO> buscar(@PathVariable Integer id) {
         return itemRepository.findById(id)
                 .map(item -> ResponseEntity.ok(
-                        previsaoService.paraResposta(item, previsaoService.orcamentoVigente())))
+                        previsaoService.paraResposta(item, previsaoService.fatoresVigentes())))
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -71,7 +71,7 @@ public class PrevisaoItemController {
         PrevisaoItem item = aplicar(new PrevisaoItem(), dto);
         PrevisaoItem salvo = itemRepository.save(item);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(previsaoService.paraResposta(salvo, previsaoService.orcamentoVigente()));
+                .body(previsaoService.paraResposta(salvo, previsaoService.fatoresVigentes()));
     }
 
     @PutMapping("/{id}")
@@ -81,7 +81,7 @@ public class PrevisaoItemController {
                 .map(item -> {
                     PrevisaoItem salvo = itemRepository.save(aplicar(item, dto));
                     return ResponseEntity.ok(
-                            previsaoService.paraResposta(salvo, previsaoService.orcamentoVigente()));
+                            previsaoService.paraResposta(salvo, previsaoService.fatoresVigentes()));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -119,7 +119,7 @@ public class PrevisaoItemController {
         }
 
         int quantidadeFinal = item.getQuantidade()
-                * previsaoService.fator(item, previsaoService.orcamentoVigente());
+                * previsaoService.fator(item, previsaoService.fatoresVigentes());
 
         Compra compra = new Compra();
         compra.setDescricao(item.getDescricao());
@@ -127,7 +127,7 @@ public class PrevisaoItemController {
         compra.setFornecedor(fornecedor);
         compra.setValorUnitario(item.getValorUnitario());
         compra.setQuantidade(quantidadeFinal);
-        compra.setValorTotal(previsaoService.valorTotal(item, previsaoService.orcamentoVigente()));
+        compra.setValorTotal(previsaoService.valorTotal(item, previsaoService.fatoresVigentes()));
         compra.setDataCompra(LocalDateTime.now());
         compra.setStatus(StatusCompra.PAGO);
 
@@ -136,7 +136,7 @@ public class PrevisaoItemController {
         PrevisaoItem salvo = itemRepository.save(item);
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(previsaoService.paraResposta(salvo, previsaoService.orcamentoVigente()));
+                .body(previsaoService.paraResposta(salvo, previsaoService.fatoresVigentes()));
     }
 
     private PrevisaoItem aplicar(PrevisaoItem item, PrevisaoItemRequestDTO dto) {

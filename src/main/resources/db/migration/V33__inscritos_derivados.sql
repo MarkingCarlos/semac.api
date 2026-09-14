@@ -1,0 +1,12 @@
+-- O numero de inscritos previstos deixa de ser digitado: passa a ser a
+-- contagem de pessoas com role = PARTICIPANTE (confirmadas) ou role NULL
+-- (cadastradas, aguardando confirmacao) -- as mesmas que o /admin lista
+-- em "Participantes".
+--
+-- Digitado, esse contador era uma armadilha silenciosa: a V30 o zerou
+-- junto com o resto da carga da planilha, e todo item com escala
+-- POR_INSCRITO passou a valer R$ 0,00 sem nenhuma indicacao do motivo.
+-- Derivado, ele acompanha as inscricoes sozinho e nunca fica defasado.
+--
+-- membros_comissao e palestrantes_previstos continuam digitados por ora.
+ALTER TABLE public.orcamento DROP COLUMN inscritos_previstos;

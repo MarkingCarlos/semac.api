@@ -3,7 +3,9 @@ package com.semac.java_api.controller;
 import com.semac.java_api.dto.OrcamentoRequestDTO;
 import com.semac.java_api.dto.OrcamentoResponseDTO;
 import com.semac.java_api.model.Orcamento;
+import com.semac.java_api.model.enums.Role;
 import com.semac.java_api.repository.OrcamentoRepository;
+import com.semac.java_api.repository.PessoaRepository;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,9 +22,19 @@ import java.time.Year;
 public class OrcamentoController {
 
     private final OrcamentoRepository orcamentoRepository;
+    private final PessoaRepository pessoaRepository;
 
-    public OrcamentoController(OrcamentoRepository orcamentoRepository) {
+    public OrcamentoController(OrcamentoRepository orcamentoRepository,
+                               PessoaRepository pessoaRepository) {
         this.orcamentoRepository = orcamentoRepository;
+        this.pessoaRepository = pessoaRepository;
+    }
+
+    /* Derivado, não digitado: pessoas com role PARTICIPANTE (confirmadas)
+       ou NULL (aguardando confirmação). Vai na resposta só para a
+       interface poder mostrar de onde sai a escala por inscrito. */
+    private int inscritos() {
+        return (int) pessoaRepository.countByRoleIsNullOrRole(Role.PARTICIPANTE);
     }
 
     /* Sem orçamento cadastrado devolve um zerado (200) em vez de 404 —
@@ -32,7 +44,7 @@ public class OrcamentoController {
         return orcamentoRepository.findFirstByOrderByAnoDesc()
                 .map(this::paraResposta)
                 .orElseGet(() -> new OrcamentoResponseDTO(
-                        null, Year.now().getValue(), 0, 0, 0));
+                        null, Year.now().getValue(), inscritos(), 0, 0));
     }
 
     @PutMapping
@@ -44,7 +56,6 @@ public class OrcamentoController {
                     return novo;
                 });
 
-        orcamento.setInscritosPrevistos(dto.inscritosPrevistos());
         orcamento.setMembrosComissao(dto.membrosComissao());
         orcamento.setPalestrantesPrevistos(dto.palestrantesPrevistos());
 
@@ -55,7 +66,7 @@ public class OrcamentoController {
         return new OrcamentoResponseDTO(
                 orcamento.getId(),
                 orcamento.getAno(),
-                orcamento.getInscritosPrevistos(),
+                inscritos(),
                 orcamento.getMembrosComissao(),
                 orcamento.getPalestrantesPrevistos());
     }

@@ -7,6 +7,7 @@ import com.semac.java_api.dto.InscricaoFinanceiraDTO;
 import com.semac.java_api.dto.PrevisaoResumoDTO;
 import com.semac.java_api.model.*;
 import com.semac.java_api.model.enums.ContaFinanceira;
+import com.semac.java_api.model.enums.Role;
 import com.semac.java_api.model.enums.StatusPagamento;
 import com.semac.java_api.model.enums.StatusPrevisao;
 import com.semac.java_api.repository.*;
@@ -41,6 +42,7 @@ public class PrevisaoService {
     private final DoadorRepository doadorRepository;
     private final CaixaRepository caixaRepository;
     private final PessoaService pessoaService;
+    private final PessoaRepository pessoaRepository;
 
     public PrevisaoService(PrevisaoItemRepository itemRepository,
                            PrevisaoCategoriaRepository categoriaRepository,
@@ -49,7 +51,8 @@ public class PrevisaoService {
                            PatrocinadorRepository patrocinadorRepository,
                            DoadorRepository doadorRepository,
                            CaixaRepository caixaRepository,
-                           PessoaService pessoaService) {
+                           PessoaService pessoaService,
+                           PessoaRepository pessoaRepository) {
         this.itemRepository = itemRepository;
         this.categoriaRepository = categoriaRepository;
         this.orcamentoRepository = orcamentoRepository;
@@ -58,30 +61,49 @@ public class PrevisaoService {
         this.doadorRepository = doadorRepository;
         this.caixaRepository = caixaRepository;
         this.pessoaService = pessoaService;
+        this.pessoaRepository = pessoaRepository;
     }
 
     /* ── Escala ──────────────────────────────────────────────────── */
 
-    /* Quanto o valor de um item se multiplica. Orçamento ausente devolve
-       fator 1 em vez de estourar: sem orçamento cadastrado a previsão
-       ainda deve ser legível, só não escala. */
-    public int fator(PrevisaoItem item, Orcamento orcamento) {
-        if (orcamento == null || item.getEscala() == null) return 1;
+    /* Os multiplicadores das escalas, lidos de uma vez.
+
+       `inscritos` é DERIVADO: a contagem de pessoas com role PARTICIPANTE
+       (confirmadas) ou NULL (aguardando confirmação) — as mesmas que o
+       /admin lista em "Participantes". Digitado, esse número virava uma
+       armadilha silenciosa: bastava ficar zerado para todo item por
+       inscrito valer R$ 0,00 sem explicação.
+
+       Os outros dois seguem vindo do orçamento. */
+    public record Fatores(int inscritos, int comissao, int palestrantes) {}
+
+    public Fatores fatoresVigentes() {
+        Orcamento orcamento = orcamentoVigente();
+        int inscritos = (int) pessoaRepository.countByRoleIsNullOrRole(Role.PARTICIPANTE);
+        return new Fatores(
+                inscritos,
+                orcamento == null ? 0 : orcamento.getMembrosComissao(),
+                orcamento == null ? 0 : orcamento.getPalestrantesPrevistos());
+    }
+
+    /* Quanto o valor de um item se multiplica. */
+    public int fator(PrevisaoItem item, Fatores fatores) {
+        if (item.getEscala() == null) return 1;
         return switch (item.getEscala()) {
             case FIXA -> 1;
-            case POR_INSCRITO -> orcamento.getInscritosPrevistos();
-            case POR_COMISSAO -> orcamento.getMembrosComissao();
-            case POR_PALESTRANTE -> orcamento.getPalestrantesPrevistos();
+            case POR_INSCRITO -> fatores.inscritos();
+            case POR_COMISSAO -> fatores.comissao();
+            case POR_PALESTRANTE -> fatores.palestrantes();
         };
     }
 
     /* (valorUnitario × quantidade + frete) × fator da escala. */
-    public BigDecimal valorTotal(PrevisaoItem item, Orcamento orcamento) {
+    public BigDecimal valorTotal(PrevisaoItem item, Fatores fatores) {
         BigDecimal frete = item.getFrete() == null ? BigDecimal.ZERO : item.getFrete();
         BigDecimal base = item.getValorUnitario()
                 .multiply(BigDecimal.valueOf(item.getQuantidade()))
                 .add(frete);
-        return base.multiply(BigDecimal.valueOf(fator(item, orcamento)));
+        return base.multiply(BigDecimal.valueOf(fator(item, fatores)));
     }
 
     public Orcamento orcamentoVigente() {
@@ -91,13 +113,13 @@ public class PrevisaoService {
     /* ── Leitura ─────────────────────────────────────────────────── */
 
     public List<PrevisaoItemResponseDTO> listarItens() {
-        Orcamento orcamento = orcamentoVigente();
+        Fatores fatores = fatoresVigentes();
         return itemRepository.findAllByOrderByCategoria_OrdemAscIdAsc().stream()
-                .map(item -> paraResposta(item, orcamento))
+                .map(item -> paraResposta(item, fatores))
                 .toList();
     }
 
-    public PrevisaoItemResponseDTO paraResposta(PrevisaoItem item, Orcamento orcamento) {
+    public PrevisaoItemResponseDTO paraResposta(PrevisaoItem item, Fatores fatores) {
         PrevisaoCategoria categoria = item.getCategoria();
         Fornecedor fornecedor = item.getFornecedor();
         return new PrevisaoItemResponseDTO(
@@ -112,8 +134,8 @@ public class PrevisaoService {
                 item.getValorUnitario(),
                 item.getFrete(),
                 item.getEscala().name(),
-                fator(item, orcamento),
-                valorTotal(item, orcamento),
+                fator(item, fatores),
+                valorTotal(item, fatores),
                 item.getStatus().name(),
                 item.getDataPrevista(),
                 item.getObservacao(),
@@ -125,6 +147,7 @@ public class PrevisaoService {
 
     public PrevisaoResumoDTO resumo() {
         Orcamento orcamento = orcamentoVigente();
+        Fatores fatores = fatoresVigentes();
         List<PrevisaoItem> itens = itemRepository.findAll();
         List<Compra> compras = compraRepository.findAll();
 
@@ -134,7 +157,7 @@ public class PrevisaoService {
 
         BigDecimal previstoAberto = itens.stream()
                 .filter(emAberto)
-                .map(item -> valorTotal(item, orcamento))
+                .map(item -> valorTotal(item, fatores))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal realizado = compras.stream()
@@ -149,7 +172,7 @@ public class PrevisaoService {
                 .collect(Collectors.groupingBy(
                         item -> item.getCategoria().getId(),
                         Collectors.reducing(BigDecimal.ZERO,
-                                item -> valorTotal(item, orcamento), BigDecimal::add)));
+                                item -> valorTotal(item, fatores), BigDecimal::add)));
 
         /* Compras não têm categoria_id: `compra.categoria` é texto livre.
            O casamento é pelo nome da categoria, e o que não casar cai
@@ -222,7 +245,7 @@ public class PrevisaoService {
                 orcamento == null ? null : new OrcamentoResponseDTO(
                         orcamento.getId(),
                         orcamento.getAno(),
-                        orcamento.getInscritosPrevistos(),
+                        fatores.inscritos(),
                         orcamento.getMembrosComissao(),
                         orcamento.getPalestrantesPrevistos()));
     }

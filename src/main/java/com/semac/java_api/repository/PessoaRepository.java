@@ -20,6 +20,11 @@ public interface PessoaRepository extends JpaRepository<Pessoa, Integer> {
        organizadores (demais roles). Ordenado por nome. */
     List<Pessoa> findByRoleIsNullOrRoleOrderByNomeAsc(Role role);
 
+    /* Mesma condicao da listagem acima, so que contando: e o numero de
+       inscritos que alimenta a escala POR_INSCRITO da previsao de gastos
+       (ver PrevisaoService.fatoresVigentes). */
+    long countByRoleIsNullOrRole(Role role);
+
     /* Posição no ranking de xp: quantos participantes têm xp maior que o
        informado (a posição é essa contagem + 1) e o total de participantes,
        usados pelo card de nível em /participantes. */
@@ -30,4 +35,8 @@ public interface PessoaRepository extends JpaRepository<Pessoa, Integer> {
        atribuído, do maior pro menor. Empate = posição sequencial (a posição
        final é calculada pelo índice na lista, não por essa query). */
     List<Pessoa> findByRoleAndXpIsNotNullOrderByXpDesc(Role role);
+
+    /* Ordem de confirmação (usada pela conquista "primeiros N confirmados",
+       ver ConquistaService) — mais antigo por inscrito_em primeiro. */
+    List<Pessoa> findByRoleOrderByInscritoEmAsc(Role role);
 }
