@@ -1,6 +1,5 @@
 package com.semac.java_api.model;
 
-import com.semac.java_api.model.enums.ContaFinanceira;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -29,8 +28,4 @@ public class Doador {
     @Column(nullable = false)
     private LocalDateTime data;
 
-    /* Conta que recebe a doacao. Null enquanto nao informada. */
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private ContaFinanceira conta;
 }

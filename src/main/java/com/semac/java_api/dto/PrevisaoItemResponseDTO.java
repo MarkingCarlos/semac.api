@@ -20,7 +20,6 @@ public record PrevisaoItemResponseDTO(
         String escala,
         Integer fator,
         BigDecimal valorTotal,
-        String conta,
         String status,
         LocalDate dataPrevista,
         String observacao,

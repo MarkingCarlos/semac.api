@@ -1,6 +1,5 @@
 package com.semac.java_api.model;
 
-import com.semac.java_api.model.enums.ContaFinanceira;
 import com.semac.java_api.model.enums.EscalaPrevisao;
 import com.semac.java_api.model.enums.StatusPrevisao;
 import jakarta.persistence.*;
@@ -56,11 +55,6 @@ public class PrevisaoItem {
     @Column(nullable = false, length = 20)
     private EscalaPrevisao escala = EscalaPrevisao.FIXA;
 
-    /* Null enquanto a conta de origem não for decidida — situação em que
-       a planilha de origem deixava a coluna em branco. */
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private ContaFinanceira conta;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

@@ -4,7 +4,6 @@ import com.semac.java_api.dto.CompraRequestDTO;
 import com.semac.java_api.dto.CompraResponseDTO;
 import com.semac.java_api.model.Compra;
 import com.semac.java_api.model.Fornecedor;
-import com.semac.java_api.model.enums.ContaFinanceira;
 import com.semac.java_api.model.enums.StatusCompra;
 import com.semac.java_api.repository.CompraRepository;
 import com.semac.java_api.repository.FornecedorRepository;
@@ -83,7 +82,6 @@ public class CompraController {
         compra.setFornecedor(fornecedor);
         compra.setValorUnitario(dto.valorUnitario());
         compra.setQuantidade(dto.quantidade());
-        compra.setConta(ContaFinanceira.deTexto(dto.conta()));
         compra.setStatus(StatusCompra.deTexto(dto.status()));
         // valor_total é calculado pelo backend
         compra.setValorTotal(dto.valorUnitario().multiply(BigDecimal.valueOf(dto.quantidade())));
@@ -99,7 +97,6 @@ public class CompraController {
                 compra.getQuantidade(),
                 compra.getValorTotal(),
                 compra.getDataCompra(),
-                compra.getConta() == null ? null : compra.getConta().name(),
                 compra.getStatus().name()
         );
     }

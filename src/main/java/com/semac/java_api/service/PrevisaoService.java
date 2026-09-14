@@ -7,14 +7,12 @@ import com.semac.java_api.dto.InscricaoFinanceiraDTO;
 import com.semac.java_api.dto.PrevisaoResumoDTO;
 import com.semac.java_api.model.*;
 import com.semac.java_api.model.enums.ContaFinanceira;
-import com.semac.java_api.model.enums.StatusCompra;
 import com.semac.java_api.model.enums.StatusPagamento;
 import com.semac.java_api.model.enums.StatusPrevisao;
 import com.semac.java_api.repository.*;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -116,7 +114,6 @@ public class PrevisaoService {
                 item.getEscala().name(),
                 fator(item, orcamento),
                 valorTotal(item, orcamento),
-                item.getConta() == null ? null : item.getConta().name(),
                 item.getStatus().name(),
                 item.getDataPrevista(),
                 item.getObservacao(),
@@ -177,74 +174,40 @@ public class PrevisaoService {
                                         categoria.getNome().trim().toLowerCase(), BigDecimal.ZERO)))
                         .toList();
 
-        /* ── Por conta ── */
+        /* ── O que a comissão arrecadou ──
+           É isto que a comissão tem para gastar, e por isso é o teto da
+           previsão. Não desconta compras: elas já entram na projeção, e
+           descontá-las aqui as contaria duas vezes.
 
-        /* As inscrições são a única entrada sem conta própria: `pessoa` e
-           `tipo_inscricao` não têm esse campo. Por decisão da comissão,
-           todo pagamento de inscrição cai na conta da comissão.
+           Não há filtro por conta. A FUNDUNESP é reserva de emergência —
+           não recebe entrada nem paga saída —, então não existe
+           lançamento a atribuir a ela e todo dinheiro que entra é da
+           comissão. As inscrições nunca tiveram conta própria (nem
+           `pessoa` nem `tipo_inscricao` têm o campo); o valor vem de
+           PessoaService para não reimplementar a regra de ingresso por
+           diária (valor × dias). */
+        BigDecimal totalPatrocinios = patrocinadorRepository.findAll().stream()
+                .filter(p -> p.getStatusPagamento() == StatusPagamento.RECEBIDO)
+                .map(Patrocinador::getValorFinal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-           Se um dia algum ingresso passar a ser pago direto à FUNDUNESP,
-           esta regra silenciosamente dará saldo errado — o caminho certo
-           então é uma coluna `conta` em `tipo_inscricao`, não um segundo
-           `if` aqui.
+        BigDecimal totalDoacoes = doadorRepository.findAll().stream()
+                .map(Doador::getValor)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-           O valor vem de PessoaService para não reimplementar a regra de
-           ingresso por diária (valor × dias). */
         BigDecimal totalInscricoes = pessoaService.listarInscricoes().stream()
                 .map(InscricaoFinanceiraDTO::valor)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        List<PrevisaoResumoDTO.ContaResumoDTO> contas = new ArrayList<>();
-        for (ContaFinanceira conta : ContaFinanceira.values()) {
-            BigDecimal caixaInicial = caixaRepository.findByConta(conta)
-                    .map(Caixa::getValor)
-                    .orElse(BigDecimal.ZERO);
+        BigDecimal teto = totalPatrocinios.add(totalDoacoes).add(totalInscricoes);
 
-            /* Só patrocínio efetivamente recebido entra como entrada —
-               a planilha somava também o que ainda estava pendente. */
-            BigDecimal entradas = patrocinadorRepository.findAll().stream()
-                    .filter(p -> p.getConta() == conta)
-                    .filter(p -> p.getStatusPagamento() == StatusPagamento.RECEBIDO)
-                    .map(Patrocinador::getValorFinal)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add)
-                    .add(doadorRepository.findAll().stream()
-                            .filter(d -> d.getConta() == conta)
-                            .map(Doador::getValor)
-                            .reduce(BigDecimal.ZERO, BigDecimal::add))
-                    .add(conta == ContaFinanceira.COMISSAO ? totalInscricoes : BigDecimal.ZERO);
+        PrevisaoResumoDTO.EntradasDTO entradas = new PrevisaoResumoDTO.EntradasDTO(
+                totalPatrocinios, totalDoacoes, totalInscricoes, teto);
 
-            BigDecimal saidas = compras.stream()
-                    .filter(c -> c.getConta() == conta)
-                    .filter(c -> c.getStatus() == StatusCompra.PAGO)
-                    .map(Compra::getValorTotal)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            BigDecimal previsto = itens.stream()
-                    .filter(emAberto)
-                    .filter(item -> item.getConta() == conta)
-                    .map(item -> valorTotal(item, orcamento))
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            contas.add(new PrevisaoResumoDTO.ContaResumoDTO(
-                    conta.name(),
-                    caixaInicial,
-                    entradas,
-                    saidas,
-                    previsto,
-                    caixaInicial.add(entradas).subtract(saidas)));
-        }
-
-        /* O teto é derivado, não configurado: é o saldo da conta da
-           comissão — o dinheiro que a comissão de fato tem para gastar.
-           Por isso ele sobe e desce sozinho a cada inscrição, patrocínio
-           ou doação que entra, coisa que um valor digitado não faria.
-
-           O saldo da FUNDUNESP fica de fora por decisão da comissão; ele
-           segue visível no card de saldo por conta do Resumo. */
-        BigDecimal teto = contas.stream()
-                .filter(c -> ContaFinanceira.COMISSAO.name().equals(c.conta()))
-                .map(PrevisaoResumoDTO.ContaResumoDTO::saldo)
-                .findFirst()
+        /* Reserva de emergência: valor digitado, exibido à parte. Não
+           entra no teto nem em nenhum cálculo. */
+        BigDecimal reservaFundunesp = caixaRepository.findByConta(ContaFinanceira.FUNDUNESP)
+                .map(Caixa::getValor)
                 .orElse(BigDecimal.ZERO);
 
         return new PrevisaoResumoDTO(
@@ -253,8 +216,9 @@ public class PrevisaoService {
                 projecaoTotal,
                 teto,
                 teto.subtract(projecaoTotal),
+                entradas,
+                reservaFundunesp,
                 categorias,
-                contas,
                 orcamento == null ? null : new OrcamentoResponseDTO(
                         orcamento.getId(),
                         orcamento.getAno(),

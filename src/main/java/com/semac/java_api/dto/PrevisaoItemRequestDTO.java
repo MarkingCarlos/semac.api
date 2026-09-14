@@ -21,7 +21,6 @@ public record PrevisaoItemRequestDTO(
         @NotNull @PositiveOrZero BigDecimal valorUnitario,
         @PositiveOrZero BigDecimal frete,
         @NotBlank String escala,
-        String conta,
         @NotBlank String status,
         LocalDate dataPrevista,
         @Size(max = 500) String observacao

@@ -7,6 +7,5 @@ public record DoadorResponseDTO(
         Integer id,
         String nome,
         BigDecimal valor,
-        LocalDateTime data,
-        String conta
+        LocalDateTime data
 ) {}

@@ -8,25 +8,31 @@ import java.util.List;
    A distinção que a planilha de origem não fazia:
    - previstoAberto: itens ainda não pagos (o que falta gastar)
    - realizado:      compras registradas (o que já saiu)
-   - projecaoTotal:  a soma dos dois, que é o número a comparar com o teto */
+   - projecaoTotal:  a soma dos dois, que é o número a comparar com o teto
+
+   `teto` é o que a comissão arrecadou — patrocínios recebidos, doações e
+   inscrições. Não se digita e não desconta as compras: elas já entram na
+   projeção, e descontá-las aqui as contaria duas vezes.
+
+   `reservaFundunesp` é o saldo de emergência, exibido à parte justamente
+   por não entrar em nada. */
 public record PrevisaoResumoDTO(
         BigDecimal previstoAberto,
         BigDecimal realizado,
         BigDecimal projecaoTotal,
         BigDecimal teto,
         BigDecimal margem,
+        EntradasDTO entradas,
+        BigDecimal reservaFundunesp,
         List<PrevisaoCategoriaResponseDTO> categorias,
-        List<ContaResumoDTO> contas,
         OrcamentoResponseDTO orcamento
 ) {
-    /* Balanço por conta — entradas e saídas da mesma conta, que é o
-       cruzamento que a planilha fazia errado. */
-    public record ContaResumoDTO(
-            String conta,
-            BigDecimal caixaInicial,
-            BigDecimal entradas,
-            BigDecimal saidas,
-            BigDecimal previsto,
-            BigDecimal saldo
+    /* As três fontes que compõem o teto, abertas para a interface poder
+       mostrar de onde o número vem. */
+    public record EntradasDTO(
+            BigDecimal patrocinios,
+            BigDecimal doacoes,
+            BigDecimal inscricoes,
+            BigDecimal total
     ) {}
 }

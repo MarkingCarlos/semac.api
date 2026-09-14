@@ -18,6 +18,5 @@ public record PatrocinadorRequestDTO(
         BigDecimal adicao,
         StatusPagamento statusPagamento,
         LocalDateTime dataRecebimento,
-        String conta,
         String observacao
 ) {}

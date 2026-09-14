@@ -12,6 +12,5 @@ public record CompraResponseDTO(
         Integer quantidade,
         BigDecimal valorTotal,
         LocalDateTime dataCompra,
-        String conta,
         String status
 ) {}

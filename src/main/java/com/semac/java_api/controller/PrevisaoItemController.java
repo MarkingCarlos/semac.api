@@ -7,7 +7,6 @@ import com.semac.java_api.model.Compra;
 import com.semac.java_api.model.Fornecedor;
 import com.semac.java_api.model.PrevisaoCategoria;
 import com.semac.java_api.model.PrevisaoItem;
-import com.semac.java_api.model.enums.ContaFinanceira;
 import com.semac.java_api.model.enums.EscalaPrevisao;
 import com.semac.java_api.model.enums.StatusCompra;
 import com.semac.java_api.model.enums.StatusPrevisao;
@@ -130,7 +129,6 @@ public class PrevisaoItemController {
         compra.setQuantidade(quantidadeFinal);
         compra.setValorTotal(previsaoService.valorTotal(item, previsaoService.orcamentoVigente()));
         compra.setDataCompra(LocalDateTime.now());
-        compra.setConta(item.getConta());
         compra.setStatus(StatusCompra.PAGO);
 
         item.setCompra(compraRepository.save(compra));
@@ -156,7 +154,6 @@ public class PrevisaoItemController {
         item.setValorUnitario(dto.valorUnitario());
         item.setFrete(dto.frete() == null ? BigDecimal.ZERO : dto.frete());
         item.setEscala(EscalaPrevisao.deTexto(dto.escala()));
-        item.setConta(ContaFinanceira.deTexto(dto.conta()));
         item.setStatus(StatusPrevisao.deTexto(dto.status()));
         item.setDataPrevista(dto.dataPrevista());
         item.setObservacao(dto.observacao());

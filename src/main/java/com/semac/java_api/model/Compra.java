@@ -1,6 +1,5 @@
 package com.semac.java_api.model;
 
-import com.semac.java_api.model.enums.ContaFinanceira;
 import com.semac.java_api.model.enums.StatusCompra;
 import jakarta.persistence.*;
 import lombok.*;
@@ -43,10 +42,6 @@ public class Compra {
     @Column(name = "data_compra", nullable = false)
     private LocalDateTime dataCompra;
 
-    /* Conta de onde o dinheiro saiu. Null enquanto nao informada. */
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private ContaFinanceira conta;
 
     /* Uma compra registrada e, por padrao, dinheiro que ja saiu;
        PENDENTE cobre a compra fechada e ainda nao paga. */

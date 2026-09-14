@@ -6,7 +6,6 @@ import com.semac.java_api.dto.PatrocinadorRequestDTO;
 import com.semac.java_api.dto.PatrocinadorResponseDTO;
 import com.semac.java_api.model.Cota;
 import com.semac.java_api.model.Patrocinador;
-import com.semac.java_api.model.enums.ContaFinanceira;
 import com.semac.java_api.model.enums.StatusPagamento;
 import com.semac.java_api.repository.CotaRepository;
 import com.semac.java_api.repository.PatrocinadorRepository;
@@ -200,7 +199,6 @@ public class PatrocinadorController {
         patrocinador.setStatusPagamento(
                 dto.statusPagamento() != null ? dto.statusPagamento() : StatusPagamento.A_RECEBER);
         patrocinador.setDataRecebimento(dto.dataRecebimento());
-        patrocinador.setConta(ContaFinanceira.deTexto(dto.conta()));
         patrocinador.setObservacao(dto.observacao());
         return patrocinador;
     }
@@ -221,7 +219,6 @@ public class PatrocinadorController {
                 p.getValorFinal(),
                 p.getStatusPagamento(),
                 p.getDataRecebimento(),
-                p.getConta() == null ? null : p.getConta().name(),
                 p.getObservacao()
         );
     }

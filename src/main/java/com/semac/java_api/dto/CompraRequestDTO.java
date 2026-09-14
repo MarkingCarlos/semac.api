@@ -15,6 +15,5 @@ public record CompraRequestDTO(
         @NotNull Integer fornecedorId,
         @NotNull @PositiveOrZero BigDecimal valorUnitario,
         @NotNull @Positive Integer quantidade,
-        String conta,
         String status
 ) {}
