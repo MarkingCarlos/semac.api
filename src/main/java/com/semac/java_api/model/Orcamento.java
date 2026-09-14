@@ -3,12 +3,14 @@ package com.semac.java_api.model;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.math.BigDecimal;
+/* Parâmetros do orçamento de uma edição: os contadores que a planilha
+   tratava como constantes soltas nas notas ("estimativa total: 140
+   pessoas", "comissão: 39 membros") e que aqui alimentam a escala de
+   PrevisaoItem.
 
-/* Parâmetros do orçamento de uma edição. Além do teto de gastos, guarda
-   os contadores que a planilha tratava como constantes soltas nas notas
-   ("estimativa total: 140 pessoas", "comissão: 39 membros") e que aqui
-   alimentam a escala de PrevisaoItem. */
+   Não há teto aqui: ele é derivado do saldo da conta da comissão, em
+   PrevisaoService.resumo(). Um teto digitado ao lado de um derivado
+   discordaria do caixa na primeira inscrição que entrasse. */
 @Entity
 @Table(name = "orcamento")
 @Getter
@@ -24,9 +26,6 @@ public class Orcamento {
 
     @Column(nullable = false, unique = true)
     private Integer ano;
-
-    @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal teto;
 
     @Column(name = "inscritos_previstos", nullable = false)
     private Integer inscritosPrevistos = 0;

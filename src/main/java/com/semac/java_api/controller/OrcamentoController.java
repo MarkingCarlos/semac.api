@@ -7,11 +7,11 @@ import com.semac.java_api.repository.OrcamentoRepository;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.time.Year;
 
-/* Parâmetros do orçamento da edição vigente: o teto de gastos e os
-   contadores que alimentam a escala das previsões.
+/* Parâmetros do orçamento da edição vigente: os contadores que
+   alimentam a escala das previsões. O teto não vive aqui — é derivado
+   do saldo da conta da comissão (ver PrevisaoService.resumo).
 
    Sempre opera sobre a edição mais recente — por isso a rota não tem
    /{id}. Ano ainda não cadastrado é criado no primeiro PUT. */
@@ -32,7 +32,7 @@ public class OrcamentoController {
         return orcamentoRepository.findFirstByOrderByAnoDesc()
                 .map(this::paraResposta)
                 .orElseGet(() -> new OrcamentoResponseDTO(
-                        null, Year.now().getValue(), BigDecimal.ZERO, 0, 0, 0));
+                        null, Year.now().getValue(), 0, 0, 0));
     }
 
     @PutMapping
@@ -44,7 +44,6 @@ public class OrcamentoController {
                     return novo;
                 });
 
-        orcamento.setTeto(dto.teto());
         orcamento.setInscritosPrevistos(dto.inscritosPrevistos());
         orcamento.setMembrosComissao(dto.membrosComissao());
         orcamento.setPalestrantesPrevistos(dto.palestrantesPrevistos());
@@ -56,7 +55,6 @@ public class OrcamentoController {
         return new OrcamentoResponseDTO(
                 orcamento.getId(),
                 orcamento.getAno(),
-                orcamento.getTeto(),
                 orcamento.getInscritosPrevistos(),
                 orcamento.getMembrosComissao(),
                 orcamento.getPalestrantesPrevistos());

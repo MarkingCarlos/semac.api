@@ -1,0 +1,13 @@
+-- O teto da previsao deixa de ser digitado e passa a ser derivado: e o
+-- saldo da conta da comissao (caixa inicial + inscricoes + patrocinios
+-- recebidos + doacoes - compras pagas dessa conta), ou seja, o dinheiro
+-- que a comissao de fato tem para gastar.
+--
+-- Com isso a coluna perde a razao de existir. Manter um teto digitado ao
+-- lado de um derivado seria convite para os dois discordarem -- e o
+-- digitado nao tem como estar certo: o caixa muda a cada inscricao,
+-- patrocinio ou doacao que entra.
+--
+-- Os contadores de escala (inscritos_previstos, membros_comissao,
+-- palestrantes_previstos) permanecem: esses sao estimativas, nao caixa.
+ALTER TABLE public.orcamento DROP COLUMN teto;

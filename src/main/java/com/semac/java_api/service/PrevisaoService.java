@@ -145,7 +145,6 @@ public class PrevisaoService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal projecaoTotal = previstoAberto.add(realizado);
-        BigDecimal teto = orcamento == null ? BigDecimal.ZERO : orcamento.getTeto();
 
         /* ── Por categoria ── */
         Map<Integer, BigDecimal> previstoPorCategoria = itens.stream()
@@ -235,6 +234,19 @@ public class PrevisaoService {
                     caixaInicial.add(entradas).subtract(saidas)));
         }
 
+        /* O teto é derivado, não configurado: é o saldo da conta da
+           comissão — o dinheiro que a comissão de fato tem para gastar.
+           Por isso ele sobe e desce sozinho a cada inscrição, patrocínio
+           ou doação que entra, coisa que um valor digitado não faria.
+
+           O saldo da FUNDUNESP fica de fora por decisão da comissão; ele
+           segue visível no card de saldo por conta do Resumo. */
+        BigDecimal teto = contas.stream()
+                .filter(c -> ContaFinanceira.COMISSAO.name().equals(c.conta()))
+                .map(PrevisaoResumoDTO.ContaResumoDTO::saldo)
+                .findFirst()
+                .orElse(BigDecimal.ZERO);
+
         return new PrevisaoResumoDTO(
                 previstoAberto,
                 realizado,
@@ -246,7 +258,6 @@ public class PrevisaoService {
                 orcamento == null ? null : new OrcamentoResponseDTO(
                         orcamento.getId(),
                         orcamento.getAno(),
-                        orcamento.getTeto(),
                         orcamento.getInscritosPrevistos(),
                         orcamento.getMembrosComissao(),
                         orcamento.getPalestrantesPrevistos()));
