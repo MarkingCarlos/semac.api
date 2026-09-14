@@ -80,22 +80,17 @@ CREATE INDEX idx_previsao_item_status    ON public.previsao_item (status);
 INSERT INTO public.orcamento (ano, teto, inscritos_previstos, membros_comissao, palestrantes_previstos)
 VALUES (2026, 35000.00, 140, 39, 34);
 
--- Cores em OKLCH L 0.63 / C 0.16, matizes espacados, validadas contra a
--- superficie do modulo (#730835): todas dentro da banda de luminosidade,
--- acima do piso de croma e com contraste >= 3:1. As duas maiores
--- categorias (Coffee Break e Kit) ficam em matizes opostos de proposito.
--- A paleta anterior tinha #fb923c e #E79839 a ΔE 3,6 -- indistinguiveis.
 INSERT INTO public.previsao_categoria (nome, cor, ordem) VALUES
-    ('Coffee Break',         '#c57300',  1),
-    ('Kit do Participante',  '#009fc3',  2),
-    ('Passagem',             '#47a03f',  3),
-    ('Hospedagem',           '#b564c2',  4),
-    ('Gastos Operacionais',  '#978d00',  5),
-    ('Trafego Pago',         '#288de5',  6),
-    ('Mostra Tecnica',       '#d25989',  7),
-    ('Colecionaveis',        '#00a789',  8),
-    ('Servicos Contratados', '#8377e4',  9),
-    ('Outros',               '#d85e43', 10);
+    ('Coffee Break',         '#fb923c',  1),
+    ('Kit do Participante',  '#E79839',  2),
+    ('Passagem',             '#4ade80',  3),
+    ('Hospedagem',           '#22d3ee',  4),
+    ('Gastos Operacionais',  '#94a3b8',  5),
+    ('Trafego Pago',         '#c084fc',  6),
+    ('Mostra Tecnica',       '#d4609a',  7),
+    ('Colecionaveis',        '#fbbf24',  8),
+    ('Servicos Contratados', '#60a5fa',  9),
+    ('Outros',               '#78716c', 10);
 
 -- Fornecedores citados na planilha que ainda nao existirem na base.
 -- `fornecedor.nome` nao tem UNIQUE, por isso o guard com NOT EXISTS.
