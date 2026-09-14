@@ -1,5 +1,6 @@
 package com.semac.java_api.model;
 
+import com.semac.java_api.model.enums.ContaFinanceira;
 import com.semac.java_api.model.enums.StatusPagamento;
 import jakarta.persistence.*;
 import lombok.*;
@@ -52,6 +53,11 @@ public class Patrocinador {
 
     @Column(name = "data_recebimento")
     private LocalDateTime dataRecebimento;
+
+    /* Conta que recebe o patrocinio. Null enquanto nao informada. */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private ContaFinanceira conta;
 
     private String observacao;
 }

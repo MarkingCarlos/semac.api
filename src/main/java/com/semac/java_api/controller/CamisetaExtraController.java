@@ -13,7 +13,7 @@ import java.math.BigDecimal;
    (seção "Informações SEMAC"). Como é registro único por ano, a rota não
    tem /{id}: o GET devolve o preço do ano (ou zero quando ainda não foi
    cadastrado) e o PUT atualiza o existente ou cria o primeiro, mesmo
-   padrão de CaixaFundunespController.
+   padrão de CaixaController.
 
    O GET é público: o cadastro em /inscricoes precisa do preço para montar
    a oferta de camiseta adicional. */

@@ -10,5 +10,6 @@ import java.time.LocalDateTime;
 public record DoadorRequestDTO(
         @NotBlank String nome,
         @NotNull @PositiveOrZero BigDecimal valor,
-        @NotNull LocalDateTime data
+        @NotNull LocalDateTime data,
+        String conta
 ) {}

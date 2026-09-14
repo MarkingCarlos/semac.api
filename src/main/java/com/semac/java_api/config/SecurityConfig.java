@@ -91,7 +91,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/evento/*/inscricao").hasRole(PAPEL_PARTICIPANTE)
                         // Exclusivos do financeiro
                         .requestMatchers("/api/compra/**", "/api/fornecedor/**", "/api/cotacao/**", "/api/conjunto/**", "/api/variacao/**").hasAnyRole(PAPEIS_FINANCEIRO)
-                        .requestMatchers("/api/caixa-fundunesp/**").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers("/api/caixa/**").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers("/api/previsao/**", "/api/previsao-categoria/**", "/api/orcamento/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/inscricoes").hasAnyRole(PAPEIS_FINANCEIRO)
                         // Editar quantas camisetas uma pessoa tem (grátis/inclusas ou avulsas) —
                         // mesmo acesso do financeiro, tanto para comissão quanto para participantes.

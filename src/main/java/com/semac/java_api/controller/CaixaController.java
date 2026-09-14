@@ -1,10 +1,11 @@
 package com.semac.java_api.controller;
 
-import com.semac.java_api.dto.CaixaFundunespRequestDTO;
-import com.semac.java_api.dto.CaixaFundunespResponseDTO;
-import com.semac.java_api.model.CaixaFundunesp;
+import com.semac.java_api.dto.CaixaRequestDTO;
+import com.semac.java_api.dto.CaixaResponseDTO;
+import com.semac.java_api.model.Caixa;
 import com.semac.java_api.model.Pessoa;
-import com.semac.java_api.repository.CaixaFundunespRepository;
+import com.semac.java_api.model.enums.ContaFinanceira;
+import com.semac.java_api.repository.CaixaRepository;
 import com.semac.java_api.repository.PessoaRepository;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -15,39 +16,52 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
-/* Saldo da FundoUnesp — registro único, editado na aba Resumo do
-   módulo financeiro. Por ser linha única, a rota não tem /{id}: o GET
-   devolve o registro (ou um zerado quando a tabela ainda está vazia) e
-   o PUT atualiza o existente ou cria o primeiro. */
+/* Saldo inicial de cada conta, editado na aba Resumo do módulo
+   financeiro. Uma linha por conta: a rota é endereçada pela conta
+   (/api/caixa/COMISSAO), não por id. */
 @RestController
-@RequestMapping("/api/caixa-fundunesp")
-public class CaixaFundunespController {
+@RequestMapping("/api/caixa")
+public class CaixaController {
 
-    private final CaixaFundunespRepository caixaRepository;
+    private final CaixaRepository caixaRepository;
     private final PessoaRepository pessoaRepository;
 
-    public CaixaFundunespController(CaixaFundunespRepository caixaRepository,
-                                    PessoaRepository pessoaRepository) {
+    public CaixaController(CaixaRepository caixaRepository,
+                           PessoaRepository pessoaRepository) {
         this.caixaRepository = caixaRepository;
         this.pessoaRepository = pessoaRepository;
     }
 
-    /* Tabela vazia devolve um registro zerado (200) em vez de 404 —
-       o card do Resumo precisa renderizar antes do primeiro cadastro. */
     @GetMapping
-    public CaixaFundunespResponseDTO buscar() {
-        return caixaRepository.findFirstByOrderByIdAsc()
+    public List<CaixaResponseDTO> listar() {
+        return caixaRepository.findAllByOrderByContaAsc().stream()
                 .map(this::paraResposta)
-                .orElseGet(() -> new CaixaFundunespResponseDTO(
-                        null, BigDecimal.ZERO, null, null, null));
+                .toList();
     }
 
-    @PutMapping
-    public CaixaFundunespResponseDTO atualizar(@AuthenticationPrincipal Jwt jwt,
-                                               @Valid @RequestBody CaixaFundunespRequestDTO dto) {
-        CaixaFundunesp caixa = caixaRepository.findFirstByOrderByIdAsc()
-                .orElseGet(CaixaFundunesp::new);
+    /* Conta ainda sem linha devolve um registro zerado (200) em vez de
+       404 — o card do Resumo precisa renderizar antes do primeiro
+       cadastro. */
+    @GetMapping("/{conta}")
+    public CaixaResponseDTO buscar(@PathVariable ContaFinanceira conta) {
+        return caixaRepository.findByConta(conta)
+                .map(this::paraResposta)
+                .orElseGet(() -> new CaixaResponseDTO(
+                        null, BigDecimal.ZERO, conta.name(), null, null, null));
+    }
+
+    @PutMapping("/{conta}")
+    public CaixaResponseDTO atualizar(@PathVariable ContaFinanceira conta,
+                                      @AuthenticationPrincipal Jwt jwt,
+                                      @Valid @RequestBody CaixaRequestDTO dto) {
+        Caixa caixa = caixaRepository.findByConta(conta)
+                .orElseGet(() -> {
+                    Caixa nova = new Caixa();
+                    nova.setConta(conta);
+                    return nova;
+                });
 
         caixa.setValor(dto.valor());
         caixa.setDataAtualizacao(LocalDateTime.now());
@@ -69,11 +83,12 @@ public class CaixaFundunespController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sessão inválida."));
     }
 
-    private CaixaFundunespResponseDTO paraResposta(CaixaFundunesp caixa) {
+    private CaixaResponseDTO paraResposta(Caixa caixa) {
         Pessoa autor = caixa.getAtualizadoPor();
-        return new CaixaFundunespResponseDTO(
+        return new CaixaResponseDTO(
                 caixa.getId(),
                 caixa.getValor(),
+                caixa.getConta().name(),
                 caixa.getDataAtualizacao(),
                 autor == null ? null : autor.getId(),
                 autor == null ? null : autor.getNome()

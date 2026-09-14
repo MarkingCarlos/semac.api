@@ -4,6 +4,7 @@ import com.semac.java_api.dto.DoadorRequestDTO;
 import com.semac.java_api.dto.DoadorResponseDTO;
 import com.semac.java_api.dto.ResumoDoacaoPublicoDTO;
 import com.semac.java_api.model.Doador;
+import com.semac.java_api.model.enums.ContaFinanceira;
 import com.semac.java_api.repository.DoadorRepository;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -86,6 +87,7 @@ public class DoadorController {
         doador.setNome(dto.nome());
         doador.setValor(dto.valor());
         doador.setData(dto.data());
+        doador.setConta(ContaFinanceira.deTexto(dto.conta()));
         return doador;
     }
 
@@ -94,7 +96,8 @@ public class DoadorController {
                 doador.getId(),
                 doador.getNome(),
                 doador.getValor(),
-                doador.getData()
+                doador.getData(),
+                doador.getConta() == null ? null : doador.getConta().name()
         );
     }
 }

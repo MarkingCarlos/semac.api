@@ -21,7 +21,7 @@ import com.semac.java_api.model.Pessoa;
 import com.semac.java_api.model.TipoInscricao;
 import com.semac.java_api.model.enums.FormaPagamento;
 import com.semac.java_api.model.enums.Role;
-import com.semac.java_api.repository.CaixaFundunespRepository;
+import com.semac.java_api.repository.CaixaRepository;
 import com.semac.java_api.repository.CamisaPedidoRepository;
 import com.semac.java_api.repository.CamisetaExtraRepository;
 import com.semac.java_api.repository.GanhadoresSorteioRepository;
@@ -58,9 +58,10 @@ public class PessoaService {
     private final NivelRepository nivelRepository;
     private final InscricaoEventoService inscricaoEventoService;
     private final SorteioRepository sorteioRepository;
-    private final CaixaFundunespRepository caixaFundunespRepository;
+    private final CaixaRepository caixaRepository;
     private final ParticipanteConquistaRepository participanteConquistaRepository;
     private final GanhadoresSorteioRepository ganhadoresSorteioRepository;
+    private final ConquistaService conquistaService;
 
     public PessoaService(PessoaRepository pessoaRepository,
                          TipoInscricaoRepository tipoInscricaoRepository,
@@ -69,9 +70,10 @@ public class PessoaService {
                          NivelRepository nivelRepository,
                          InscricaoEventoService inscricaoEventoService,
                          SorteioRepository sorteioRepository,
-                         CaixaFundunespRepository caixaFundunespRepository,
+                         CaixaRepository caixaRepository,
                          ParticipanteConquistaRepository participanteConquistaRepository,
-                         GanhadoresSorteioRepository ganhadoresSorteioRepository) {
+                         GanhadoresSorteioRepository ganhadoresSorteioRepository,
+                         ConquistaService conquistaService) {
         this.pessoaRepository = pessoaRepository;
         this.tipoInscricaoRepository = tipoInscricaoRepository;
         this.camisaPedidoRepository = camisaPedidoRepository;
@@ -79,9 +81,10 @@ public class PessoaService {
         this.nivelRepository = nivelRepository;
         this.inscricaoEventoService = inscricaoEventoService;
         this.sorteioRepository = sorteioRepository;
-        this.caixaFundunespRepository = caixaFundunespRepository;
+        this.caixaRepository = caixaRepository;
         this.participanteConquistaRepository = participanteConquistaRepository;
         this.ganhadoresSorteioRepository = ganhadoresSorteioRepository;
+        this.conquistaService = conquistaService;
     }
 
     /* Participantes do /admin: confirmados (role = PARTICIPANTE) e os
@@ -197,6 +200,7 @@ public class PessoaService {
            de fora: é escolha do participante na área /participantes. */
         if (role == Role.PARTICIPANTE) {
             inscricaoEventoService.preInscreverEmEventosAbertos(salva);
+            conquistaService.avaliarPrimeirosDezConfirmados();
         } else {
             inscricaoEventoService.removerInscricoesDoParticipante(salva.getId());
         }
@@ -252,7 +256,7 @@ public class PessoaService {
        irreversível — para preservar histórico, prefira "Desativar").
        Bloqueada se a pessoa for responsável por registros de auditoria que
        não podem ficar órfãos: sorteios que organizou (organizador_id é
-       NOT NULL) e o último ajuste do caixa do Fundunesp. Os demais vínculos
+       NOT NULL) e o último ajuste de algum caixa. Os demais vínculos
        (camisetas, inscrições em eventos, conquistas e prêmios ganhos) são
        apagados junto, por serem exclusivos dessa pessoa. */
     @Transactional
@@ -265,9 +269,9 @@ public class PessoaService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Esta pessoa organizou sorteios e não pode ser excluída. Desative-a em vez disso.");
         }
-        if (caixaFundunespRepository.existsByAtualizadoPor_Id(id)) {
+        if (caixaRepository.existsByAtualizadoPor_Id(id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Esta pessoa fez ajustes no caixa do Fundunesp e não pode ser excluída. Desative-a em vez disso.");
+                    "Esta pessoa fez ajustes no caixa e não pode ser excluída. Desative-a em vez disso.");
         }
 
         camisaPedidoRepository.deleteByPessoaId(id);
