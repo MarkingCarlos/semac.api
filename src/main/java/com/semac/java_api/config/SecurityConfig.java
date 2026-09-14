@@ -177,20 +177,10 @@ public class SecurityConfig {
         return NimbusJwtDecoder.withSecretKey(chaveJwt).macAlgorithm(MacAlgorithm.HS256).build();
     }
 
-    /* setAllowedOriginPatterns e nao setAllowedOrigins: a segunda so faz
-       correspondencia exata, e origem exata nao serve para tunel de
-       desenvolvimento -- ngrok e afins trocam de subdominio a cada
-       restart, o que obrigaria a mexer na env e reiniciar a API toda vez.
-
-       Padrao tambem aceita origem literal, entao nada muda para quem ja
-       configurava a lista exata. Em producao, configure so as literais --
-       o curinga e para desenvolvimento:
-         desenvolvimento: http://localhost:5173,https://*.ngrok-free.dev
-         producao:        https://semac.cc */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(origensCors);
+        config.setAllowedOrigins(origensCors);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
 
