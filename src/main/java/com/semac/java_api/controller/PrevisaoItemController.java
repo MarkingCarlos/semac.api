@@ -139,6 +139,40 @@ public class PrevisaoItemController {
                 .body(previsaoService.paraResposta(salvo, previsaoService.fatoresVigentes()));
     }
 
+    /* Desfaz a conversão: apaga a compra que ela criou e devolve o item
+       para PREVISTO.
+
+       A compra PRECISA ser apagada. Só mudar o status devolveria o item
+       para a projeção enquanto a compra seguiria contando como
+       realizado — o mesmo valor somado duas vezes. Por isso não existe
+       "reverter mantendo a compra": quem quiser manter o gasto
+       registrado deve deixar o item pago.
+
+       Ressalva: se a compra foi editada depois de criada (valor,
+       fornecedor, quantidade), essa edição se perde junto. */
+    @PostMapping("/{id}/reverter")
+    public ResponseEntity<PrevisaoItemResponseDTO> reverterParaPrevisto(@PathVariable Integer id) {
+        PrevisaoItem item = itemRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Previsão não encontrada."));
+
+        if (item.getStatus() != StatusPrevisao.PAGO) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Esta previsão não está paga — não há conversão a desfazer.");
+        }
+
+        /* Desfaz o vínculo e salva ANTES de apagar a compra: enquanto o
+           item ainda apontar para ela, a FK bloqueia a exclusão. */
+        Compra compra = item.getCompra();
+        item.setCompra(null);
+        item.setStatus(StatusPrevisao.PREVISTO);
+        PrevisaoItem salvo = itemRepository.save(item);
+        if (compra != null) {
+            compraRepository.delete(compra);
+        }
+
+        return ResponseEntity.ok(previsaoService.paraResposta(salvo, previsaoService.fatoresVigentes()));
+    }
+
     private PrevisaoItem aplicar(PrevisaoItem item, PrevisaoItemRequestDTO dto) {
         PrevisaoCategoria categoria = categoriaRepository.findById(dto.categoriaId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Categoria inválida."));
@@ -154,7 +188,18 @@ public class PrevisaoItemController {
         item.setValorUnitario(dto.valorUnitario());
         item.setFrete(dto.frete() == null ? BigDecimal.ZERO : dto.frete());
         item.setEscala(EscalaPrevisao.deTexto(dto.escala()));
-        item.setStatus(StatusPrevisao.deTexto(dto.status()));
+        /* PAGO não se digita: entra pela conversão em compra e sai pela
+           reversão. Sem esta guarda, editar um item pago o devolveria para
+           a projeção deixando a compra viva — valor contado duas vezes. */
+        StatusPrevisao statusPedido = StatusPrevisao.deTexto(dto.status());
+        if (item.getStatus() == StatusPrevisao.PAGO) {
+            // preserva; para sair de PAGO existe /{id}/reverter
+        } else if (statusPedido == StatusPrevisao.PAGO) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Para marcar como pago, use a conversão em compra.");
+        } else {
+            item.setStatus(statusPedido);
+        }
         item.setDataPrevista(dto.dataPrevista());
         item.setObservacao(dto.observacao());
         return item;
