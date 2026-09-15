@@ -37,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -50,6 +51,16 @@ public class PessoaService {
        Funciona com qualquer nível cadastrado com xpMinimo 0, já que
        nesse caso qualquer xp não-negativo já cai no primeiro nível. */
     private static final int XP_INICIAL_CONFIRMACAO = 100;
+
+    /* Taxa da maquininha sobre inscrição paga no cartão: a comissão
+       recebe 95% do que foi cobrado. Incide só sobre FormaPagamento.CARTAO
+       — Pix não tem taxa, e confirmação manual (dinheiro, cortesia) não
+       passou por máquina nenhuma. */
+    private static final BigDecimal TAXA_CARTAO = new BigDecimal("0.05");
+
+    /* Status que a Mercado Pago devolve quando o cartão foi de fato
+       aprovado. Mesmo vocabulário usado em PagamentoCartaoService. */
+    private static final String STATUS_CARTAO_APROVADO = "approved";
 
     private final PessoaRepository pessoaRepository;
     private final TipoInscricaoRepository tipoInscricaoRepository;
@@ -108,19 +119,70 @@ public class PessoaService {
                 .toList();
     }
 
-    /* Inscrições confirmadas para o módulo financeiro: participantes
-       (role = PARTICIPANTE) com ingresso definido. Valor vem do ingresso. */
+    /* Inscrições que entram no saldo da comissão: pessoas com ingresso
+       definido que estejam confirmadas (role = PARTICIPANTE) OU ainda
+       pendentes (role = NULL) mas com pagamento evidenciado — comprovante
+       Pix anexado no cadastro ou cartão aprovado.
+
+       Pendente com pagamento conta porque o dinheiro já está na conta: o
+       que falta é o organizador chegar na fila de confirmação, não o
+       pagamento. Deixá-las de fora também contradizia a previsão de
+       gastos, que já escala as despesas por TODOS os inscritos, pendentes
+       inclusive (ver PrevisaoService.fatoresVigentes).
+
+       Quem se cadastrou e não pagou nada, e quem teve o cartão recusado,
+       fica de fora: esse dinheiro não existe em conta nenhuma. Se o
+       cartão resolver depois (o admin reconsulta o status em /admin), a
+       inscrição entra sozinha na leitura seguinte. */
     @Transactional(readOnly = true)
     public List<InscricaoFinanceiraDTO> listarInscricoes() {
-        return pessoaRepository.findAllByRole(Role.PARTICIPANTE).stream()
+        return pessoaRepository.findAllByRoleIsNullOrRole(Role.PARTICIPANTE).stream()
                 .filter(pessoa -> pessoa.getTipoInscricao() != null)
-                .map(pessoa -> new InscricaoFinanceiraDTO(
-                        pessoa.getId(),
-                        pessoa.getNome(),
-                        pessoa.getTipoInscricao().getNome(),
-                        valorDaInscricao(pessoa),
-                        pessoa.getTipoInscricao().getAno()))
+                .filter(pessoa -> confirmada(pessoa) || pagamentoEvidenciado(pessoa))
+                .map(pessoa -> {
+                    BigDecimal bruto = valorDaInscricao(pessoa);
+                    BigDecimal liquido = valorLiquidoDaInscricao(pessoa, bruto);
+                    return new InscricaoFinanceiraDTO(
+                            pessoa.getId(),
+                            pessoa.getNome(),
+                            pessoa.getTipoInscricao().getNome(),
+                            bruto,
+                            bruto.subtract(liquido),
+                            liquido,
+                            pessoa.getFormaPagamento() == null ? null : pessoa.getFormaPagamento().name(),
+                            confirmada(pessoa),
+                            pessoa.getTipoInscricao().getAno());
+                })
                 .toList();
+    }
+
+    private boolean confirmada(Pessoa pessoa) {
+        return pessoa.getRole() == Role.PARTICIPANTE;
+    }
+
+    /* Evidência de que o dinheiro entrou, para quem ainda não foi
+       confirmado: o comprovante do Pix anexado no cadastro ou o cartão
+       aprovado pela Mercado Pago. São as mesmas duas provas que o
+       organizador olha no /admin antes de confirmar. */
+    private boolean pagamentoEvidenciado(Pessoa pessoa) {
+        String comprovante = pessoa.getComprovantePagamento();
+        boolean temComprovante = comprovante != null && !comprovante.isBlank();
+        return temComprovante || STATUS_CARTAO_APROVADO.equals(pessoa.getMpStatus());
+    }
+
+    /* O que sobra para a comissão. No cartão a maquininha retém TAXA_CARTAO
+       do valor do ingresso; nas demais formas o líquido é o próprio bruto.
+
+       A taxa é calculada sobre o ingresso, não sobre o total cobrado no
+       cartão: camiseta avulsa entra na cobrança (ver
+       calcularValorTotalInscricao) mas não é receita registrada no
+       financeiro, então nem ela nem a taxa dela aparecem aqui. */
+    private BigDecimal valorLiquidoDaInscricao(Pessoa pessoa, BigDecimal bruto) {
+        if (pessoa.getFormaPagamento() != FormaPagamento.CARTAO) {
+            return bruto;
+        }
+        return bruto.multiply(BigDecimal.ONE.subtract(TAXA_CARTAO))
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     /* Ingresso de diária é cobrado por dia: o valor cadastrado vale por

@@ -2,13 +2,29 @@ package com.semac.java_api.dto;
 
 import java.math.BigDecimal;
 
-/* Inscrição confirmada para o módulo financeiro (somente leitura).
-   Uma por participante (role = PARTICIPANTE) com ingresso definido.
-   `valor` vem do tipo de ingresso escolhido na confirmação. */
+/* Inscrição que entra no saldo da comissão (somente leitura).
+
+   Uma por pessoa com ingresso definido, confirmada ou não: o dinheiro de
+   quem já pagou está na conta independentemente de o organizador ter
+   chegado na fila de confirmação. `confirmada` diz em qual dos dois
+   grupos a linha está (ver PessoaService.listarInscricoes).
+
+   Três valores em vez de um porque o cartão não entrega o que cobra:
+   - valorBruto:   ingresso × diárias, o que a pessoa pagou
+   - taxaCartao:   o que a maquininha reteve (zero fora do cartão)
+   - valorLiquido: o que sobrou para a comissão — é este que entra no
+                   saldo e no teto da previsão.
+
+   Camiseta avulsa fica de fora dos três: o cartão a cobra junto, mas ela
+   não é receita registrada no financeiro. */
 public record InscricaoFinanceiraDTO(
         Integer id,
         String nomePessoa,
         String tipoInscricao,
-        BigDecimal valor,
+        BigDecimal valorBruto,
+        BigDecimal taxaCartao,
+        BigDecimal valorLiquido,
+        String formaPagamento,
+        boolean confirmada,
         Integer ano
 ) {}

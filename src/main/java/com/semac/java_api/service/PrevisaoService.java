@@ -203,9 +203,14 @@ public class PrevisaoService {
                         .toList();
 
         /* ── O que a comissão arrecadou ──
-           É isto que a comissão tem para gastar, e por isso é o teto da
-           previsão. Não desconta compras: elas já entram na projeção, e
-           descontá-las aqui as contaria duas vezes.
+           É o dinheiro que já está em caixa. Não desconta compras: elas já
+           entram na projeção, e descontá-las aqui as contaria duas vezes.
+
+           O teto de gasto é maior que isto: soma também os patrocínios
+           A_RECEBER (abaixo). Contrato assinado dá lastro para planejar um
+           gasto, mas não é dinheiro sacável — por isso entra no teto e
+           fica fora da arrecadação, que é o que o card "A Comissão tem"
+           mostra no Resumo.
 
            Não há filtro por conta. A FUNDUNESP é reserva de emergência —
            não recebe entrada nem paga saída —, então não existe
@@ -213,24 +218,30 @@ public class PrevisaoService {
            comissão. As inscrições nunca tiveram conta própria (nem
            `pessoa` nem `tipo_inscricao` têm o campo); o valor vem de
            PessoaService para não reimplementar a regra de ingresso por
-           diária (valor × dias). */
-        BigDecimal totalPatrocinios = patrocinadorRepository.findAll().stream()
-                .filter(p -> p.getStatusPagamento() == StatusPagamento.RECEBIDO)
-                .map(Patrocinador::getValorFinal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+           diária (valor × dias) nem a taxa do cartão. O que se soma é o
+           LÍQUIDO: o que a maquininha reteve nunca chegou na conta e não
+           está disponível para gastar. */
+        List<Patrocinador> patrocinadores = patrocinadorRepository.findAll();
+
+        BigDecimal totalPatrocinios = somarPatrocinios(patrocinadores, StatusPagamento.RECEBIDO);
+        BigDecimal patrociniosAReceber = somarPatrocinios(patrocinadores, StatusPagamento.A_RECEBER);
 
         BigDecimal totalDoacoes = doadorRepository.findAll().stream()
                 .map(Doador::getValor)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal totalInscricoes = pessoaService.listarInscricoes().stream()
-                .map(InscricaoFinanceiraDTO::valor)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        List<InscricaoFinanceiraDTO> inscricoes = pessoaService.listarInscricoes();
 
-        BigDecimal teto = totalPatrocinios.add(totalDoacoes).add(totalInscricoes);
+        BigDecimal inscricoesConfirmadas = somarLiquido(inscricoes, InscricaoFinanceiraDTO::confirmada);
+        BigDecimal inscricoesPendentes = somarLiquido(inscricoes, inscricao -> !inscricao.confirmada());
+        BigDecimal totalInscricoes = inscricoesConfirmadas.add(inscricoesPendentes);
+
+        BigDecimal arrecadado = totalPatrocinios.add(totalDoacoes).add(totalInscricoes);
+        BigDecimal teto = arrecadado.add(patrociniosAReceber);
 
         PrevisaoResumoDTO.EntradasDTO entradas = new PrevisaoResumoDTO.EntradasDTO(
-                totalPatrocinios, totalDoacoes, totalInscricoes, teto);
+                totalPatrocinios, totalDoacoes, totalInscricoes,
+                inscricoesConfirmadas, inscricoesPendentes, arrecadado);
 
         /* Reserva de emergência: valor digitado, exibido à parte. Não
            entra no teto nem em nenhum cálculo. */
@@ -244,6 +255,7 @@ public class PrevisaoService {
                 projecaoTotal,
                 teto,
                 teto.subtract(projecaoTotal),
+                patrociniosAReceber,
                 entradas,
                 reservaFundunesp,
                 categorias,
@@ -253,5 +265,20 @@ public class PrevisaoService {
                         fatores.inscritos(),
                         fatores.comissao(),
                         fatores.palestrantes()));
+    }
+
+    private BigDecimal somarPatrocinios(List<Patrocinador> patrocinadores, StatusPagamento status) {
+        return patrocinadores.stream()
+                .filter(patrocinador -> patrocinador.getStatusPagamento() == status)
+                .map(Patrocinador::getValorFinal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal somarLiquido(List<InscricaoFinanceiraDTO> inscricoes,
+                                    Predicate<InscricaoFinanceiraDTO> filtro) {
+        return inscricoes.stream()
+                .filter(filtro)
+                .map(InscricaoFinanceiraDTO::valorLiquido)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

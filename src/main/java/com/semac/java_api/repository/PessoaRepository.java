@@ -20,6 +20,11 @@ public interface PessoaRepository extends JpaRepository<Pessoa, Integer> {
        organizadores (demais roles). Ordenado por nome. */
     List<Pessoa> findByRoleIsNullOrRoleOrderByNomeAsc(Role role);
 
+    /* Mesma condicao da listagem acima, sem ordenacao: e o conjunto que o
+       modulo financeiro soma no saldo da comissao (ver
+       PessoaService.listarInscricoes). */
+    List<Pessoa> findAllByRoleIsNullOrRole(Role role);
+
     /* Mesma condicao da listagem acima, so que contando: e o numero de
        inscritos que alimenta a escala POR_INSCRITO da previsao de gastos
        (ver PrevisaoService.fatoresVigentes). */
