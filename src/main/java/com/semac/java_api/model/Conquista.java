@@ -31,6 +31,12 @@ public class Conquista {
     @Column(name = "pontos_base", nullable = false)
     private Integer pontosBase;
 
+    /* Chave estável usada pelo backend pra conceder essa conquista (ver
+       ConquistaService) sem depender do id numérico — mesmo padrão de
+       TipoInscricao.codigo. */
+    @Column(name = "codigo")
+    private String codigo;
+
     @OneToMany(mappedBy = "conquista")
     private List<ParticipanteConquista> participanteConquistas = new ArrayList<>();
 }
