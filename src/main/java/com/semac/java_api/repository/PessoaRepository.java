@@ -25,6 +25,11 @@ public interface PessoaRepository extends JpaRepository<Pessoa, Integer> {
        (ver PrevisaoService.fatoresVigentes). */
     long countByRoleIsNullOrRole(Role role);
 
+    /* Comissao organizadora: role definido e diferente de PARTICIPANTE.
+       `role <> ?` ja exclui NULL em SQL, entao pendentes ficam de fora --
+       mesmo conjunto de findAllByRoleNot, usado por listarComissao. */
+    long countByRoleNot(Role role);
+
     /* Posição no ranking de xp: quantos participantes têm xp maior que o
        informado (a posição é essa contagem + 1) e o total de participantes,
        usados pelo card de nível em /participantes. */

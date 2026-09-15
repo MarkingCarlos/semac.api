@@ -43,6 +43,7 @@ public class PrevisaoService {
     private final CaixaRepository caixaRepository;
     private final PessoaService pessoaService;
     private final PessoaRepository pessoaRepository;
+    private final PalestranteRepository palestranteRepository;
 
     public PrevisaoService(PrevisaoItemRepository itemRepository,
                            PrevisaoCategoriaRepository categoriaRepository,
@@ -52,7 +53,8 @@ public class PrevisaoService {
                            DoadorRepository doadorRepository,
                            CaixaRepository caixaRepository,
                            PessoaService pessoaService,
-                           PessoaRepository pessoaRepository) {
+                           PessoaRepository pessoaRepository,
+                           PalestranteRepository palestranteRepository) {
         this.itemRepository = itemRepository;
         this.categoriaRepository = categoriaRepository;
         this.orcamentoRepository = orcamentoRepository;
@@ -62,6 +64,7 @@ public class PrevisaoService {
         this.caixaRepository = caixaRepository;
         this.pessoaService = pessoaService;
         this.pessoaRepository = pessoaRepository;
+        this.palestranteRepository = palestranteRepository;
     }
 
     /* ── Escala ──────────────────────────────────────────────────── */
@@ -74,16 +77,18 @@ public class PrevisaoService {
        armadilha silenciosa: bastava ficar zerado para todo item por
        inscrito valer R$ 0,00 sem explicação.
 
-       Os outros dois seguem vindo do orçamento. */
+       `comissao` e `palestrantes` seguem a mesma ideia: a comissão são as
+       pessoas com role definido e diferente de PARTICIPANTE, e os
+       palestrantes são os registros da tabela `palestrante`. Nenhum dos
+       três é digitado — um número à parte ficaria defasado sem ninguém
+       notar, que foi o que aconteceu enquanto eram campos. */
     public record Fatores(int inscritos, int comissao, int palestrantes) {}
 
     public Fatores fatoresVigentes() {
-        Orcamento orcamento = orcamentoVigente();
-        int inscritos = (int) pessoaRepository.countByRoleIsNullOrRole(Role.PARTICIPANTE);
         return new Fatores(
-                inscritos,
-                orcamento == null ? 0 : orcamento.getMembrosComissao(),
-                orcamento == null ? 0 : orcamento.getPalestrantesPrevistos());
+                (int) pessoaRepository.countByRoleIsNullOrRole(Role.PARTICIPANTE),
+                (int) pessoaRepository.countByRoleNot(Role.PARTICIPANTE),
+                (int) palestranteRepository.count());
     }
 
     /* Quanto o valor de um item se multiplica. */
@@ -246,7 +251,7 @@ public class PrevisaoService {
                         orcamento.getId(),
                         orcamento.getAno(),
                         fatores.inscritos(),
-                        orcamento.getMembrosComissao(),
-                        orcamento.getPalestrantesPrevistos()));
+                        fatores.comissao(),
+                        fatores.palestrantes()));
     }
 }

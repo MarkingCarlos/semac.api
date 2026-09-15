@@ -1,33 +1,35 @@
 package com.semac.java_api.controller;
 
-import com.semac.java_api.dto.OrcamentoRequestDTO;
 import com.semac.java_api.dto.OrcamentoResponseDTO;
 import com.semac.java_api.model.Orcamento;
 import com.semac.java_api.model.enums.Role;
 import com.semac.java_api.repository.OrcamentoRepository;
+import com.semac.java_api.repository.PalestranteRepository;
 import com.semac.java_api.repository.PessoaRepository;
-import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Year;
 
-/* Parâmetros do orçamento da edição vigente: os contadores que
-   alimentam a escala das previsões. O teto não vive aqui — é derivado
-   do saldo da conta da comissão (ver PrevisaoService.resumo).
+/* Parâmetros do orçamento da edição vigente — SOMENTE LEITURA.
 
-   Sempre opera sobre a edição mais recente — por isso a rota não tem
-   /{id}. Ano ainda não cadastrado é criado no primeiro PUT. */
+   Nada aqui é digitado: o teto vem do saldo da comissão e os três
+   multiplicadores de escala vêm de contagens no banco. A rota existe
+   para a interface poder mostrar de onde cada número sai; por isso não
+   há PUT. */
 @RestController
 @RequestMapping("/api/orcamento")
 public class OrcamentoController {
 
     private final OrcamentoRepository orcamentoRepository;
     private final PessoaRepository pessoaRepository;
+    private final PalestranteRepository palestranteRepository;
 
     public OrcamentoController(OrcamentoRepository orcamentoRepository,
-                               PessoaRepository pessoaRepository) {
+                               PessoaRepository pessoaRepository,
+                               PalestranteRepository palestranteRepository) {
         this.orcamentoRepository = orcamentoRepository;
         this.pessoaRepository = pessoaRepository;
+        this.palestranteRepository = palestranteRepository;
     }
 
     /* Derivado, não digitado: pessoas com role PARTICIPANTE (confirmadas)
@@ -37,6 +39,15 @@ public class OrcamentoController {
         return (int) pessoaRepository.countByRoleIsNullOrRole(Role.PARTICIPANTE);
     }
 
+    /* Comissão organizadora: role definido e diferente de PARTICIPANTE. */
+    private int membrosComissao() {
+        return (int) pessoaRepository.countByRoleNot(Role.PARTICIPANTE);
+    }
+
+    private int palestrantes() {
+        return (int) palestranteRepository.count();
+    }
+
     /* Sem orçamento cadastrado devolve um zerado (200) em vez de 404 —
        o dashboard precisa renderizar antes do primeiro cadastro. */
     @GetMapping
@@ -44,22 +55,7 @@ public class OrcamentoController {
         return orcamentoRepository.findFirstByOrderByAnoDesc()
                 .map(this::paraResposta)
                 .orElseGet(() -> new OrcamentoResponseDTO(
-                        null, Year.now().getValue(), inscritos(), 0, 0));
-    }
-
-    @PutMapping
-    public OrcamentoResponseDTO atualizar(@Valid @RequestBody OrcamentoRequestDTO dto) {
-        Orcamento orcamento = orcamentoRepository.findFirstByOrderByAnoDesc()
-                .orElseGet(() -> {
-                    Orcamento novo = new Orcamento();
-                    novo.setAno(Year.now().getValue());
-                    return novo;
-                });
-
-        orcamento.setMembrosComissao(dto.membrosComissao());
-        orcamento.setPalestrantesPrevistos(dto.palestrantesPrevistos());
-
-        return paraResposta(orcamentoRepository.save(orcamento));
+                        null, Year.now().getValue(), inscritos(), membrosComissao(), palestrantes()));
     }
 
     private OrcamentoResponseDTO paraResposta(Orcamento orcamento) {
@@ -67,7 +63,7 @@ public class OrcamentoController {
                 orcamento.getId(),
                 orcamento.getAno(),
                 inscritos(),
-                orcamento.getMembrosComissao(),
-                orcamento.getPalestrantesPrevistos());
+                membrosComissao(),
+                palestrantes());
     }
 }

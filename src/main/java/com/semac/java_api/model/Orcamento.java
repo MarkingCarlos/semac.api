@@ -3,12 +3,13 @@ package com.semac.java_api.model;
 import jakarta.persistence.*;
 import lombok.*;
 
-/* Parâmetros do orçamento de uma edição: os contadores que a planilha
-   tratava como constantes soltas nas notas ("comissão: 39 membros") e
-   que aqui alimentam a escala de PrevisaoItem.
+/* A edição da SEMAC. Guarda só o ano.
 
-   O número de inscritos NÃO está aqui: é derivado da contagem de pessoas
-   com role PARTICIPANTE ou NULL (ver PrevisaoService).-
+   Nenhum parâmetro do orçamento é digitado: o teto vem do saldo da
+   comissão e os três multiplicadores de escala vêm de contagens no banco
+   (inscritos, membros da comissão e palestrantes) — ver PrevisaoService.
+   Um número digitado ao lado deles ficaria defasado sem ninguém notar,
+   que foi exatamente o que aconteceu enquanto eram campos.
 
    Não há teto aqui: ele é derivado do saldo da conta da comissão, em
    PrevisaoService.resumo(). Um teto digitado ao lado de um derivado
@@ -29,9 +30,4 @@ public class Orcamento {
     @Column(nullable = false, unique = true)
     private Integer ano;
 
-    @Column(name = "membros_comissao", nullable = false)
-    private Integer membrosComissao = 0;
-
-    @Column(name = "palestrantes_previstos", nullable = false)
-    private Integer palestrantesPrevistos = 0;
 }
