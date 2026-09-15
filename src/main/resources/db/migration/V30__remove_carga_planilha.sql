@@ -27,14 +27,20 @@ UPDATE public.orcamento
        palestrantes_previstos = 0
  WHERE ano = 2026;
 
--- Fornecedores que a V27 criou a partir da planilha. So saem os que
--- nenhum outro registro estiver usando: `compra`, `cotacao_fornecedor` e
--- `variacao_item` tambem apontam para `fornecedor`, e um deles pode ser
--- um fornecedor real ja em uso. Quem estiver referenciado fica.
-DELETE FROM public.fornecedor f
- WHERE f.nome IN ('Zafer', 'Ariart', 'Jacques', 'Shopee', 'Copfac',
-                  'Affectio', 'Tia So', 'Bravo City Hotel')
-   AND NOT EXISTS (SELECT 1 FROM public.compra              c WHERE c.fornecedor_id = f.id)
-   AND NOT EXISTS (SELECT 1 FROM public.cotacao_fornecedor cf WHERE cf.fornecedor_id = f.id)
-   AND NOT EXISTS (SELECT 1 FROM public.variacao_item      vi WHERE vi.fornecedor_id = f.id)
-   AND NOT EXISTS (SELECT 1 FROM public.previsao_item      pi WHERE pi.fornecedor_id = f.id);
+-- Fornecedores NAO sao apagados, de proposito.
+--
+-- A V27 semeia 8 nomes vindos da planilha (Zafer, Ariart, Jacques,
+-- Shopee, Copfac, Affectio, Tia So, Bravo City Hotel) com um INSERT
+-- guardado por nome: se o fornecedor ja existir, ela nao o recria. Mas
+-- depois disso nao ha como distinguir "criado pela V27" de "ja existia":
+-- nao existe marcador nem data de criacao em `fornecedor`.
+--
+-- Uma exclusao por nome apagaria fornecedores reais da comissao que por
+-- acaso tenham o mesmo nome e ainda nao tenham compra lancada -- e sao
+-- fornecedores reais, justamente por isso estao na planilha. Verificado
+-- em simulacao: um 'Ariart' pre-existente, com contato preenchido e sem
+-- compra, era apagado com o contato junto.
+--
+-- Entao os nomes semeados podem sobrar na lista. Removê-los pela aba
+-- Fornecedores e trivial; recuperar um cadastro apagado por migration
+-- nao e.
