@@ -165,14 +165,20 @@ public class InscricaoService {
         return dias;
     }
 
-    /* A pessoa precisa ter escolhido ao menos as camisetas que o ingresso
-       inclui; qualquer excedente é compra avulsa e passa direto. */
+    /* A pessoa precisa escolher exatamente as camisetas que o ingresso
+       inclui — nem menos (falta escolha), nem mais. Camiseta avulsa não é
+       vendida na inscrição pública; só o /admin pode registrar uma,
+       manualmente, na confirmação ou no check-in. */
     private List<CamisetaPedidoDTO> camisetasValidas(TipoInscricao ingresso, List<CamisetaPedidoDTO> camisetas) {
         List<CamisetaPedidoDTO> lista = camisetas == null ? List.of() : camisetas;
         int inclusas = ingresso.getCamisetasGratis() == null ? 0 : ingresso.getCamisetasGratis();
         if (lista.size() < inclusas) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Escolha modelagem e tamanho das camisetas inclusas no ingresso.");
+        }
+        if (lista.size() > inclusas) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Este ingresso não permite comprar camiseta avulsa na inscrição.");
         }
         return lista;
     }
