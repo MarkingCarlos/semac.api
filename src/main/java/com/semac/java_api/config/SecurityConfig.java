@@ -148,6 +148,36 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/tipo-inscricao").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.PUT, "/api/tipo-inscricao/*").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.DELETE, "/api/tipo-inscricao/*").hasAnyRole(PAPEIS_ADMIN)
+                        // ── Conquistas ──────────────────────────────────────────
+                        // A imagem é pública: vai direto num <img src> na área do
+                        // participante e no preview do /admin.
+                        .requestMatchers(HttpMethod.GET, "/api/conquista/*/imagem").permitAll()
+                        // Vitrine do próprio participante (só as conquistas ativas)
+                        .requestMatchers(HttpMethod.GET, "/api/conquista/minhas").hasRole(PAPEL_PARTICIPANTE)
+                        // Confirma que a animação de desbloqueio já foi exibida — o
+                        // participante só marca as próprias (id vem do token).
+                        .requestMatchers(HttpMethod.POST, "/api/conquista/*/vista").hasRole(PAPEL_PARTICIPANTE)
+                        // Leitura do catálogo: qualquer papel de comissão
+                        .requestMatchers(HttpMethod.GET, "/api/conquista").hasAnyRole(PAPEIS_ADMIN)
+                        // Conceder conquista manual (/checkin) — credita pontos que
+                        // mexem no ranking, então fica com diretores e presidência.
+                        // MEMBRO segue podendo marcar presença, mas não conceder.
+                        .requestMatchers(HttpMethod.POST, "/api/conquista/*/conceder").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
+                        // Reavaliação em massa das regras automáticas (botão do /admin)
+                        .requestMatchers(HttpMethod.POST, "/api/conquista/reavaliar").hasAnyRole(PAPEIS_FINANCEIRO)
+                        // Conquistas de um participante e revogação — mesmo público
+                        // da concessão, já que revogar é desfazer uma concessão.
+                        .requestMatchers(HttpMethod.GET, "/api/pessoa/*/conquistas").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
+                        .requestMatchers(HttpMethod.DELETE, "/api/pessoa/*/conquistas/*").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
+                        // Configuração do catálogo (texto, pontos, imagem, ativa) —
+                        // mesmo público que edita níveis e cotas em Informações SEMAC.
+                        .requestMatchers(HttpMethod.PUT, "/api/conquista/*").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers(HttpMethod.PATCH, "/api/conquista/*/ativa").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers(HttpMethod.POST, "/api/conquista/*/imagem").hasAnyRole(PAPEIS_FINANCEIRO)
+                        // Rede de segurança: como a regra final é permitAll, qualquer
+                        // rota de conquista que venha a existir e não esteja listada
+                        // acima nasceria pública. Aqui ela exige ao menos comissão.
+                        .requestMatchers("/api/conquista/**").hasAnyRole(PAPEIS_ADMIN)
                         // Demais (site público) seguem abertos
                         .anyRequest().permitAll()
                 )

@@ -1,6 +1,7 @@
 package com.semac.java_api.controller;
 
 import com.semac.java_api.dto.AtivoRequestDTO;
+import com.semac.java_api.dto.ConquistaDoParticipanteDTO;
 import com.semac.java_api.dto.AtribuirRoleDTO;
 import com.semac.java_api.dto.AtualizarCamisetasRequestDTO;
 import com.semac.java_api.dto.AtualizarPerfilDTO;
@@ -8,6 +9,7 @@ import com.semac.java_api.dto.InscricaoFinanceiraDTO;
 import com.semac.java_api.dto.ParticipanteResponseDTO;
 import com.semac.java_api.dto.PerfilResponseDTO;
 import com.semac.java_api.dto.RankingResponseDTO;
+import com.semac.java_api.service.ConquistaService;
 import com.semac.java_api.service.PessoaService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,12 +34,14 @@ import java.util.List;
 public class PessoaController {
 
     private final PessoaService pessoaService;
+    private final ConquistaService conquistaService;
 
     @Value("${app.upload.dir}")
     private String uploadDir;
 
-    public PessoaController(PessoaService pessoaService) {
+    public PessoaController(PessoaService pessoaService, ConquistaService conquistaService) {
         this.pessoaService = pessoaService;
+        this.conquistaService = conquistaService;
     }
 
     /* Lista para a tabela de participantes do /admin (confirmados + pendentes). */
@@ -79,6 +83,25 @@ public class PessoaController {
     public PerfilResponseDTO atualizarMeuPerfil(@AuthenticationPrincipal Jwt jwt,
                                                 @Valid @RequestBody AtualizarPerfilDTO dto) {
         return pessoaService.atualizarPerfil(idDoToken(jwt), dto);
+    }
+
+    /* ── Conquistas de um participante (painel de revogação) ────── */
+
+    /* O que este participante já conquistou, com quanto xp cada uma
+       creditou e quem concedeu. Restrito a diretores/presidência. */
+    @GetMapping("/{id}/conquistas")
+    public List<ConquistaDoParticipanteDTO> conquistasDoParticipante(@PathVariable Integer id) {
+        return conquistaService.listarDoParticipanteParaAdmin(id);
+    }
+
+    /* Desfaz uma concessão: remove o vínculo, estorna o xp que ela creditou
+       e recalcula o nível. É a saída para um QR lido por engano — e o único
+       jeito de destravar a desativação de uma conquista que já tem gente. */
+    @DeleteMapping("/{id}/conquistas/{conquistaId}")
+    public ResponseEntity<Void> revogarConquista(@PathVariable Integer id,
+                                                 @PathVariable Integer conquistaId) {
+        conquistaService.revogarDoParticipante(id, conquistaId);
+        return ResponseEntity.noContent().build();
     }
 
     /* Extrai o id da pessoa da claim `id` do token (gravada no login). */

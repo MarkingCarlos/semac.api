@@ -46,7 +46,4 @@ public interface PessoaRepository extends JpaRepository<Pessoa, Integer> {
        final é calculada pelo índice na lista, não por essa query). */
     List<Pessoa> findByRoleAndXpIsNotNullOrderByXpDesc(Role role);
 
-    /* Ordem de confirmação (usada pela conquista "primeiros N confirmados",
-       ver ConquistaService) — mais antigo por inscrito_em primeiro. */
-    List<Pessoa> findByRoleOrderByInscritoEmAsc(Role role);
 }

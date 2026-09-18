@@ -72,7 +72,6 @@ public class PessoaService {
     private final CaixaRepository caixaRepository;
     private final ParticipanteConquistaRepository participanteConquistaRepository;
     private final GanhadoresSorteioRepository ganhadoresSorteioRepository;
-    private final ConquistaService conquistaService;
 
     public PessoaService(PessoaRepository pessoaRepository,
                          TipoInscricaoRepository tipoInscricaoRepository,
@@ -83,8 +82,7 @@ public class PessoaService {
                          SorteioRepository sorteioRepository,
                          CaixaRepository caixaRepository,
                          ParticipanteConquistaRepository participanteConquistaRepository,
-                         GanhadoresSorteioRepository ganhadoresSorteioRepository,
-                         ConquistaService conquistaService) {
+                         GanhadoresSorteioRepository ganhadoresSorteioRepository) {
         this.pessoaRepository = pessoaRepository;
         this.tipoInscricaoRepository = tipoInscricaoRepository;
         this.camisaPedidoRepository = camisaPedidoRepository;
@@ -95,7 +93,6 @@ public class PessoaService {
         this.caixaRepository = caixaRepository;
         this.participanteConquistaRepository = participanteConquistaRepository;
         this.ganhadoresSorteioRepository = ganhadoresSorteioRepository;
-        this.conquistaService = conquistaService;
     }
 
     /* Participantes do /admin: confirmados (role = PARTICIPANTE) e os
@@ -262,7 +259,6 @@ public class PessoaService {
            de fora: é escolha do participante na área /participantes. */
         if (role == Role.PARTICIPANTE) {
             inscricaoEventoService.preInscreverEmEventosAbertos(salva);
-            conquistaService.avaliarPrimeirosDezConfirmados();
         } else {
             inscricaoEventoService.removerInscricoesDoParticipante(salva.getId());
         }

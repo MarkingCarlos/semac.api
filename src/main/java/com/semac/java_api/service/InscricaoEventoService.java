@@ -57,15 +57,18 @@ public class InscricaoEventoService {
     private final EventoParticipanteRepository eventoParticipanteRepository;
     private final PessoaRepository pessoaRepository;
     private final NivelRepository nivelRepository;
+    private final ConquistaService conquistaService;
 
     public InscricaoEventoService(EventoRepository eventoRepository,
                                   EventoParticipanteRepository eventoParticipanteRepository,
                                   PessoaRepository pessoaRepository,
-                                  NivelRepository nivelRepository) {
+                                  NivelRepository nivelRepository,
+                                  ConquistaService conquistaService) {
         this.eventoRepository = eventoRepository;
         this.eventoParticipanteRepository = eventoParticipanteRepository;
         this.pessoaRepository = pessoaRepository;
         this.nivelRepository = nivelRepository;
+        this.conquistaService = conquistaService;
     }
 
     /* ── Ocupação (usada para calcular vagas restantes) ──────────── */
@@ -263,6 +266,11 @@ public class InscricaoEventoService {
         if (xpCreditado > 0) {
             creditarXp(participante, xpCreditado);
         }
+
+        /* O check-in é o momento em que o quadro de presenças da pessoa
+           muda, então é aqui que uma conquista automática pode nascer —
+           sem isso ela só apareceria no próximo boot da API. */
+        conquistaService.reavaliarAutomaticas(participante);
 
         String infoAdicional = participante.getTipoInscricao() != null
                 ? participante.getTipoInscricao().getNome()

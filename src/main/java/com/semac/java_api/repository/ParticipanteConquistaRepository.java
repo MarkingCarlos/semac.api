@@ -10,4 +10,9 @@ public interface ParticipanteConquistaRepository extends JpaRepository<Participa
     List<ParticipanteConquista> findByPk_ParticipanteId(Integer participanteId);
     boolean existsByPk_ParticipanteIdAndPk_ConquistaId(Integer participanteId, Integer conquistaId);
     void deleteByPk_ParticipanteId(Integer participanteId);
+
+    /* Quantos participantes já têm uma conquista. Usado para travar a
+       desativação (ConquistaService.alterarAtiva) e para o /admin explicar
+       o motivo na interface. */
+    long countByPk_ConquistaId(Integer conquistaId);
 }
