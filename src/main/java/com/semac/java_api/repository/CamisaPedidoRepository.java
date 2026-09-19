@@ -17,21 +17,20 @@ public interface CamisaPedidoRepository extends JpaRepository<CamisaPedido, Inte
        pediu — usado para recalcular o valor total da inscrição no cartão. */
     long countByPessoaIdAndAvulsaTrue(Integer pessoaId);
 
-    /* Só entram pedidos de pessoas confirmadas (role != null) — inscrições
-       ainda aguardando confirmação no /admin não contam no relatório. */
+    /* Todos os pedidos, inclusive os de inscrições ainda aguardando
+       confirmação no /admin (role null) — o relatório serve para fechar a
+       compra, então precisa contar quem já pediu mesmo sem confirmação. */
     @Query("SELECT c.tamanho AS tamanho, c.modelo AS modelo, COUNT(c) AS total " +
            "FROM CamisaPedido c JOIN c.pessoa p " +
-           "WHERE p.role IS NOT NULL " +
            "GROUP BY c.tamanho, c.modelo")
     List<EstoqueView> consultarEstoque();
 
     /* Quantas camisetas existem por avulsa (true/false) e role da pessoa.
        Base do relatório de camisetas — dadas/avulsas e comissão/participantes
-       vêm direto do campo `avulsa`, editável no /admin. Só entram pedidos de
-       pessoas confirmadas (role != null). */
+       vêm direto do campo `avulsa`, editável no /admin. Inclui pendentes
+       (role null), que o serviço trata como participantes. */
     @Query("SELECT c.avulsa AS avulsa, p.role AS role, COUNT(c) AS total " +
            "FROM CamisaPedido c JOIN c.pessoa p " +
-           "WHERE p.role IS NOT NULL " +
            "GROUP BY c.avulsa, p.role")
     List<ContagemCamisetaGrupoView> contarCamisetasPorAvulsaERole();
 }

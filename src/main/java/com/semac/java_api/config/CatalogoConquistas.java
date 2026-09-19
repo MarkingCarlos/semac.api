@@ -60,7 +60,7 @@ public final class CatalogoConquistas {
             new ConquistaSemeada(
                     CODIGO_MINICURSO_CONCLUIDO,
                     "Minicurso Concluído",
-                    "Compareça a todos os encontros de um minicurso em que você se inscreveu.",
+                    "Compareça a todos os minicurso em que você se inscreveu.",
                     AUTOMATICA, 3, 3),
             new ConquistaSemeada(
                     CODIGO_CARTAZ_COMPLETO,

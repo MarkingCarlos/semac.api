@@ -41,6 +41,12 @@ public class RelatorioService {
        DIRETOR_SITE/PRESIDENTE (ver PessoaService.atualizarCamisetas), não é
        mais calculado comparando com o ingresso.
 
+       Entram também os inscritos ainda não confirmados no /admin (role
+       null): eles já pediram camiseta no cadastro e o relatório existe para
+       fechar a compra com o fornecedor. Pendente conta como participante —
+       é o que ele será ao confirmar, e ninguém entra na comissão pelo
+       cadastro público.
+
        "Comissão" × "participantes" (seção Por perfil) não é simplesmente o
        role de quem pediu: toda avulsa é do modelo de participante, mesmo
        quando quem compra é da comissão — a camiseta exclusiva da comissão é
@@ -48,9 +54,10 @@ public class RelatorioService {
        avulsa cai em "participantes".
 
        O financeiro (receita/custo/lucro) considera só as avulsas — as
-       dadas já estão cobertas pelo preço do ingresso. Receita usa o preço
-       vigente em camiseta_extra para o ano corrente; custo usa a
-       constante acima. */
+       dadas já estão cobertas pelo preço do ingresso —, inclusive as de
+       pendentes, então a receita é projeção: parte pode ainda não ter sido
+       paga. Receita usa o preço vigente em camiseta_extra para o ano
+       corrente; custo usa a constante acima. */
     @Transactional(readOnly = true)
     public RelatorioCamisetasDTO relatorioCamisetas() {
         int totalGeral = 0;
@@ -66,10 +73,10 @@ public class RelatorioService {
                 totalParticipantes += total;
             } else {
                 totalDadas += total;
-                if (linha.getRole() == Role.PARTICIPANTE) {
-                    totalParticipantes += total;
-                } else {
+                if (linha.getRole() != null && linha.getRole() != Role.PARTICIPANTE) {
                     totalComissao += total;
+                } else {
+                    totalParticipantes += total;
                 }
             }
         }
