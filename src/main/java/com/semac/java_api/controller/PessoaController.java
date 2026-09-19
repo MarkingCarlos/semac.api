@@ -1,6 +1,7 @@
 package com.semac.java_api.controller;
 
 import com.semac.java_api.dto.AtivoRequestDTO;
+import com.semac.java_api.dto.CadastroManualRequestDTO;
 import com.semac.java_api.dto.ConquistaDoParticipanteDTO;
 import com.semac.java_api.dto.AtribuirRoleDTO;
 import com.semac.java_api.dto.AtualizarCamisetasRequestDTO;
@@ -42,6 +43,14 @@ public class PessoaController {
     public PessoaController(PessoaService pessoaService, ConquistaService conquistaService) {
         this.pessoaService = pessoaService;
         this.conquistaService = conquistaService;
+    }
+
+    /* Cadastro manual pela comissão (botão "Adicionar participante" na aba
+       Participantes do /admin) — para quem se inscreveu no balcão e nunca
+       passou pelo formulário público. */
+    @PostMapping
+    public ResponseEntity<ParticipanteResponseDTO> cadastrarManual(@Valid @RequestBody CadastroManualRequestDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(pessoaService.cadastrarManual(dto));
     }
 
     /* Lista para a tabela de participantes do /admin (confirmados + pendentes). */

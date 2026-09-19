@@ -126,6 +126,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/pagamento/cartao/*/status").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.GET, "/api/relatorio/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers(HttpMethod.PATCH, "/api/pessoa/*/role", "/api/pessoa/*/ativo", "/api/pessoa/*/desconfirmar").hasAnyRole(PAPEIS_ADMIN)
+                        // Cadastro manual de participante (inscrição de balcão) — mesmo público
+                        // de quem confirma ou exclui inscrição
+                        .requestMatchers(HttpMethod.POST, "/api/pessoa").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.DELETE, "/api/pessoa/*").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.POST, "/api/evento").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.PUT, "/api/evento/*").hasAnyRole(PAPEIS_ADMIN)
@@ -178,6 +181,19 @@ public class SecurityConfig {
                         // rota de conquista que venha a existir e não esteja listada
                         // acima nasceria pública. Aqui ela exige ao menos comissão.
                         .requestMatchers("/api/conquista/**").hasAnyRole(PAPEIS_ADMIN)
+                        // ── Termo (/termo) ──────────────────────────────────────
+                        // Jogar é do participante: a vitória credita xp e as
+                        // tentativas são contadas por pessoa no banco.
+                        .requestMatchers(HttpMethod.GET, "/api/termo/hoje").hasRole(PAPEL_PARTICIPANTE)
+                        .requestMatchers(HttpMethod.POST, "/api/termo/palpite").hasRole(PAPEL_PARTICIPANTE)
+                        // Cadastro da palavra de cada dia — mesmo público que
+                        // edita níveis e cotas em Informações SEMAC. A palavra
+                        // nunca volta na resposta, nem para quem a cadastrou.
+                        .requestMatchers(HttpMethod.GET, "/api/termo/palavras").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers(HttpMethod.PUT, "/api/termo/palavras/*").hasAnyRole(PAPEIS_FINANCEIRO)
+                        // Rede de segurança, mesmo motivo de /api/conquista/**:
+                        // rota nova de termo não nasce pública.
+                        .requestMatchers("/api/termo/**").hasAnyRole(PAPEIS_ADMIN)
                         // Demais (site público) seguem abertos
                         .anyRequest().permitAll()
                 )

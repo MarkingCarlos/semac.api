@@ -2,6 +2,7 @@ package com.semac.java_api.service;
 
 import com.semac.java_api.dto.AtualizarCamisetaPerfilDTO;
 import com.semac.java_api.dto.AtualizarPerfilDTO;
+import com.semac.java_api.dto.CadastroManualRequestDTO;
 import com.semac.java_api.dto.CamisetaAdminDTO;
 import com.semac.java_api.dto.CamisetaParticipanteDTO;
 import com.semac.java_api.dto.CamisetaPerfilDTO;
@@ -14,6 +15,7 @@ import com.semac.java_api.dto.PresencaParticipanteDTO;
 import com.semac.java_api.dto.RankingParticipanteDTO;
 import com.semac.java_api.dto.RankingResponseDTO;
 import com.semac.java_api.dto.TipoInscricaoResponseDTO;
+import com.semac.java_api.exception.RecursoDuplicadoException;
 import com.semac.java_api.model.CamisaPedido;
 import com.semac.java_api.model.CamisetaExtra;
 import com.semac.java_api.model.Nivel;
@@ -31,6 +33,7 @@ import com.semac.java_api.repository.PessoaRepository;
 import com.semac.java_api.repository.SorteioRepository;
 import com.semac.java_api.repository.TipoInscricaoRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,10 +41,12 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class PessoaService {
@@ -72,6 +77,7 @@ public class PessoaService {
     private final CaixaRepository caixaRepository;
     private final ParticipanteConquistaRepository participanteConquistaRepository;
     private final GanhadoresSorteioRepository ganhadoresSorteioRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public PessoaService(PessoaRepository pessoaRepository,
                          TipoInscricaoRepository tipoInscricaoRepository,
@@ -82,7 +88,8 @@ public class PessoaService {
                          SorteioRepository sorteioRepository,
                          CaixaRepository caixaRepository,
                          ParticipanteConquistaRepository participanteConquistaRepository,
-                         GanhadoresSorteioRepository ganhadoresSorteioRepository) {
+                         GanhadoresSorteioRepository ganhadoresSorteioRepository,
+                         PasswordEncoder passwordEncoder) {
         this.pessoaRepository = pessoaRepository;
         this.tipoInscricaoRepository = tipoInscricaoRepository;
         this.camisaPedidoRepository = camisaPedidoRepository;
@@ -93,6 +100,7 @@ public class PessoaService {
         this.caixaRepository = caixaRepository;
         this.participanteConquistaRepository = participanteConquistaRepository;
         this.ganhadoresSorteioRepository = ganhadoresSorteioRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /* Participantes do /admin: confirmados (role = PARTICIPANTE) e os
@@ -216,6 +224,114 @@ public class PessoaService {
         return totalIngresso.add(precoAvulsa.multiply(BigDecimal.valueOf(avulsas)));
     }
 
+    /* Cadastro manual feito pela comissão no /admin — a inscrição de
+       balcão: quem pagou em dinheiro, ganhou cortesia ou se inscreveu
+       presencialmente e nunca passou pelo formulário do site.
+
+       Ao contrário do cadastro público (InscricaoService.cadastrar), não
+       aplica o código de acesso do ingresso nem a restrição `restritoUnesp`:
+       essas barreiras existem contra gente de fora se auto-inscrevendo em
+       ingresso que não é seu, e aqui quem cadastra é a própria comissão.
+       Pelo mesmo motivo, as camisetas vêm com o `avulsa` já decidido por
+       quem cadastra, em vez de deduzido do que o ingresso inclui.
+
+       `confirmar` decide se a pessoa já entra valendo (role = PARTICIPANTE,
+       com xp/nível e pré-inscrição nos eventos abertos, igual a
+       atribuirRole) ou se cai na fila de pendentes (role = NULL), como
+       quem se inscreve pelo site. */
+    @Transactional
+    public ParticipanteResponseDTO cadastrarManual(CadastroManualRequestDTO dto) {
+        // E-mail e CPF são únicos no banco — checa antes de salvar para
+        // devolver um aviso claro (409) em vez de estourar erro de banco.
+        if (pessoaRepository.findByEmail(dto.email()).isPresent()) {
+            throw new RecursoDuplicadoException("Este e-mail já está cadastrado.");
+        }
+        if (pessoaRepository.findByCpf(dto.cpf()).isPresent()) {
+            throw new RecursoDuplicadoException("Este CPF já está cadastrado.");
+        }
+
+        TipoInscricao ingresso = tipoInscricaoRepository.findById(dto.tipoInscricaoId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Tipo de ingresso inválido."));
+        if (!Boolean.TRUE.equals(ingresso.getAtivo())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Este ingresso não está mais disponível.");
+        }
+
+        Pessoa pessoa = new Pessoa();
+        pessoa.setNome(dto.nome().trim());
+        pessoa.setCpf(dto.cpf());
+        pessoa.setEmail(dto.email().trim());
+        pessoa.setSenha(passwordEncoder.encode(dto.senha()));
+        pessoa.setUuid(UUID.randomUUID().toString());
+        pessoa.setRa(dto.ra() == null || dto.ra().isBlank() ? null : dto.ra().trim());
+        pessoa.setTelefone(dto.telefone());
+        pessoa.setEhUnesp(dto.ehUnesp());
+        pessoa.setAtivo(true);
+        pessoa.setInscritoEm(LocalDateTime.now());
+        pessoa.setTipoInscricao(ingresso);
+        pessoa.setDiasInscricao(diasValidos(ingresso, dto.dias()));
+
+        if (dto.confirmar()) {
+            pessoa.setRole(Role.PARTICIPANTE);
+            aplicarXpInicial(pessoa);
+        } else {
+            pessoa.setRole(null);
+        }
+
+        Pessoa salva = pessoaRepository.save(pessoa);
+
+        List<CamisaPedido> pedidos = (dto.camisetas() == null ? List.<CamisetaAdminDTO>of() : dto.camisetas())
+                .stream()
+                .map(item -> {
+                    CamisaPedido pedido = new CamisaPedido();
+                    pedido.setPessoa(salva);
+                    pedido.setModelo(item.modelo());
+                    pedido.setTamanho(item.tamanho());
+                    pedido.setAvulsa(item.avulsa());
+                    return pedido;
+                })
+                .toList();
+        camisaPedidoRepository.saveAll(pedidos);
+
+        if (dto.confirmar()) {
+            inscricaoEventoService.preInscreverEmEventosAbertos(salva);
+        }
+
+        // Camisetas passadas explicitamente: a coleção lazy da pessoa
+        // recém-criada ainda não enxerga os pedidos salvos acima (mesmo
+        // cuidado de atualizarCamisetas).
+        List<CamisetaParticipanteDTO> camisetas = pedidos.stream().map(this::paraCamiseta).toList();
+        return paraResposta(salva, camisetas);
+    }
+
+    /* Ingresso de diária exige uma quantidade dentro do limite; ingresso de
+       valor fixo não guarda diária nenhuma, mesmo que o cliente mande uma.
+       Espelha a validação do cadastro público (InscricaoService). */
+    private Integer diasValidos(TipoInscricao ingresso, Integer dias) {
+        if (!Boolean.TRUE.equals(ingresso.getPorDia())) {
+            return null;
+        }
+        int maximo = ingresso.getMaxDias() == null ? 1 : ingresso.getMaxDias();
+        if (dias == null || dias < 1 || dias > maximo) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Escolha de 1 a " + maximo + " diárias para este ingresso.");
+        }
+        return dias;
+    }
+
+    /* Xp de boas-vindas + nível correspondente, dados a quem passa a valer
+       como participante — tanto na confirmação de uma inscrição do site
+       (atribuirRole) quanto no cadastro manual do balcão. */
+    private void aplicarXpInicial(Pessoa pessoa) {
+        Nivel nivelInicial = nivelRepository
+                .findTopByXpMinimoLessThanEqualOrderByXpMinimoDesc(XP_INICIAL_CONFIRMACAO)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Cadastre ao menos um nível em Informações SEMAC antes de confirmar participantes."));
+        pessoa.setXp(XP_INICIAL_CONFIRMACAO);
+        pessoa.setNivel(nivelInicial);
+    }
+
     /* Confirmação da inscrição: atribui o papel da pessoa. Aceita
        PARTICIPANTE ou qualquer papel de comissão (MEMBRO, DIRETOR_* e
        PRESIDENTE). Para PARTICIPANTE, exige um tipo de ingresso válido
@@ -236,13 +352,7 @@ public class PessoaService {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                             "Tipo de ingresso inválido."));
             pessoa.setTipoInscricao(tipo);
-
-            Nivel nivelInicial = nivelRepository
-                    .findTopByXpMinimoLessThanEqualOrderByXpMinimoDesc(XP_INICIAL_CONFIRMACAO)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                            "Cadastre ao menos um nível em Informações SEMAC antes de confirmar participantes."));
-            pessoa.setXp(XP_INICIAL_CONFIRMACAO);
-            pessoa.setNivel(nivelInicial);
+            aplicarXpInicial(pessoa);
         } else {
             pessoa.setTipoInscricao(null);
             pessoa.setDiasInscricao(null);
