@@ -17,8 +17,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.semac.java_api.dto.OperadorCheckinDTO;
+
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,11 +48,23 @@ public class InscricaoEventoService {
     private static final Set<StatusPresenca> STATUS_OCUPA_VAGA =
             Set.of(StatusPresenca.INSCRITO, StatusPresenca.PRESENTE);
 
+    /* Teto do "INICIAR EVENTO" (ver inicioEfetivo). Hardcoded de propósito,
+       diferente dos dois cortes de atraso: é um limite de sanidade da
+       regra, não um botão de ajuste fino do evento. */
+    private static final long INICIO_AUTOMATICO_MINUTOS = 30;
+
+    /* O check-in de um evento só abre 1h antes do horário agendado. Antes
+       disso a leitura é recusada e fica registrada (ver marcarPresente). */
+    private static final long ANTECEDENCIA_MAXIMA_CHECKIN_MINUTOS = 60;
+
+    private static final DateTimeFormatter HORA_CHECKIN = DateTimeFormatter.ofPattern("HH:mm");
+
     private final EventoRepository eventoRepository;
     private final EventoParticipanteRepository eventoParticipanteRepository;
     private final PessoaRepository pessoaRepository;
     private final NivelRepository nivelRepository;
     private final ConquistaService conquistaService;
+    private final TentativaCheckinService tentativaCheckinService;
 
     /* Os dois cortes de atraso do check-in (ver calcularXpCreditado) são
        configuráveis no /admin -> Informações SEMAC, regras
@@ -61,12 +76,14 @@ public class InscricaoEventoService {
                                   PessoaRepository pessoaRepository,
                                   NivelRepository nivelRepository,
                                   ConquistaService conquistaService,
+                                  TentativaCheckinService tentativaCheckinService,
                                   RegraXpService regraXpService) {
         this.eventoRepository = eventoRepository;
         this.eventoParticipanteRepository = eventoParticipanteRepository;
         this.pessoaRepository = pessoaRepository;
         this.nivelRepository = nivelRepository;
         this.conquistaService = conquistaService;
+        this.tentativaCheckinService = tentativaCheckinService;
         this.regraXpService = regraXpService;
     }
 
@@ -222,25 +239,25 @@ public class InscricaoEventoService {
        check-in os dois casos pedem a mesma ação (busca manual ou
        confirmar a inscrição na secretaria), então a mensagem é a mesma. */
     @Transactional
-    public PresencaConfirmadaDTO registrarPresencaPorUuid(Integer eventoId, String uuid) {
+    public PresencaConfirmadaDTO registrarPresencaPorUuid(Integer eventoId, String uuid, OperadorCheckinDTO operador) {
         Pessoa participante = pessoaRepository.findByUuid(uuid)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Este participante não está cadastrado para esse evento."));
-        return marcarPresente(eventoId, participante);
+        return marcarPresente(eventoId, participante, operador);
     }
 
     /* Confirmação manual (busca por nome/e-mail na ferramenta /checkin,
        quando a leitura do QR falha). O participante já foi identificado
        visualmente pela lista, então basta o id. */
     @Transactional
-    public PresencaConfirmadaDTO registrarPresencaPorId(Integer eventoId, Integer participanteId) {
+    public PresencaConfirmadaDTO registrarPresencaPorId(Integer eventoId, Integer participanteId, OperadorCheckinDTO operador) {
         Pessoa participante = pessoaRepository.findById(participanteId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Este participante não está cadastrado para esse evento."));
-        return marcarPresente(eventoId, participante);
+        return marcarPresente(eventoId, participante, operador);
     }
 
-    private PresencaConfirmadaDTO marcarPresente(Integer eventoId, Pessoa participante) {
+    private PresencaConfirmadaDTO marcarPresente(Integer eventoId, Pessoa participante, OperadorCheckinDTO operador) {
         EventoParticipante inscricao = eventoParticipanteRepository
                 .findById(new EventoParticipantePK(eventoId, participante.getId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
@@ -253,8 +270,11 @@ public class InscricaoEventoService {
 
         LocalDateTime agora = LocalDateTime.now();
         Evento evento = inscricao.getEvento();
+
+        exigirJanelaDeCheckinAberta(evento, participante, operador, agora);
+
         long atrasoMinutos = Math.max(0,
-                Duration.between(evento.getDataHoraInicio(), agora).toMinutes());
+                Duration.between(inicioEfetivo(evento), agora).toMinutes());
         int xpCreditado = calcularXpCreditado(evento, atrasoMinutos);
 
         inscricao.setStatus(StatusPresenca.PRESENTE);
@@ -277,11 +297,82 @@ public class InscricaoEventoService {
         return new PresencaConfirmadaDTO(participante.getNome(), infoAdicional, xpCreditado, atrasoMinutos);
     }
 
+    /* ── Início real do evento e janela de check-in ──────────────── */
+
+    /* Marca o evento como começado, a partir do botão "iniciar" da lista de
+       eventos do /admin (aba Conteúdo, restrita a diretoria de conteúdo,
+       site e presidência). Só o primeiro clique vale: repetir por engano
+       (ou duas pessoas clicando) não empurra a âncora do atraso para
+       frente, o que na prática devolveria xp a quem já tinha chegado
+       tarde. Devolve sempre o valor vigente, então clicar de novo não é
+       erro. */
+    @Transactional
+    public LocalDateTime iniciarEvento(Integer eventoId) {
+        Evento evento = eventoRepository.findById(eventoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento não encontrado."));
+
+        if (evento.getIniciadoEm() == null) {
+            evento.setIniciadoEm(LocalDateTime.now());
+            eventoRepository.save(evento);
+        }
+        return evento.getIniciadoEm();
+    }
+
+    /* De quando o atraso é contado. Sem "INICIAR EVENTO", é o horário
+       agendado — o comportamento de sempre. Com, é o clique, preso entre
+       dois limites:
+
+       - piso no horário agendado: clicar antes da hora não antecipa o
+         contador, senão quem chegasse pontual já entraria atrasado num
+         evento cujo credenciamento abriu cedo;
+       - teto em +30min: clicar tarde demais (ou esquecer e lembrar no
+         fim) não apaga a regra de atraso do evento inteiro. */
+    private LocalDateTime inicioEfetivo(Evento evento) {
+        LocalDateTime agendado = evento.getDataHoraInicio();
+        LocalDateTime iniciadoEm = evento.getIniciadoEm();
+        if (iniciadoEm == null || iniciadoEm.isBefore(agendado)) {
+            return agendado;
+        }
+        LocalDateTime teto = agendado.plusMinutes(INICIO_AUTOMATICO_MINUTOS);
+        return iniciadoEm.isAfter(teto) ? teto : iniciadoEm;
+    }
+
+    /* O check-in só abre 1h antes do horário agendado — sem isso dava pra
+       "adiantar" presenças de eventos do dia seguinte, com xp cheio e sem
+       ninguém ter posto o pé no evento. Note que o corte é sobre o horário
+       agendado, não sobre inicioEfetivo: adiar o início não deve fechar
+       uma janela que já estava aberta para quem está na fila.
+
+       A tentativa recusada fica registrada com quem operava a leitura. O
+       log vai numa transação à parte de propósito: o 409 abaixo derruba
+       esta transação, e gravado junto ele sumiria no rollback. */
+    private void exigirJanelaDeCheckinAberta(Evento evento,
+                                             Pessoa participante,
+                                             OperadorCheckinDTO operador,
+                                             LocalDateTime agora) {
+        LocalDateTime abertura = evento.getDataHoraInicio().minusMinutes(ANTECEDENCIA_MAXIMA_CHECKIN_MINUTOS);
+        if (!agora.isBefore(abertura)) {
+            return;
+        }
+
+        long minutosAntes = Duration.between(agora, abertura).toMinutes();
+        if (operador != null) {
+            tentativaCheckinService.registrar(evento, participante, operador, agora, minutosAntes);
+        }
+
+        throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "O check-in de \"" + evento.getNome() + "\" abre 1h antes do início, às "
+                        + abertura.format(HORA_CHECKIN) + ".");
+    }
+
     /* Xp cheio do tipo de evento; metade a partir do corte
        ATRASO_METADE_MINUTOS (arredondado pra baixo); zero a partir de
        ATRASO_ZERO_MINUTOS — a presença continua registrada, só o xp que
        muda. Os dois cortes são regras editáveis (RegraXpService), que
-       garante metade < zero na hora de salvar. */
+       garante metade < zero na hora de salvar.
+
+       O atraso chega medido a partir de inicioEfetivo, não do horário
+       agendado: evento que atrasou não penaliza quem chegou na hora. */
     private int calcularXpCreditado(Evento evento, long atrasoMinutos) {
         int pontosBase = evento.getTipoEvento().getPontos();
         if (atrasoMinutos >= regraXpService.atrasoZeroMinutos()) {

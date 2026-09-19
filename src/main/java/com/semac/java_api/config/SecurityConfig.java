@@ -62,6 +62,13 @@ public class SecurityConfig {
     private static final String[] PAPEIS_ADMIN_SEM_MEMBRO =
             Arrays.stream(PAPEIS_ADMIN).filter(p -> !"MEMBRO".equals(p)).toArray(String[]::new);
 
+    /* Quem manda na programação: criar, editar, excluir e marcar o início
+       real de um evento. Espelha os papéis da aba Conteúdo do /admin
+       (Admin.jsx). MEMBRO fica de fora — a aba já não aparecia pra ele,
+       mas as rotas aceitavam qualquer papel de comissão, então dava pra
+       mexer na programação chamando a API direto. */
+    private static final String[] PAPEIS_CONTEUDO = { "DIRETOR_SITE", "PRESIDENTE", "DIRETOR_CONTEUDO" };
+
     private static final String PAPEL_PARTICIPANTE = "PARTICIPANTE";
 
     private final SecretKey chaveJwt;
@@ -148,10 +155,14 @@ public class SecurityConfig {
                         // de quem confirma ou exclui inscrição
                         .requestMatchers(HttpMethod.POST, "/api/pessoa").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.DELETE, "/api/pessoa/*").hasAnyRole(PAPEIS_ADMIN)
-                        .requestMatchers(HttpMethod.POST, "/api/evento").hasAnyRole(PAPEIS_ADMIN)
-                        .requestMatchers(HttpMethod.PUT, "/api/evento/*").hasAnyRole(PAPEIS_ADMIN)
-                        .requestMatchers(HttpMethod.DELETE, "/api/evento/*").hasAnyRole(PAPEIS_ADMIN)
+                        // Programação é da aba Conteúdo — MEMBRO não cria nem mexe em evento
+                        .requestMatchers(HttpMethod.POST, "/api/evento").hasAnyRole(PAPEIS_CONTEUDO)
+                        .requestMatchers(HttpMethod.PUT, "/api/evento/*").hasAnyRole(PAPEIS_CONTEUDO)
+                        .requestMatchers(HttpMethod.DELETE, "/api/evento/*").hasAnyRole(PAPEIS_CONTEUDO)
+                        // Marcar presença segue com qualquer papel de comissão: quem opera o /checkin
                         .requestMatchers(HttpMethod.POST, "/api/evento/*/presenca", "/api/evento/*/presenca/*").hasAnyRole(PAPEIS_ADMIN)
+                        // "INICIAR EVENTO" do /admin: move o marco do atraso pro início real
+                        .requestMatchers(HttpMethod.POST, "/api/evento/*/iniciar").hasAnyRole(PAPEIS_CONTEUDO)
                         .requestMatchers("/api/tipo-evento/**").hasAnyRole(PAPEIS_ADMIN)
                         // GET /api/trilha segue aberto — alimenta o filtro da programação pública
                         .requestMatchers(HttpMethod.POST, "/api/trilha").hasAnyRole(PAPEIS_ADMIN)
@@ -203,6 +214,7 @@ public class SecurityConfig {
                         // Jogar é do participante: a vitória credita xp e as
                         // tentativas são contadas por pessoa no banco.
                         .requestMatchers(HttpMethod.GET, "/api/termo/hoje").hasRole(PAPEL_PARTICIPANTE)
+                        .requestMatchers(HttpMethod.GET, "/api/termo/meus").hasRole(PAPEL_PARTICIPANTE)
                         .requestMatchers(HttpMethod.POST, "/api/termo/palpite").hasRole(PAPEL_PARTICIPANTE)
                         // Cadastro da palavra de cada dia — mesmo público que
                         // edita níveis e cotas em Informações SEMAC. A palavra

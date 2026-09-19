@@ -26,7 +26,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /* Jogo do Termo (/termo).
 
@@ -104,6 +106,43 @@ public class TermoService {
                     List.of(), false, false, null, null);
         }
         return montarEstado(jogo, palavra);
+    }
+
+    /* Histórico dos dias de Termo que já aconteceram, com o que a pessoa
+       fez em cada um — é o que a aba "Desafios" de /participantes desenha,
+       um card por dia.
+
+       Dia que passou continua na lista mesmo que a pessoa não tenha jogado
+       (vem com `tentativasUsadas` 0): o card existe para mostrar que houve
+       Termo naquele dia, e não só o que ela fez. Dias ainda por vir ficam
+       de fora — quem está no dia 2 não precisa saber que o 3 existe.
+
+       Esta é a única leitura do Termo que atravessa vários dias, e por isso
+       a que mais pediria a palavra secreta de volta. Nenhuma sai:
+       TermoDiaDTO não tem campo para ela. */
+    @Transactional(readOnly = true)
+    public List<TermoDiaDTO> listarDiasDoParticipante(Integer pessoaId) {
+        LocalDate hoje = LocalDate.now();
+        List<TermoPalavra> ocorridas =
+                palavraRepository.findByAnoAndDataLessThanEqualOrderByDiaAsc(hoje.getYear(), hoje);
+        if (ocorridas.isEmpty()) {
+            return List.of();
+        }
+
+        Pessoa pessoa = buscarPessoa(pessoaId);
+        Map<Integer, TermoJogo> jogosPorPalavra = jogoRepository
+                .findByPessoaIdAndPalavraIdIn(pessoa.getId(),
+                        ocorridas.stream().map(TermoPalavra::getId).toList())
+                .stream()
+                /* Só existe um jogo por pessoa+palavra (unique no banco), mas
+                   o join das tentativas pode repetir a raiz — a função de
+                   desempate fica para não trocar isso por um estouro. */
+                .collect(Collectors.toMap(jogo -> jogo.getPalavra().getId(), jogo -> jogo,
+                        (primeiro, repetido) -> primeiro));
+
+        return ocorridas.stream()
+                .map(palavra -> montarDia(palavra, jogosPorPalavra.get(palavra.getId()), hoje))
+                .toList();
     }
 
     /* Confere um palpite e gasta uma tentativa.
@@ -270,6 +309,21 @@ public class TermoService {
                 venceu,
                 encerrado ? (jogo.getXpCreditado() == null ? 0 : jogo.getXpCreditado()) : null,
                 encerrado ? normalizar(palavra.getPalavra()) : null);
+    }
+
+    /* Uma linha do histórico. `jogo` null = a pessoa não abriu o Termo
+       daquele dia; o card ainda aparece, só que sem tentativa nenhuma. */
+    private TermoDiaDTO montarDia(TermoPalavra palavra, TermoJogo jogo, LocalDate hoje) {
+        boolean encerrado = jogo != null && jogoEncerrado(jogo);
+        boolean venceu = jogo != null && Boolean.TRUE.equals(jogo.getVenceu());
+        return new TermoDiaDTO(
+                palavra.getDia(),
+                palavra.getData(),
+                palavra.getData().isEqual(hoje),
+                encerrado,
+                venceu,
+                venceu ? (jogo.getXpCreditado() == null ? 0 : jogo.getXpCreditado()) : null,
+                jogo == null ? 0 : jogo.getTentativas().size());
     }
 
     private Pessoa buscarPessoa(Integer pessoaId) {

@@ -29,6 +29,13 @@ public class Evento {
     @Column(name = "data_hora_fim", nullable = false)
     private LocalDateTime dataHoraFim;
 
+    /* Quando o evento começou de verdade, gravado pelo botão "iniciar" da
+       lista de eventos do /admin. Null enquanto ninguém clicar — aí o
+       atraso conta do horário agendado (ver
+       InscricaoEventoService.inicioEfetivo). */
+    @Column(name = "iniciado_em")
+    private LocalDateTime iniciadoEm;
+
     private String local;
 
     @Column(name = "capacidade_maxima", nullable = false)

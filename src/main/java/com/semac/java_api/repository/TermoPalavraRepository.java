@@ -16,6 +16,12 @@ public interface TermoPalavraRepository extends JpaRepository<TermoPalavra, Inte
 
     List<TermoPalavra> findByAnoOrderByDiaAsc(Integer ano);
 
+    /* Os dias que já aconteceram, para o histórico da aba "Desafios". O
+       corte por data é o que mantém os dias ainda por vir fora da
+       resposta: saber que existe palavra para amanhã não é informação do
+       participante. */
+    List<TermoPalavra> findByAnoAndDataLessThanEqualOrderByDiaAsc(Integer ano, LocalDate ate);
+
     /* Usada para saber se o dia de hoje é o último cadastrado — o modal de
        derrota muda de texto no último dia ("não foi dessa vez" em vez de
        "volte amanhã"). */

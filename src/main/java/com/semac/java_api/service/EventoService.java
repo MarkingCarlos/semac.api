@@ -233,6 +233,7 @@ public class EventoService {
                 trilhaDto,
                 evento.getDataHoraInicio(),
                 evento.getDataHoraFim(),
+                evento.getIniciadoEm(),
                 evento.getCapacidadeMaxima(),
                 vagasRestantes,
                 palestrantes

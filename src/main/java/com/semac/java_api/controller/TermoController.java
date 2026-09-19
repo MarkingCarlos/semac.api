@@ -1,5 +1,6 @@
 package com.semac.java_api.controller;
 
+import com.semac.java_api.dto.TermoDiaDTO;
 import com.semac.java_api.dto.TermoEstadoDTO;
 import com.semac.java_api.dto.TermoPalavraAdminDTO;
 import com.semac.java_api.dto.TermoPalavraRequestDTO;
@@ -43,6 +44,14 @@ public class TermoController {
     @GetMapping("/hoje")
     public TermoEstadoDTO hoje(@AuthenticationPrincipal Jwt jwt) {
         return termoService.estadoDeHoje(idDoToken(jwt));
+    }
+
+    /* Os dias de Termo que já aconteceram e o que o participante fez em
+       cada um — o histórico da aba "Desafios". Mesma regra de `/hoje`: a
+       pessoa vem do token, nunca por parâmetro. */
+    @GetMapping("/meus")
+    public List<TermoDiaDTO> meus(@AuthenticationPrincipal Jwt jwt) {
+        return termoService.listarDiasDoParticipante(idDoToken(jwt));
     }
 
     @PostMapping("/palpite")
