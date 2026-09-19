@@ -4,7 +4,9 @@ target/
 ### Segredos / variáveis de ambiente (NUNCA versionar) ###
 .env
 *.env
+.env.*
 !*.env.exemplo
+!.env.example
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

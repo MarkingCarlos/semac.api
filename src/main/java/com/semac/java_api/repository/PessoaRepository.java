@@ -13,6 +13,10 @@ public interface PessoaRepository extends JpaRepository<Pessoa, Integer> {
     Optional<Pessoa> findByUuid(String uuid);
     Optional<Pessoa> findByMpPaymentId(Long mpPaymentId);
     List<Pessoa> findAllByRole(Role role);
+
+    /* Inscrições ainda aguardando confirmação — público possível de um
+       comunicado avulso (ex.: cobrança de comprovante). */
+    List<Pessoa> findAllByRoleIsNull();
     List<Pessoa> findAllByRoleNot(Role role);
 
     /* Participantes do /admin: confirmados (role = PARTICIPANTE) e os

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>SEMAC</title>
+</head>
+<!--
+  Layout fixo de TODO e-mail da SEMAC. E o unico arquivo de aparencia que
+  sobrou: o miolo vem de `modelo_email` no banco, editado em /admin ->
+  Mensagens. A comissao muda o texto sem deploy e sem conseguir quebrar a
+  estrutura daqui.
+
+  Regras de HTML para e-mail (nao e pagina web):
+  - layout em <table>, porque Outlook ignora flex/grid;
+  - estilo inline, porque Gmail descarta <style> em boa parte dos clientes;
+  - nada de imagem externa obrigatoria, que a maioria dos clientes bloqueia.
+
+  th:utext e nao th:text de proposito: `corpoHtml` ja e HTML montado pelo
+  RenderizadorEmailService a partir do Markdown, com HTML bruto do editor
+  desligado e valores de variavel escapados. Escapar de novo aqui imprimiria
+  as tags como texto.
+-->
+<body style="margin:0; padding:0; background-color:#f4f4f4; font-family:Arial, Helvetica, sans-serif;">
+
+<table role="presentation" class="tabelaFundoEmailSemac" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background-color:#f4f4f4; padding:24px 12px;">
+    <tr>
+        <td align="center">
+
+            <table role="presentation" class="tabelaCartaoEmailSemac" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="max-width:600px; background-color:#ffffff; border-radius:8px; overflow:hidden;">
+
+                <tr>
+                    <td class="celulaCabecalhoEmailSemac" align="center"
+                        style="background-color:#590629; padding:32px 24px;">
+                        <h1 style="margin:0; color:#EDECEC; font-size:26px; letter-spacing:1px;">SEMAC XXXVI</h1>
+                        <p style="margin:8px 0 0; color:#E79839; font-size:15px;">Semana Acadêmica da Computação</p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td class="celulaCorpoEmailSemac" style="padding:32px 24px;" th:utext="${corpoHtml}">
+                        <p>Corpo da mensagem.</p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td class="celulaRodapeEmailSemac" align="center"
+                        style="background-color:#590629; padding:20px 24px; color:#EDECEC; font-size:12px; line-height:1.5;">
+                        <p style="margin:0;">Comissão Organizadora da SEMAC</p>
+                        <p style="margin:4px 0 0;">
+                            <a href="mailto:semacsjrp@gmail.com" style="color:#E79839; text-decoration:none;">semacsjrp@gmail.com</a>
+                        </p>
+                    </td>
+                </tr>
+
+            </table>
+
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>

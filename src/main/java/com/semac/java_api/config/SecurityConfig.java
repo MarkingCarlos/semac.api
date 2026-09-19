@@ -44,6 +44,11 @@ public class SecurityConfig {
 
     private static final String[] PAPEIS_FINANCEIRO = { "DIRETOR_SITE", "PRESIDENTE" };
 
+    /* Mesmos papéis do financeiro, com nome próprio: quem pode editar e
+       disparar e-mail em nome da SEMAC. Separado para que afrouxar um não
+       afrouxe o outro sem querer. */
+    private static final String[] PAPEIS_MENSAGENS = { "DIRETOR_SITE", "PRESIDENTE" };
+
     /* Qualquer papel de comissão — espelha PAPEIS_ADMIN do frontend
        (auth/sessao.js). Financeiro (acima) é um subconjunto: quem tem
        acesso financeiro também tem acesso admin. */
@@ -89,6 +94,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/ranking").hasRole(PAPEL_PARTICIPANTE)
                         .requestMatchers(HttpMethod.POST, "/api/evento/*/inscricao").hasRole(PAPEL_PARTICIPANTE)
                         .requestMatchers(HttpMethod.DELETE, "/api/evento/*/inscricao").hasRole(PAPEL_PARTICIPANTE)
+                        // Textos dos e-mails automáticos (/admin -> Mensagens).
+                        // Mesmo público do financeiro: mudar o texto de uma mensagem
+                        // que sai para todos os inscritos não é ação de rotina, e o
+                        // envio de teste consome cota diária do Gmail.
+                        .requestMatchers("/api/admin/modelos-email/**").hasAnyRole(PAPEIS_MENSAGENS)
+                        // Comunicados avulsos: mesmo público, e aqui o motivo é ainda
+                        // mais forte — é disparo em massa, irreversível.
+                        .requestMatchers("/api/comunicados/**").hasAnyRole(PAPEIS_MENSAGENS)
                         // Exclusivos do financeiro
                         .requestMatchers("/api/compra/**", "/api/fornecedor/**", "/api/cotacao/**", "/api/conjunto/**", "/api/variacao/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers("/api/caixa/**").hasAnyRole(PAPEIS_FINANCEIRO)
@@ -112,6 +125,11 @@ public class SecurityConfig {
                         // Informações SEMAC. O GET segue aberto: a Home pública precisa
                         // saber se mostra o botão.
                         .requestMatchers(HttpMethod.PUT, "/api/configuracao-inscricao").hasAnyRole(PAPEIS_FINANCEIRO)
+                        // Regras de xp (presença, Termo, cortes de atraso) — editadas em
+                        // Informações SEMAC. O GET é do card "COMO GANHAR XP" do
+                        // /participantes, então vale para qualquer autenticado.
+                        .requestMatchers(HttpMethod.GET, "/api/regra-xp").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/regra-xp/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         // Escrita de níveis de participante — gerenciada em Informações SEMAC (GET segue aberto)
                         .requestMatchers(HttpMethod.POST, "/api/nivel/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.PUT, "/api/nivel/**").hasAnyRole(PAPEIS_FINANCEIRO)

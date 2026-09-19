@@ -15,6 +15,7 @@ import com.semac.java_api.dto.PresencaParticipanteDTO;
 import com.semac.java_api.dto.RankingParticipanteDTO;
 import com.semac.java_api.dto.RankingResponseDTO;
 import com.semac.java_api.dto.TipoInscricaoResponseDTO;
+import com.semac.java_api.event.InscricaoConfirmadaEvent;
 import com.semac.java_api.exception.RecursoDuplicadoException;
 import com.semac.java_api.model.CamisaPedido;
 import com.semac.java_api.model.CamisetaExtra;
@@ -32,6 +33,7 @@ import com.semac.java_api.repository.ParticipanteConquistaRepository;
 import com.semac.java_api.repository.PessoaRepository;
 import com.semac.java_api.repository.SorteioRepository;
 import com.semac.java_api.repository.TipoInscricaoRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -78,6 +80,7 @@ public class PessoaService {
     private final ParticipanteConquistaRepository participanteConquistaRepository;
     private final GanhadoresSorteioRepository ganhadoresSorteioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ApplicationEventPublisher publicadorEventos;
 
     public PessoaService(PessoaRepository pessoaRepository,
                          TipoInscricaoRepository tipoInscricaoRepository,
@@ -89,7 +92,8 @@ public class PessoaService {
                          CaixaRepository caixaRepository,
                          ParticipanteConquistaRepository participanteConquistaRepository,
                          GanhadoresSorteioRepository ganhadoresSorteioRepository,
-                         PasswordEncoder passwordEncoder) {
+                         PasswordEncoder passwordEncoder,
+                         ApplicationEventPublisher publicadorEventos) {
         this.pessoaRepository = pessoaRepository;
         this.tipoInscricaoRepository = tipoInscricaoRepository;
         this.camisaPedidoRepository = camisaPedidoRepository;
@@ -101,6 +105,7 @@ public class PessoaService {
         this.participanteConquistaRepository = participanteConquistaRepository;
         this.ganhadoresSorteioRepository = ganhadoresSorteioRepository;
         this.passwordEncoder = passwordEncoder;
+        this.publicadorEventos = publicadorEventos;
     }
 
     /* Participantes do /admin: confirmados (role = PARTICIPANTE) e os
@@ -343,6 +348,8 @@ public class PessoaService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Participante não encontrado."));
 
+        Role roleAnterior = pessoa.getRole();
+
         if (role == Role.PARTICIPANTE) {
             if (tipoInscricaoId == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -371,6 +378,21 @@ public class PessoaService {
             inscricaoEventoService.preInscreverEmEventosAbertos(salva);
         } else {
             inscricaoEventoService.removerInscricoesDoParticipante(salva.getId());
+        }
+
+        /* E-mail de "inscrição confirmada" — só na primeira confirmação.
+           Trocar o ingresso de quem já era PARTICIPANTE reentra aqui, e
+           reenviar a confirmação nesse caso só confundiria a pessoa.
+           O envio em si acontece depois do commit (EmailInscricaoListener):
+           se esta transação der rollback, nenhum e-mail sai. */
+        if (role == Role.PARTICIPANTE && roleAnterior != Role.PARTICIPANTE) {
+            TipoInscricao ingresso = salva.getTipoInscricao();
+            publicadorEventos.publishEvent(new InscricaoConfirmadaEvent(
+                    salva.getNome(),
+                    salva.getEmail(),
+                    ingresso == null ? null : ingresso.getNome(),
+                    ingresso == null ? null : ingresso.getValor(),
+                    salva.getDiasInscricao()));
         }
 
         return paraResposta(salva);

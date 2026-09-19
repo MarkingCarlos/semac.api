@@ -48,11 +48,6 @@ public class TermoService {
     public static final int TOTAL_TENTATIVAS = 6;
     public static final int TAMANHO_PALAVRA = 5;
 
-    /* Xp de uma vitória, creditado uma vez por dia (unique pessoa+palavra
-       em termo_jogo). Fica em código, como XP_INICIAL_CONFIRMACAO em
-       PessoaService — não é configurável no /admin. */
-    public static final int XP_VITORIA = 5;
-
     /* Padrão de cores, uma letra por posição. */
     private static final char CERTO = 'C';
     private static final char PRESENTE = 'P';
@@ -65,6 +60,12 @@ public class TermoService {
     private final PessoaRepository pessoaRepository;
     private final NivelRepository nivelRepository;
 
+    /* Xp de uma vitória, creditado uma vez por dia (unique pessoa+palavra
+       em termo_jogo). Vem da regra TERMO_ACERTO, editável no /admin ->
+       Informações SEMAC; partidas já encerradas guardam em
+       termo_jogo.xp_creditado o valor que valia na hora. */
+    private final RegraXpService regraXpService;
+
     /* Dicionário de palpites aceitos, carregado uma vez no boot. O cliente
        valida com a mesma lista para dar resposta instantânea, mas a
        checagem dele é contornável por curl — esta é a que vale. */
@@ -73,11 +74,13 @@ public class TermoService {
     public TermoService(TermoPalavraRepository palavraRepository,
                         TermoJogoRepository jogoRepository,
                         PessoaRepository pessoaRepository,
-                        NivelRepository nivelRepository) {
+                        NivelRepository nivelRepository,
+                        RegraXpService regraXpService) {
         this.palavraRepository = palavraRepository;
         this.jogoRepository = jogoRepository;
         this.pessoaRepository = pessoaRepository;
         this.nivelRepository = nivelRepository;
+        this.regraXpService = regraXpService;
         this.palavrasValidas = carregarPalavrasValidas();
     }
 
@@ -156,14 +159,15 @@ public class TermoService {
         boolean venceu = palpite.equals(secreta);
         boolean encerrado = venceu || jogo.getTentativas().size() >= TOTAL_TENTATIVAS;
 
+        int xpVitoria = regraXpService.pontosTermoAcerto();
         if (encerrado) {
             jogo.setVenceu(venceu);
             jogo.setEncerradoEm(LocalDateTime.now());
             if (venceu) {
-                jogo.setXpCreditado(XP_VITORIA);
-                creditarXp(pessoa, XP_VITORIA);
+                jogo.setXpCreditado(xpVitoria);
+                creditarXp(pessoa, xpVitoria);
                 log.info("Termo dia {}: {} (id {}) acertou, +{} xp.",
-                        palavra.getDia(), pessoa.getNome(), pessoa.getId(), XP_VITORIA);
+                        palavra.getDia(), pessoa.getNome(), pessoa.getId(), xpVitoria);
             } else {
                 jogo.setXpCreditado(0);
             }
@@ -175,7 +179,7 @@ public class TermoService {
                 venceu,
                 encerrado,
                 TOTAL_TENTATIVAS - jogo.getTentativas().size(),
-                encerrado ? (venceu ? XP_VITORIA : 0) : null,
+                encerrado ? (venceu ? xpVitoria : 0) : null,
                 ehUltimoDia(palavra),
                 encerrado ? secreta : null);
     }

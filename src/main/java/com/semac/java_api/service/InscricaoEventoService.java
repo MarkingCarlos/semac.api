@@ -45,30 +45,29 @@ public class InscricaoEventoService {
     private static final Set<StatusPresenca> STATUS_OCUPA_VAGA =
             Set.of(StatusPresenca.INSCRITO, StatusPresenca.PRESENTE);
 
-    /* Regra de atraso no check-in (ver marcarPresente): abaixo de
-       ATRASO_METADE_XP_MINUTOS credita o xp cheio do tipo de evento; a
-       partir daí e até ATRASO_ZERO_XP_MINUTOS (exclusive), metade; a
-       partir de ATRASO_ZERO_XP_MINUTOS, a presença é registrada mas sem
-       xp. Hardcoded por ora — mesmo padrão usado nas regras de conquista. */
-    private static final long ATRASO_METADE_XP_MINUTOS = 20;
-    private static final long ATRASO_ZERO_XP_MINUTOS = 30;
-
     private final EventoRepository eventoRepository;
     private final EventoParticipanteRepository eventoParticipanteRepository;
     private final PessoaRepository pessoaRepository;
     private final NivelRepository nivelRepository;
     private final ConquistaService conquistaService;
 
+    /* Os dois cortes de atraso do check-in (ver calcularXpCreditado) são
+       configuráveis no /admin -> Informações SEMAC, regras
+       ATRASO_METADE_MINUTOS e ATRASO_ZERO_MINUTOS. */
+    private final RegraXpService regraXpService;
+
     public InscricaoEventoService(EventoRepository eventoRepository,
                                   EventoParticipanteRepository eventoParticipanteRepository,
                                   PessoaRepository pessoaRepository,
                                   NivelRepository nivelRepository,
-                                  ConquistaService conquistaService) {
+                                  ConquistaService conquistaService,
+                                  RegraXpService regraXpService) {
         this.eventoRepository = eventoRepository;
         this.eventoParticipanteRepository = eventoParticipanteRepository;
         this.pessoaRepository = pessoaRepository;
         this.nivelRepository = nivelRepository;
         this.conquistaService = conquistaService;
+        this.regraXpService = regraXpService;
     }
 
     /* ── Ocupação (usada para calcular vagas restantes) ──────────── */
@@ -278,15 +277,17 @@ public class InscricaoEventoService {
         return new PresencaConfirmadaDTO(participante.getNome(), infoAdicional, xpCreditado, atrasoMinutos);
     }
 
-    /* Xp cheio do tipo de evento; metade a partir de ATRASO_METADE_XP_MINUTOS
-       (arredondado pra baixo); zero a partir de ATRASO_ZERO_XP_MINUTOS —
-       a presença continua registrada, só o xp que muda. */
+    /* Xp cheio do tipo de evento; metade a partir do corte
+       ATRASO_METADE_MINUTOS (arredondado pra baixo); zero a partir de
+       ATRASO_ZERO_MINUTOS — a presença continua registrada, só o xp que
+       muda. Os dois cortes são regras editáveis (RegraXpService), que
+       garante metade < zero na hora de salvar. */
     private int calcularXpCreditado(Evento evento, long atrasoMinutos) {
         int pontosBase = evento.getTipoEvento().getPontos();
-        if (atrasoMinutos >= ATRASO_ZERO_XP_MINUTOS) {
+        if (atrasoMinutos >= regraXpService.atrasoZeroMinutos()) {
             return 0;
         }
-        if (atrasoMinutos >= ATRASO_METADE_XP_MINUTOS) {
+        if (atrasoMinutos >= regraXpService.atrasoMetadeMinutos()) {
             return pontosBase / 2;
         }
         return pontosBase;
