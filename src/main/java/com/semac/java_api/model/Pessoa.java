@@ -66,16 +66,17 @@ public class Pessoa {
     @JoinColumn(name = "tipo_inscricao_id")
     private TipoInscricao tipoInscricao;
 
-    /* Nível e xp acumulado (role = PARTICIPANTE). Atribuídos na
-       confirmação da inscrição (ver PessoaService.atribuirRole); o
-       acúmulo contínuo de xp por conquistas/presenças é uma entrega
-       futura. Null para pendentes e organizadores, mesmo ciclo de vida
-       de tipoInscricao. */
     /* Diárias escolhidas no cadastro, quando o ingresso é cobrado por dia.
        Null para ingresso de valor fixo e para organizadores. */
     @Column(name = "dias_inscricao")
     private Integer diasInscricao;
 
+    /* Nível e xp acumulado (role = PARTICIPANTE). Começam zerados na
+       confirmação da inscrição (ver PessoaService.atribuirRole), que não
+       vale xp nenhum: o acúmulo vem de presença em evento
+       (InscricaoEventoService), acerto no Termo (TermoService) e
+       conquistas (ConquistaService). Null para pendentes e organizadores,
+       mesmo ciclo de vida de tipoInscricao. */
     @ManyToOne
     @JoinColumn(name = "nivel_id")
     private Nivel nivel;

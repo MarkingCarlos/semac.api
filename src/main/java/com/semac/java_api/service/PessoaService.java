@@ -53,12 +53,6 @@ import java.util.UUID;
 @Service
 public class PessoaService {
 
-    /* Xp de boas-vindas atribuído na confirmação da inscrição. Valor
-       provisório — ajustar quando a diretoria decidir o XP inicial real.
-       Funciona com qualquer nível cadastrado com xpMinimo 0, já que
-       nesse caso qualquer xp não-negativo já cai no primeiro nível. */
-    private static final int XP_INICIAL_CONFIRMACAO = 100;
-
     /* Taxa da maquininha sobre inscrição paga no cartão: a comissão
        recebe 95% do que foi cobrado. Incide só sobre FormaPagamento.CARTAO
        — Pix não tem taxa, e confirmação manual (dinheiro, cortesia) não
@@ -241,9 +235,9 @@ public class PessoaService {
        quem cadastra, em vez de deduzido do que o ingresso inclui.
 
        `confirmar` decide se a pessoa já entra valendo (role = PARTICIPANTE,
-       com xp/nível e pré-inscrição nos eventos abertos, igual a
-       atribuirRole) ou se cai na fila de pendentes (role = NULL), como
-       quem se inscreve pelo site. */
+       com xp zerado, nível de partida e pré-inscrição nos eventos abertos,
+       igual a atribuirRole) ou se cai na fila de pendentes (role = NULL),
+       como quem se inscreve pelo site. */
     @Transactional
     public ParticipanteResponseDTO cadastrarManual(CadastroManualRequestDTO dto) {
         // E-mail e CPF são únicos no banco — checa antes de salvar para
@@ -279,7 +273,7 @@ public class PessoaService {
 
         if (dto.confirmar()) {
             pessoa.setRole(Role.PARTICIPANTE);
-            aplicarXpInicial(pessoa);
+            aplicarProgressoInicial(pessoa);
         } else {
             pessoa.setRole(null);
         }
@@ -325,23 +319,25 @@ public class PessoaService {
         return dias;
     }
 
-    /* Xp de boas-vindas + nível correspondente, dados a quem passa a valer
-       como participante — tanto na confirmação de uma inscrição do site
-       (atribuirRole) quanto no cadastro manual do balcão. */
-    private void aplicarXpInicial(Pessoa pessoa) {
-        Nivel nivelInicial = nivelRepository
-                .findTopByXpMinimoLessThanEqualOrderByXpMinimoDesc(XP_INICIAL_CONFIRMACAO)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Cadastre ao menos um nível em Informações SEMAC antes de confirmar participantes."));
-        pessoa.setXp(XP_INICIAL_CONFIRMACAO);
-        pessoa.setNivel(nivelInicial);
+    /* Ponto de partida de quem passa a valer como participante — tanto na
+       confirmação de uma inscrição do site (atribuirRole) quanto no
+       cadastro manual do balcão. Confirmar a inscrição não vale xp: a
+       pessoa começa em zero e só sobe por presença, Termo e conquistas.
+       O nível é o correspondente a esse zero (existindo um cadastrado com
+       xpMinimo 0); sem nenhum nível cadastrado a pessoa fica sem nível, o
+       que já é tratado nas respostas, em vez de travar a confirmação. */
+    private void aplicarProgressoInicial(Pessoa pessoa) {
+        pessoa.setXp(0);
+        pessoa.setNivel(nivelRepository
+                .findTopByXpMinimoLessThanEqualOrderByXpMinimoDesc(0)
+                .orElse(null));
     }
 
     /* Confirmação da inscrição: atribui o papel da pessoa. Aceita
        PARTICIPANTE ou qualquer papel de comissão (MEMBRO, DIRETOR_* e
        PRESIDENTE). Para PARTICIPANTE, exige um tipo de ingresso válido
-       e atribui o xp de boas-vindas + o nível correspondente; para
-       papéis de comissão, ingresso/xp/nível são limpos. */
+       e zera o xp + nível de partida; para papéis de comissão,
+       ingresso/xp/nível são limpos. */
     @Transactional
     public ParticipanteResponseDTO atribuirRole(Integer id, Role role, Integer tipoInscricaoId) {
         Pessoa pessoa = pessoaRepository.findById(id)
@@ -359,7 +355,7 @@ public class PessoaService {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                             "Tipo de ingresso inválido."));
             pessoa.setTipoInscricao(tipo);
-            aplicarXpInicial(pessoa);
+            aplicarProgressoInicial(pessoa);
         } else {
             pessoa.setTipoInscricao(null);
             pessoa.setDiasInscricao(null);

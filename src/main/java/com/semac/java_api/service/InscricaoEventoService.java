@@ -386,9 +386,9 @@ public class InscricaoEventoService {
         return pontosBase;
     }
 
-    /* Soma o xp na pessoa e recalcula o nível correspondente, mesmo
-       critério usado na confirmação da inscrição (ver
-       PessoaService.atribuirRole). */
+    /* Soma o xp na pessoa e recalcula o nível correspondente. Presença é
+       uma das três fontes de xp (com o Termo e as conquistas); confirmar
+       a inscrição não credita nada (ver PessoaService.atribuirRole). */
     private void creditarXp(Pessoa participante, int xpCreditado) {
         int xpAtual = participante.getXp() == null ? 0 : participante.getXp();
         int novoXp = xpAtual + xpCreditado;
