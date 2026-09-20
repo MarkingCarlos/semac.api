@@ -53,9 +53,10 @@ public class InscricaoEventoService {
        regra, não um botão de ajuste fino do evento. */
     private static final long INICIO_AUTOMATICO_MINUTOS = 30;
 
-    /* O check-in de um evento só abre 1h antes do horário agendado. Antes
-       disso a leitura é recusada e fica registrada (ver marcarPresente). */
-    private static final long ANTECEDENCIA_MAXIMA_CHECKIN_MINUTOS = 60;
+    /* O check-in de um evento só abre 15min antes do horário agendado.
+       Antes disso a leitura é recusada e fica registrada (ver
+       marcarPresente). */
+    private static final long ANTECEDENCIA_MAXIMA_CHECKIN_MINUTOS = 15;
 
     private static final DateTimeFormatter HORA_CHECKIN = DateTimeFormatter.ofPattern("HH:mm");
 
@@ -337,9 +338,9 @@ public class InscricaoEventoService {
         return iniciadoEm.isAfter(teto) ? teto : iniciadoEm;
     }
 
-    /* O check-in só abre 1h antes do horário agendado — sem isso dava pra
-       "adiantar" presenças de eventos do dia seguinte, com xp cheio e sem
-       ninguém ter posto o pé no evento. Note que o corte é sobre o horário
+    /* O check-in só abre 15min antes do horário agendado — sem isso dava
+       pra "adiantar" presenças de eventos do dia seguinte, com xp cheio e
+       sem ninguém ter posto o pé no evento. Note que o corte é sobre o horário
        agendado, não sobre inicioEfetivo: adiar o início não deve fechar
        uma janela que já estava aberta para quem está na fila.
 
@@ -361,7 +362,8 @@ public class InscricaoEventoService {
         }
 
         throw new ResponseStatusException(HttpStatus.CONFLICT,
-                "O check-in de \"" + evento.getNome() + "\" abre 1h antes do início, às "
+                "O check-in de \"" + evento.getNome() + "\" abre "
+                        + ANTECEDENCIA_MAXIMA_CHECKIN_MINUTOS + " minutos antes do início, às "
                         + abertura.format(HORA_CHECKIN) + ".");
     }
 
