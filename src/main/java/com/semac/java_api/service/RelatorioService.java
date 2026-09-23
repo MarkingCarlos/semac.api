@@ -59,8 +59,8 @@ public class RelatorioService {
        O financeiro (receita/custo/lucro) considera só as avulsas — as
        dadas já estão cobertas pelo preço do ingresso —, inclusive as de
        pendentes, então a receita é projeção: parte pode ainda não ter sido
-       paga. Receita usa o preço vigente em camiseta_extra para o ano
-       corrente; custo usa a constante acima. */
+       paga. O mesmo lucro entra no saldo da Previsão (ver
+       PrevisaoService.resumo). */
     @Transactional(readOnly = true)
     public RelatorioCamisetasDTO relatorioCamisetas() {
         int totalGeral = 0;
@@ -85,23 +85,39 @@ public class RelatorioService {
         }
 
         int totalAvulsas = totalGeral - totalDadas;
-
-        BigDecimal precoAvulsa = camisetaExtraRepository.findByAno(Year.now().getValue())
-                .map(CamisetaExtra::getValor)
-                .orElse(BigDecimal.ZERO);
-        BigDecimal quantidadeAvulsas = BigDecimal.valueOf(totalAvulsas);
-        BigDecimal receitaAvulsas = precoAvulsa.multiply(quantidadeAvulsas);
-        BigDecimal custoAvulsas = CUSTO_CAMISETA_AVULSA.multiply(quantidadeAvulsas);
-        BigDecimal lucroAvulsas = receitaAvulsas.subtract(custoAvulsas);
+        FinanceiroCamisetasAvulsas financeiro = calcularFinanceiroAvulsas(totalAvulsas);
 
         List<ItemEstoqueCamisetaDTO> porModeloTamanho = paraItensEstoque(camisaPedidoRepository.consultarEstoque());
 
         return new RelatorioCamisetasDTO(
                 totalGeral, totalDadas, totalAvulsas,
                 totalComissao, totalParticipantes,
-                receitaAvulsas, custoAvulsas, lucroAvulsas,
+                financeiro.receita(), financeiro.custo(), financeiro.lucro(),
                 porModeloTamanho
         );
+    }
+
+    /* Receita, custo e lucro da venda de camisetas avulsas. */
+    public record FinanceiroCamisetasAvulsas(BigDecimal receita, BigDecimal custo, BigDecimal lucro) {}
+
+    /* Financeiro de todas as avulsas pedidas, inclusive as de pendentes
+       (role null). Usado também pela Previsão, que soma o lucro ao que a
+       comissão tem — assim o número é o mesmo do relatório de camisetas. */
+    @Transactional(readOnly = true)
+    public FinanceiroCamisetasAvulsas financeiroCamisetasAvulsas() {
+        return calcularFinanceiroAvulsas((int) camisaPedidoRepository.countByAvulsaTrue());
+    }
+
+    /* Receita usa o preço vigente em camiseta_extra para o ano corrente;
+       custo usa CUSTO_CAMISETA_AVULSA. */
+    private FinanceiroCamisetasAvulsas calcularFinanceiroAvulsas(int totalAvulsas) {
+        BigDecimal precoAvulsa = camisetaExtraRepository.findByAno(Year.now().getValue())
+                .map(CamisetaExtra::getValor)
+                .orElse(BigDecimal.ZERO);
+        BigDecimal quantidadeAvulsas = BigDecimal.valueOf(totalAvulsas);
+        BigDecimal receita = precoAvulsa.multiply(quantidadeAvulsas);
+        BigDecimal custo = CUSTO_CAMISETA_AVULSA.multiply(quantidadeAvulsas);
+        return new FinanceiroCamisetasAvulsas(receita, custo, receita.subtract(custo));
     }
 
     /* Camisetas exclusivas da comissão: só as inclusas no kit de quem tem

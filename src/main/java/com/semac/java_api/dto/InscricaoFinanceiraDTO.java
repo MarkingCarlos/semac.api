@@ -15,8 +15,9 @@ import java.math.BigDecimal;
    - valorLiquido: o que sobrou para a comissão — é este que entra no
                    saldo e no teto da previsão.
 
-   Camiseta avulsa fica de fora dos três: o cartão a cobra junto, mas ela
-   não é receita registrada no financeiro. */
+   Camiseta avulsa fica de fora dos três: o cartão a cobra junto, mas o
+   ganho com ela entra no saldo à parte, como lucro (receita − custo) — ver
+   PrevisaoService.resumo. */
 public record InscricaoFinanceiraDTO(
         Integer id,
         String nomePessoa,

@@ -44,6 +44,7 @@ public class PrevisaoService {
     private final PessoaService pessoaService;
     private final PessoaRepository pessoaRepository;
     private final PalestranteRepository palestranteRepository;
+    private final RelatorioService relatorioService;
 
     public PrevisaoService(PrevisaoItemRepository itemRepository,
                            PrevisaoCategoriaRepository categoriaRepository,
@@ -54,7 +55,8 @@ public class PrevisaoService {
                            CaixaRepository caixaRepository,
                            PessoaService pessoaService,
                            PessoaRepository pessoaRepository,
-                           PalestranteRepository palestranteRepository) {
+                           PalestranteRepository palestranteRepository,
+                           RelatorioService relatorioService) {
         this.itemRepository = itemRepository;
         this.categoriaRepository = categoriaRepository;
         this.orcamentoRepository = orcamentoRepository;
@@ -65,6 +67,7 @@ public class PrevisaoService {
         this.pessoaService = pessoaService;
         this.pessoaRepository = pessoaRepository;
         this.palestranteRepository = palestranteRepository;
+        this.relatorioService = relatorioService;
     }
 
     /* ── Escala ──────────────────────────────────────────────────── */
@@ -220,7 +223,13 @@ public class PrevisaoService {
            PessoaService para não reimplementar a regra de ingresso por
            diária (valor × dias) nem a taxa do cartão. O que se soma é o
            LÍQUIDO: o que a maquininha reteve nunca chegou na conta e não
-           está disponível para gastar. */
+           está disponível para gastar.
+
+           O lucro das camisetas avulsas (receita − custo de produção) também
+           entra. Vem de RelatorioService para bater com o relatório de
+           camisetas e, como lá, conta as avulsas de inscritos ainda não
+           confirmados (role null) — é projeção: parte pode não ter sido
+           paga. */
         List<Patrocinador> patrocinadores = patrocinadorRepository.findAll();
 
         BigDecimal totalPatrocinios = somarPatrocinios(patrocinadores, StatusPagamento.RECEBIDO);
@@ -236,12 +245,14 @@ public class PrevisaoService {
         BigDecimal inscricoesPendentes = somarLiquido(inscricoes, inscricao -> !inscricao.confirmada());
         BigDecimal totalInscricoes = inscricoesConfirmadas.add(inscricoesPendentes);
 
-        BigDecimal arrecadado = totalPatrocinios.add(totalDoacoes).add(totalInscricoes);
+        BigDecimal lucroCamisetas = relatorioService.financeiroCamisetasAvulsas().lucro();
+
+        BigDecimal arrecadado = totalPatrocinios.add(totalDoacoes).add(totalInscricoes).add(lucroCamisetas);
         BigDecimal teto = arrecadado.add(patrociniosAReceber);
 
         PrevisaoResumoDTO.EntradasDTO entradas = new PrevisaoResumoDTO.EntradasDTO(
                 totalPatrocinios, totalDoacoes, totalInscricoes,
-                inscricoesConfirmadas, inscricoesPendentes, arrecadado);
+                inscricoesConfirmadas, inscricoesPendentes, lucroCamisetas, arrecadado);
 
         /* Reserva de emergência: valor digitado, exibido à parte. Não
            entra no teto nem em nenhum cálculo. */

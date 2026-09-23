@@ -11,7 +11,8 @@ import java.util.List;
    - projecaoTotal:  a soma dos dois, que é o número a comparar com o teto
 
    `teto` é o quanto se pode comprometer: o que a comissão arrecadou
-   (`entradas.total` — patrocínios recebidos, doações e inscrições) MAIS
+   (`entradas.total` — patrocínios recebidos, doações, inscrições e lucro
+   das camisetas avulsas) MAIS
    `patrociniosAReceber`, os contratos assinados que ainda não foram
    pagos. Não se digita e não desconta as compras: elas já entram na
    projeção, e descontá-las aqui as contaria duas vezes.
@@ -35,7 +36,7 @@ public record PrevisaoResumoDTO(
         List<PrevisaoCategoriaResponseDTO> categorias,
         OrcamentoResponseDTO orcamento
 ) {
-    /* As três fontes do dinheiro que a comissão já tem, abertas para a
+    /* As fontes do dinheiro que a comissão já tem, abertas para a
        interface poder mostrar de onde o número vem. Patrocínio a receber
        não entra em nenhuma delas — está no `patrociniosAReceber` do
        resumo, fora da arrecadação.
@@ -44,13 +45,17 @@ public record PrevisaoResumoDTO(
        `inscricoesPendentes` — as duas vêm separadas porque pendente com
        pagamento evidenciado entra no saldo (ver
        PessoaService.listarInscricoes) e o Resumo mostra as duas parcelas.
-       Todas já líquidas da taxa do cartão. */
+       Todas já líquidas da taxa do cartão.
+
+       `lucroCamisetas` é receita − custo das camisetas avulsas, inclusive
+       as de inscritos pendentes (ver RelatorioService). */
     public record EntradasDTO(
             BigDecimal patrocinios,
             BigDecimal doacoes,
             BigDecimal inscricoes,
             BigDecimal inscricoesConfirmadas,
             BigDecimal inscricoesPendentes,
+            BigDecimal lucroCamisetas,
             BigDecimal total
     ) {}
 }

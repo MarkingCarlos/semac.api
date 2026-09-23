@@ -17,6 +17,10 @@ public interface CamisaPedidoRepository extends JpaRepository<CamisaPedido, Inte
        pediu — usado para recalcular o valor total da inscrição no cartão. */
     long countByPessoaIdAndAvulsaTrue(Integer pessoaId);
 
+    /* Todas as camisetas avulsas pedidas, de qualquer pessoa (inclusive
+       pendentes) — base do lucro das avulsas que entra na Previsão. */
+    long countByAvulsaTrue();
+
     /* Todos os pedidos, inclusive os de inscrições ainda aguardando
        confirmação no /admin (role null) — o relatório serve para fechar a
        compra, então precisa contar quem já pediu mesmo sem confirmação. */
