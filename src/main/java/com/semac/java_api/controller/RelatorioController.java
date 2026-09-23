@@ -1,5 +1,6 @@
 package com.semac.java_api.controller;
 
+import com.semac.java_api.dto.RelatorioCamisetasComissaoDTO;
 import com.semac.java_api.dto.RelatorioCamisetasDTO;
 import com.semac.java_api.service.RelatorioService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,5 +21,11 @@ public class RelatorioController {
     @GetMapping("/camisetas")
     public RelatorioCamisetasDTO relatorioCamisetas() {
         return relatorioService.relatorioCamisetas();
+    }
+
+    /* Relatório só das camisetas da comissão (inclusas no kit, sem avulsas). */
+    @GetMapping("/camisetas-comissao")
+    public RelatorioCamisetasComissaoDTO relatorioCamisetasComissao() {
+        return relatorioService.relatorioCamisetasComissao();
     }
 }

@@ -25,6 +25,16 @@ public interface CamisaPedidoRepository extends JpaRepository<CamisaPedido, Inte
            "GROUP BY c.tamanho, c.modelo")
     List<EstoqueView> consultarEstoque();
 
+    /* Só as camisetas exclusivas da comissão: inclusas no kit (avulsa =
+       false) de quem tem role de comissão. Avulsa é sempre do modelo de
+       participante, e pendentes (role null) nunca são comissão. */
+    @Query("SELECT c.tamanho AS tamanho, c.modelo AS modelo, COUNT(c) AS total " +
+           "FROM CamisaPedido c JOIN c.pessoa p " +
+           "WHERE c.avulsa = false AND p.role IS NOT NULL " +
+           "AND p.role <> com.semac.java_api.model.enums.Role.PARTICIPANTE " +
+           "GROUP BY c.tamanho, c.modelo")
+    List<EstoqueView> consultarEstoqueComissao();
+
     /* Quantas camisetas existem por avulsa (true/false) e role da pessoa.
        Base do relatório de camisetas — dadas/avulsas e comissão/participantes
        vêm direto do campo `avulsa`, editável no /admin. Inclui pendentes

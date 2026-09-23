@@ -1,6 +1,7 @@
 package com.semac.java_api.service;
 
 import com.semac.java_api.dto.ItemEstoqueCamisetaDTO;
+import com.semac.java_api.dto.RelatorioCamisetasComissaoDTO;
 import com.semac.java_api.dto.RelatorioCamisetasDTO;
 import com.semac.java_api.model.CamisetaExtra;
 import com.semac.java_api.model.enums.Role;
@@ -15,7 +16,7 @@ import java.time.Year;
 import java.util.List;
 
 /* Relatórios gerenciais do /admin (aba "Relatórios"). Cada relatório vive
-   num método próprio aqui — hoje só o de camisetas. */
+   num método próprio aqui — hoje camisetas (geral e só da comissão). */
 @Service
 public class RelatorioService {
 
@@ -101,5 +102,22 @@ public class RelatorioService {
                 receitaAvulsas, custoAvulsas, lucroAvulsas,
                 porModeloTamanho
         );
+    }
+
+    /* Camisetas exclusivas da comissão: só as inclusas no kit de quem tem
+       role de comissão. Avulsas ficam de fora mesmo quando compradas pela
+       comissão, porque são do modelo de participante (mesma regra do
+       totalComissao em relatorioCamisetas). */
+    @Transactional(readOnly = true)
+    public RelatorioCamisetasComissaoDTO relatorioCamisetasComissao() {
+        List<ItemEstoqueCamisetaDTO> porModeloTamanho = camisaPedidoRepository.consultarEstoqueComissao().stream()
+                .map(v -> new ItemEstoqueCamisetaDTO(v.getModelo().name(), v.getTamanho().name(), v.getTotal()))
+                .toList();
+
+        int totalComissao = porModeloTamanho.stream()
+                .mapToInt(item -> (int) item.total())
+                .sum();
+
+        return new RelatorioCamisetasComissaoDTO(totalComissao, porModeloTamanho);
     }
 }
