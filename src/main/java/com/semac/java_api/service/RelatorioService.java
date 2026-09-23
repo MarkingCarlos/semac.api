@@ -3,11 +3,13 @@ package com.semac.java_api.service;
 import com.semac.java_api.dto.ItemEstoqueCamisetaDTO;
 import com.semac.java_api.dto.RelatorioCamisetasComissaoDTO;
 import com.semac.java_api.dto.RelatorioCamisetasDTO;
+import com.semac.java_api.dto.RelatorioCamisetasParticipantesDTO;
 import com.semac.java_api.model.CamisetaExtra;
 import com.semac.java_api.model.enums.Role;
 import com.semac.java_api.repository.CamisaPedidoRepository;
 import com.semac.java_api.repository.CamisetaExtraRepository;
 import com.semac.java_api.repository.projection.ContagemCamisetaGrupoView;
+import com.semac.java_api.repository.projection.EstoqueView;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,7 +18,7 @@ import java.time.Year;
 import java.util.List;
 
 /* Relatórios gerenciais do /admin (aba "Relatórios"). Cada relatório vive
-   num método próprio aqui — hoje camisetas (geral e só da comissão). */
+   num método próprio aqui — hoje camisetas (geral, da comissão e de participantes). */
 @Service
 public class RelatorioService {
 
@@ -92,9 +94,7 @@ public class RelatorioService {
         BigDecimal custoAvulsas = CUSTO_CAMISETA_AVULSA.multiply(quantidadeAvulsas);
         BigDecimal lucroAvulsas = receitaAvulsas.subtract(custoAvulsas);
 
-        List<ItemEstoqueCamisetaDTO> porModeloTamanho = camisaPedidoRepository.consultarEstoque().stream()
-                .map(v -> new ItemEstoqueCamisetaDTO(v.getModelo().name(), v.getTamanho().name(), v.getTotal()))
-                .toList();
+        List<ItemEstoqueCamisetaDTO> porModeloTamanho = paraItensEstoque(camisaPedidoRepository.consultarEstoque());
 
         return new RelatorioCamisetasDTO(
                 totalGeral, totalDadas, totalAvulsas,
@@ -110,14 +110,27 @@ public class RelatorioService {
        totalComissao em relatorioCamisetas). */
     @Transactional(readOnly = true)
     public RelatorioCamisetasComissaoDTO relatorioCamisetasComissao() {
-        List<ItemEstoqueCamisetaDTO> porModeloTamanho = camisaPedidoRepository.consultarEstoqueComissao().stream()
+        List<ItemEstoqueCamisetaDTO> porModeloTamanho = paraItensEstoque(camisaPedidoRepository.consultarEstoqueComissao());
+        return new RelatorioCamisetasComissaoDTO(somarTotal(porModeloTamanho), porModeloTamanho);
+    }
+
+    /* Camisetas do modelo de participante: inclusas no kit de participante,
+       de pendentes (que contam como participante) e todas as avulsas,
+       inclusive as compradas pela comissão (mesma regra do
+       totalParticipantes em relatorioCamisetas). */
+    @Transactional(readOnly = true)
+    public RelatorioCamisetasParticipantesDTO relatorioCamisetasParticipantes() {
+        List<ItemEstoqueCamisetaDTO> porModeloTamanho = paraItensEstoque(camisaPedidoRepository.consultarEstoqueParticipantes());
+        return new RelatorioCamisetasParticipantesDTO(somarTotal(porModeloTamanho), porModeloTamanho);
+    }
+
+    private static List<ItemEstoqueCamisetaDTO> paraItensEstoque(List<EstoqueView> linhas) {
+        return linhas.stream()
                 .map(v -> new ItemEstoqueCamisetaDTO(v.getModelo().name(), v.getTamanho().name(), v.getTotal()))
                 .toList();
+    }
 
-        int totalComissao = porModeloTamanho.stream()
-                .mapToInt(item -> (int) item.total())
-                .sum();
-
-        return new RelatorioCamisetasComissaoDTO(totalComissao, porModeloTamanho);
+    private static int somarTotal(List<ItemEstoqueCamisetaDTO> itens) {
+        return itens.stream().mapToInt(item -> (int) item.total()).sum();
     }
 }
