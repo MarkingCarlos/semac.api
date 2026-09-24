@@ -7,6 +7,8 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.EnumSet;
+import java.util.Set;
 
 /* Uma linha de gasto previsto — o elo entre a cotação (preço pesquisado)
    e a compra (dinheiro que já saiu).
@@ -51,10 +53,14 @@ public class PrevisaoItem {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal frete = BigDecimal.ZERO;
 
+    /* Escalas por cabeça, somadas no fator. Vazio = valor fechado
+       (fator 1). EAGER porque o resumo lê todos os itens fora de
+       transação e sempre precisa delas. */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "previsao_item_escala", joinColumns = @JoinColumn(name = "previsao_item_id"))
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private EscalaPrevisao escala = EscalaPrevisao.FIXA;
-
+    @Column(name = "escala", nullable = false, length = 20)
+    private Set<EscalaPrevisao> escalas = EnumSet.noneOf(EscalaPrevisao.class);
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

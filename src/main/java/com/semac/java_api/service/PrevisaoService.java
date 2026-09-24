@@ -76,33 +76,43 @@ public class PrevisaoService {
 
        `inscritos` é DERIVADO: a contagem de pessoas com role PARTICIPANTE
        (confirmadas) ou NULL (aguardando confirmação) — as mesmas que o
-       /admin lista em "Participantes". Digitado, esse número virava uma
+       /admin lista em "Participantes" —, tirando quem comprou ingresso
+       diário: esse não ganha kit, então não multiplica os itens por
+       inscrito. Digitado, esse número virava uma
        armadilha silenciosa: bastava ficar zerado para todo item por
        inscrito valer R$ 0,00 sem explicação.
+
+       `inscritosTotais` é o mesmo conjunto COM o ingresso diário — base da
+       escala "por inscrito (inclui diária)", para o que o diarista também
+       consome.
 
        `comissao` e `palestrantes` seguem a mesma ideia: a comissão são as
        pessoas com role definido e diferente de PARTICIPANTE, e os
        palestrantes são os registros da tabela `palestrante`. Nenhum dos
-       três é digitado — um número à parte ficaria defasado sem ninguém
+       contadores é digitado — um número à parte ficaria defasado sem ninguém
        notar, que foi o que aconteceu enquanto eram campos. */
-    public record Fatores(int inscritos, int comissao, int palestrantes) {}
+    public record Fatores(int inscritos, int inscritosTotais, int comissao, int palestrantes) {}
 
     public Fatores fatoresVigentes() {
         return new Fatores(
+                (int) pessoaRepository.contarInscritosComKit(),
                 (int) pessoaRepository.countByRoleIsNullOrRole(Role.PARTICIPANTE),
                 (int) pessoaRepository.countByRoleNot(Role.PARTICIPANTE),
                 (int) palestranteRepository.count());
     }
 
-    /* Quanto o valor de um item se multiplica. */
+    /* Quanto o valor de um item se multiplica: 1 sem escala (valor
+       fechado), senão a soma dos contadores das escalas marcadas. */
     public int fator(PrevisaoItem item, Fatores fatores) {
-        if (item.getEscala() == null) return 1;
-        return switch (item.getEscala()) {
-            case FIXA -> 1;
-            case POR_INSCRITO -> fatores.inscritos();
-            case POR_COMISSAO -> fatores.comissao();
-            case POR_PALESTRANTE -> fatores.palestrantes();
-        };
+        if (item.getEscalas() == null || item.getEscalas().isEmpty()) return 1;
+        return item.getEscalas().stream()
+                .mapToInt(escala -> switch (escala) {
+                    case POR_INSCRITO -> fatores.inscritos();
+                    case POR_INSCRITO_TOTAL -> fatores.inscritosTotais();
+                    case POR_COMISSAO -> fatores.comissao();
+                    case POR_PALESTRANTE -> fatores.palestrantes();
+                })
+                .sum();
     }
 
     /* (valorUnitario × quantidade + frete) × fator da escala. */
@@ -141,7 +151,7 @@ public class PrevisaoService {
                 item.getQuantidade(),
                 item.getValorUnitario(),
                 item.getFrete(),
-                item.getEscala().name(),
+                item.getEscalas().stream().sorted().map(Enum::name).toList(),
                 fator(item, fatores),
                 valorTotal(item, fatores),
                 item.getStatus().name(),
@@ -274,6 +284,7 @@ public class PrevisaoService {
                         orcamento.getId(),
                         orcamento.getAno(),
                         fatores.inscritos(),
+                        fatores.inscritosTotais(),
                         fatores.comissao(),
                         fatores.palestrantes()));
     }

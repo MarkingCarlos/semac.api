@@ -33,9 +33,16 @@ public class OrcamentoController {
     }
 
     /* Derivado, não digitado: pessoas com role PARTICIPANTE (confirmadas)
-       ou NULL (aguardando confirmação). Vai na resposta só para a
-       interface poder mostrar de onde sai a escala por inscrito. */
+       ou NULL (aguardando confirmação), sem quem comprou ingresso diário —
+       esse não ganha kit. Vai na resposta só para a interface poder
+       mostrar de onde sai a escala por inscrito. */
     private int inscritos() {
+        return (int) pessoaRepository.contarInscritosComKit();
+    }
+
+    /* Participantes + pendentes, contando quem comprou ingresso diário —
+       escala "por inscrito (inclui diária)". */
+    private int inscritosTotais() {
         return (int) pessoaRepository.countByRoleIsNullOrRole(Role.PARTICIPANTE);
     }
 
@@ -55,7 +62,7 @@ public class OrcamentoController {
         return orcamentoRepository.findFirstByOrderByAnoDesc()
                 .map(this::paraResposta)
                 .orElseGet(() -> new OrcamentoResponseDTO(
-                        null, Year.now().getValue(), inscritos(), membrosComissao(), palestrantes()));
+                        null, Year.now().getValue(), inscritos(), inscritosTotais(), membrosComissao(), palestrantes()));
     }
 
     private OrcamentoResponseDTO paraResposta(Orcamento orcamento) {
@@ -63,6 +70,7 @@ public class OrcamentoController {
                 orcamento.getId(),
                 orcamento.getAno(),
                 inscritos(),
+                inscritosTotais(),
                 membrosComissao(),
                 palestrantes());
     }

@@ -3,6 +3,7 @@ package com.semac.java_api.repository;
 import com.semac.java_api.model.Pessoa;
 import com.semac.java_api.model.enums.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
@@ -29,9 +30,18 @@ public interface PessoaRepository extends JpaRepository<Pessoa, Integer> {
        PessoaService.listarInscricoes). */
     List<Pessoa> findAllByRoleIsNullOrRole(Role role);
 
-    /* Mesma condicao da listagem acima, so que contando: e o numero de
-       inscritos que alimenta a escala POR_INSCRITO da previsao de gastos
-       (ver PrevisaoService.fatoresVigentes). */
+    /* Inscritos que recebem kit: participantes confirmados ou pendentes
+       (role null), tirando quem comprou ingresso diario (por_dia = true),
+       que nao ganha kit. Quem ainda nao tem ingresso vinculado conta.
+       Alimenta a escala POR_INSCRITO da previsao de gastos (ver
+       PrevisaoService.fatoresVigentes). */
+    @Query("SELECT COUNT(p) FROM Pessoa p LEFT JOIN p.tipoInscricao t " +
+           "WHERE (p.role IS NULL OR p.role = com.semac.java_api.model.enums.Role.PARTICIPANTE) " +
+           "AND (t IS NULL OR t.porDia = false)")
+    long contarInscritosComKit();
+
+    /* Participantes confirmados ou pendentes, com ingresso diario
+       incluso. Alimenta a escala POR_INSCRITO_TOTAL. */
     long countByRoleIsNullOrRole(Role role);
 
     /* Comissao organizadora: role definido e diferente de PARTICIPANTE.

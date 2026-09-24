@@ -1,11 +1,15 @@
 package com.semac.java_api.dto;
 
-/* `inscritosPrevistos` é derivado (contagem de pessoas com role
-   PARTICIPANTE ou NULL) e vem só de leitura — não é aceito no PUT. */
+/* Todos os contadores são derivados e só de leitura.
+   `inscritosPrevistos`: participantes + pendentes que ganham kit (sem
+   ingresso diário) — escala POR_INSCRITO.
+   `inscritosTotais`: participantes + pendentes, com diária — escala
+   POR_INSCRITO_TOTAL. */
 public record OrcamentoResponseDTO(
         Integer id,
         Integer ano,
         Integer inscritosPrevistos,
+        Integer inscritosTotais,
         Integer membrosComissao,
         Integer palestrantesPrevistos
 ) {}

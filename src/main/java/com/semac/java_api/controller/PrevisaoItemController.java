@@ -187,7 +187,10 @@ public class PrevisaoItemController {
         item.setQuantidade(dto.quantidade());
         item.setValorUnitario(dto.valorUnitario());
         item.setFrete(dto.frete() == null ? BigDecimal.ZERO : dto.frete());
-        item.setEscala(EscalaPrevisao.deTexto(dto.escala()));
+        /* Substitui o conteúdo em vez do conjunto: a coleção é gerenciada
+           pelo Hibernate. */
+        item.getEscalas().clear();
+        item.getEscalas().addAll(EscalaPrevisao.deTextos(dto.escalas()));
         /* PAGO não se digita: entra pela conversão em compra e sai pela
            reversão. Sem esta guarda, editar um item pago o devolveria para
            a projeção deixando a compra viva — valor contado duas vezes. */

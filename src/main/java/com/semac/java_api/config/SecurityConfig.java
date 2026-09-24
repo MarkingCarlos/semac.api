@@ -150,6 +150,9 @@ public class SecurityConfig {
                         // Reconsulta de status do pagamento no cartão — mesmo público do comprovante acima
                         .requestMatchers(HttpMethod.GET, "/api/pagamento/cartao/*/status").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.GET, "/api/relatorio/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
+                        // Crachás impressos — devolve o uuid de check-in de todo mundo, então
+                        // fica com quem gerencia pessoas (mesmo público da aba Pessoas)
+                        .requestMatchers(HttpMethod.GET, "/api/cracha").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.PATCH, "/api/pessoa/*/role", "/api/pessoa/*/ativo", "/api/pessoa/*/desconfirmar").hasAnyRole(PAPEIS_ADMIN)
                         // Cadastro manual de participante (inscrição de balcão) — mesmo público
                         // de quem confirma ou exclui inscrição
