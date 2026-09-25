@@ -78,6 +78,12 @@ public class SecurityConfig {
        mexer na programação chamando a API direto. */
     private static final String[] PAPEIS_CONTEUDO = { "DIRETOR_SITE", "PRESIDENTE", "DIRETOR_CONTEUDO" };
 
+    /* Quem cadastra, edita e exclui doações (tabela `doador`). Espelha os
+       papéis da aba Doações do /admin (Admin.jsx). O diretor de patrocínio
+       entra aqui, mas patrocinador/cota e a meta de doação seguem só com
+       PAPEIS_FINANCEIRO. */
+    private static final String[] PAPEIS_DOACAO = { "DIRETOR_SITE", "PRESIDENTE", "DIRETOR_PATROCINIO" };
+
     private static final String PAPEL_PARTICIPANTE = "PARTICIPANTE";
 
     private final SecretKey chaveJwt;
@@ -131,11 +137,17 @@ public class SecurityConfig {
                         // Editar quantas camisetas uma pessoa tem (grátis/inclusas ou avulsas) —
                         // mesmo acesso do financeiro, tanto para comissão quanto para participantes.
                         .requestMatchers(HttpMethod.PUT, "/api/pessoa/*/camisetas").hasAnyRole(PAPEIS_FINANCEIRO)
-                        // Escrita de patrocínio/cota/doador acontece só no financeiro (GET segue aberto)
-                        .requestMatchers(HttpMethod.POST, "/api/patrocinador/**", "/api/cota/**", "/api/doador/**").hasAnyRole(PAPEIS_FINANCEIRO)
-                        .requestMatchers(HttpMethod.PUT, "/api/patrocinador/**", "/api/cota/**", "/api/doador/**").hasAnyRole(PAPEIS_FINANCEIRO)
-                        .requestMatchers(HttpMethod.PATCH, "/api/patrocinador/**", "/api/cota/**", "/api/doador/**").hasAnyRole(PAPEIS_FINANCEIRO)
-                        .requestMatchers(HttpMethod.DELETE, "/api/patrocinador/**", "/api/cota/**", "/api/doador/**").hasAnyRole(PAPEIS_FINANCEIRO)
+                        // Escrita de patrocínio/cota acontece só no financeiro (GET segue aberto)
+                        .requestMatchers(HttpMethod.POST, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers(HttpMethod.PUT, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers(HttpMethod.PATCH, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers(HttpMethod.DELETE, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)
+                        // Escrita de doador — aba Doações do /admin, que o diretor de
+                        // patrocínio também usa (GET segue aberto)
+                        .requestMatchers(HttpMethod.POST, "/api/doador/**").hasAnyRole(PAPEIS_DOACAO)
+                        .requestMatchers(HttpMethod.PUT, "/api/doador/**").hasAnyRole(PAPEIS_DOACAO)
+                        .requestMatchers(HttpMethod.PATCH, "/api/doador/**").hasAnyRole(PAPEIS_DOACAO)
+                        .requestMatchers(HttpMethod.DELETE, "/api/doador/**").hasAnyRole(PAPEIS_DOACAO)
                         // Preço da camiseta avulsa — editado em Informações SEMAC. O GET
                         // segue aberto: o cadastro público precisa do preço.
                         .requestMatchers(HttpMethod.PUT, "/api/camiseta-extra").hasAnyRole(PAPEIS_FINANCEIRO)
