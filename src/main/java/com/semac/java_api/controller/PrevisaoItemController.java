@@ -1,5 +1,6 @@
 package com.semac.java_api.controller;
 
+import com.semac.java_api.config.SecurityConfig;
 import com.semac.java_api.dto.PrevisaoItemRequestDTO;
 import com.semac.java_api.dto.PrevisaoItemResponseDTO;
 import com.semac.java_api.dto.PrevisaoResumoDTO;
@@ -18,11 +19,14 @@ import com.semac.java_api.service.PrevisaoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -52,10 +56,29 @@ public class PrevisaoItemController {
         return previsaoService.listarItens();
     }
 
-    /* Consolidado que alimenta os gráficos do dashboard. */
+    /* Consolidado que alimenta os gráficos do dashboard.
+
+       Diretores com acesso só de leitura à Previsão (ver SecurityConfig)
+       recebem o resumo sem a composição da arrecadação (`entradas`) e sem a
+       reserva da FUNDUNESP — a aba Previsão não usa nenhum dos dois, e só
+       o financeiro precisa deles (card de contas do Resumo). */
     @GetMapping("/resumo")
-    public PrevisaoResumoDTO resumo() {
-        return previsaoService.resumo();
+    public PrevisaoResumoDTO resumo(@AuthenticationPrincipal Jwt jwt) {
+        PrevisaoResumoDTO resumo = previsaoService.resumo();
+        if (Arrays.asList(SecurityConfig.PAPEIS_FINANCEIRO).contains(jwt.getClaimAsString("role"))) {
+            return resumo;
+        }
+        return new PrevisaoResumoDTO(
+                resumo.previstoAberto(),
+                resumo.realizado(),
+                resumo.projecaoTotal(),
+                resumo.teto(),
+                resumo.margem(),
+                resumo.patrociniosAReceber(),
+                null,
+                null,
+                resumo.categorias(),
+                resumo.orcamento());
     }
 
     @GetMapping("/{id}")

@@ -42,7 +42,16 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private static final String[] PAPEIS_FINANCEIRO = { "DIRETOR_SITE", "PRESIDENTE" };
+    /* Público: o PrevisaoItemController também consulta a lista para decidir
+       se o resumo sai completo ou sem a composição da arrecadação. */
+    public static final String[] PAPEIS_FINANCEIRO = { "DIRETOR_SITE", "PRESIDENTE" };
+
+    /* Quem pode VER a aba Previsão do /financeiro: o financeiro mais os
+       diretores de conteúdo, patrocínio, apoio e marketing. Só GET — criar,
+       editar, converter e excluir seguem com PAPEIS_FINANCEIRO. */
+    private static final String[] PAPEIS_LEITURA_PREVISAO = {
+            "DIRETOR_SITE", "PRESIDENTE", "DIRETOR_CONTEUDO", "DIRETOR_PATROCINIO", "DIRETOR_APOIO", "DIRETOR_MARKETING"
+    };
 
     /* Mesmos papéis do financeiro, com nome próprio: quem pode editar e
        disparar e-mail em nome da SEMAC. Separado para que afrouxar um não
@@ -112,6 +121,9 @@ public class SecurityConfig {
                         // Exclusivos do financeiro
                         .requestMatchers("/api/compra/**", "/api/fornecedor/**", "/api/cotacao/**", "/api/conjunto/**", "/api/variacao/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers("/api/caixa/**").hasAnyRole(PAPEIS_FINANCEIRO)
+                        // Leitura da aba Previsão — antes da regra geral abaixo, que tranca o resto.
+                        // O /resumo sai sem entradas e reserva FUNDUNESP para quem não é financeiro.
+                        .requestMatchers(HttpMethod.GET, "/api/previsao", "/api/previsao/resumo", "/api/previsao-categoria", "/api/orcamento").hasAnyRole(PAPEIS_LEITURA_PREVISAO)
                         .requestMatchers("/api/previsao/**", "/api/previsao-categoria/**", "/api/orcamento/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/inscricoes").hasAnyRole(PAPEIS_FINANCEIRO)
                         // Editar quantas camisetas uma pessoa tem (grátis/inclusas ou avulsas) —
