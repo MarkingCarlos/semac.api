@@ -15,10 +15,12 @@ import com.semac.java_api.repository.EventoParticipanteRepository;
 import com.semac.java_api.repository.EventoRepository;
 import com.semac.java_api.repository.NivelRepository;
 import com.semac.java_api.repository.PalestranteRepository;
+import com.semac.java_api.repository.PessoaDiaIngressoRepository;
 import com.semac.java_api.repository.PessoaRepository;
 import com.semac.java_api.repository.TipoEventoRepository;
 import com.semac.java_api.repository.TrilhaRepository;
 import com.semac.java_api.service.ConquistaService;
+import com.semac.java_api.service.DiaIngressoService;
 import com.semac.java_api.service.EventoService;
 import com.semac.java_api.service.InscricaoEventoService;
 import com.semac.java_api.service.RegraXpService;
@@ -138,7 +140,9 @@ class RegrasEventoParticipanteTest {
         when(regraXpService.atrasoZeroMinutos()).thenReturn(30L);
 
         inscricaoEventoService = new InscricaoEventoService(eventoRepository, eventoParticipanteRepository,
-                pessoaRepository, nivelRepository, conquistaService, tentativaCheckinService, regraXpService);
+                pessoaRepository, nivelRepository, conquistaService, tentativaCheckinService, regraXpService,
+                new DiaIngressoService(pessoaRepository, eventoRepository, eventoParticipanteRepository,
+                        mock(PessoaDiaIngressoRepository.class)));
         eventoService = new EventoService(eventoRepository, tipoEventoRepository, trilhaRepository,
                 palestranteRepository, eventoPalestranteRepository, inscricaoEventoService);
     }
