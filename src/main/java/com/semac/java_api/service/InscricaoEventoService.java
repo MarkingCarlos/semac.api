@@ -20,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.semac.java_api.dto.OperadorCheckinDTO;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -72,13 +73,18 @@ public class InscricaoEventoService {
        ATRASO_METADE_MINUTOS e ATRASO_ZERO_MINUTOS. */
     private final RegraXpService regraXpService;
 
+    /* Dias em que vale o ingresso diário: o check-in e a escolha de
+       minicurso do diarista ficam presos a eles. */
+    private final DiaIngressoService diaIngressoService;
+
     public InscricaoEventoService(EventoRepository eventoRepository,
                                   EventoParticipanteRepository eventoParticipanteRepository,
                                   PessoaRepository pessoaRepository,
                                   NivelRepository nivelRepository,
                                   ConquistaService conquistaService,
                                   TentativaCheckinService tentativaCheckinService,
-                                  RegraXpService regraXpService) {
+                                  RegraXpService regraXpService,
+                                  DiaIngressoService diaIngressoService) {
         this.eventoRepository = eventoRepository;
         this.eventoParticipanteRepository = eventoParticipanteRepository;
         this.pessoaRepository = pessoaRepository;
@@ -86,6 +92,7 @@ public class InscricaoEventoService {
         this.conquistaService = conquistaService;
         this.tentativaCheckinService = tentativaCheckinService;
         this.regraXpService = regraXpService;
+        this.diaIngressoService = diaIngressoService;
     }
 
     /* ── Ocupação (usada para calcular vagas restantes) ──────────── */
@@ -190,6 +197,14 @@ public class InscricaoEventoService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Esse minicurso está esgotado.");
         }
 
+        Pessoa participante = pessoaRepository.getReferenceById(participanteId);
+        if (!diaIngressoService.ingressoValeNoDia(participante, evento.getDataHoraInicio().toLocalDate())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Seu ingresso diário não vale em "
+                            + DiaIngressoService.formatarDia(evento.getDataHoraInicio().toLocalDate())
+                            + ". Escolha minicursos nos dias do seu ingresso.");
+        }
+
         Evento conflito = minicursoNoMesmoHorario(participanteId, evento);
         if (conflito != null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -199,7 +214,7 @@ public class InscricaoEventoService {
         EventoParticipante inscricao = new EventoParticipante();
         inscricao.setPk(pk);
         inscricao.setEvento(evento);
-        inscricao.setParticipante(pessoaRepository.getReferenceById(participanteId));
+        inscricao.setParticipante(participante);
         inscricao.setStatus(StatusPresenca.INSCRITO);
         eventoParticipanteRepository.save(inscricao);
     }
@@ -272,6 +287,7 @@ public class InscricaoEventoService {
         LocalDateTime agora = LocalDateTime.now();
         Evento evento = inscricao.getEvento();
 
+        exigirDiaDoIngresso(evento, participante);
         exigirJanelaDeCheckinAberta(evento, participante, operador, agora);
 
         long atrasoMinutos = Math.max(0,
@@ -365,6 +381,28 @@ public class InscricaoEventoService {
                 "O check-in de \"" + evento.getNome() + "\" abre "
                         + ANTECEDENCIA_MAXIMA_CHECKIN_MINUTOS + " minutos antes do início, às "
                         + abertura.format(HORA_CHECKIN) + ".");
+    }
+
+    /* Ingresso diário só vale nos dias que o participante escolheu em
+       /participantes (ver DiaIngressoService). A mensagem começa sempre
+       com "Ingresso diário" — é por esse prefixo que o /checkin mostra o
+       aviso próprio desse caso (ver ModalErroPresenca). Vale para QR e
+       busca manual: a busca não pode ser a porta dos fundos da regra. */
+    private void exigirDiaDoIngresso(Evento evento, Pessoa participante) {
+        LocalDate diaDoEvento = evento.getDataHoraInicio().toLocalDate();
+        if (diaIngressoService.ingressoValeNoDia(participante, diaDoEvento)) {
+            return;
+        }
+
+        List<LocalDate> escolhidos = diaIngressoService.diasEscolhidos(participante.getId());
+        String diasValidos = escolhidos.isEmpty()
+                ? "ainda não escolheu os dias em que vai usar o ingresso."
+                : "só é válido em " + escolhidos.stream()
+                        .map(DiaIngressoService::formatarDia)
+                        .collect(Collectors.joining(", ")) + ".";
+        throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Ingresso diário: " + participante.getNome() + " não tem acesso em "
+                        + DiaIngressoService.formatarDia(diaDoEvento) + " — " + diasValidos);
     }
 
     /* Xp cheio do tipo de evento; metade a partir do corte

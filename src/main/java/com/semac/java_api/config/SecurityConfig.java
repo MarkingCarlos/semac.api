@@ -108,6 +108,8 @@ public class SecurityConfig {
                         // Agenda, escolha de minicurso e ranking: só o próprio participante confirmado
                         .requestMatchers(HttpMethod.GET, "/api/evento/meus").hasRole(PAPEL_PARTICIPANTE)
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/ranking").hasRole(PAPEL_PARTICIPANTE)
+                        .requestMatchers(HttpMethod.GET, "/api/pessoa/me/dias-ingresso").hasRole(PAPEL_PARTICIPANTE)
+                        .requestMatchers(HttpMethod.PUT, "/api/pessoa/me/dias-ingresso").hasRole(PAPEL_PARTICIPANTE)
                         .requestMatchers(HttpMethod.POST, "/api/evento/*/inscricao").hasRole(PAPEL_PARTICIPANTE)
                         .requestMatchers(HttpMethod.DELETE, "/api/evento/*/inscricao").hasRole(PAPEL_PARTICIPANTE)
                         // Textos dos e-mails automáticos (/admin -> Mensagens).

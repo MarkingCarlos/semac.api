@@ -3,6 +3,8 @@ package com.semac.java_api.controller;
 import com.semac.java_api.dto.AtivoRequestDTO;
 import com.semac.java_api.dto.CadastroManualRequestDTO;
 import com.semac.java_api.dto.ConquistaDoParticipanteDTO;
+import com.semac.java_api.dto.DiasIngressoResponseDTO;
+import com.semac.java_api.dto.EscolherDiasIngressoRequestDTO;
 import com.semac.java_api.dto.AtribuirRoleDTO;
 import com.semac.java_api.dto.AtualizarCamisetasRequestDTO;
 import com.semac.java_api.dto.AtualizarPerfilDTO;
@@ -11,6 +13,7 @@ import com.semac.java_api.dto.ParticipanteResponseDTO;
 import com.semac.java_api.dto.PerfilResponseDTO;
 import com.semac.java_api.dto.RankingResponseDTO;
 import com.semac.java_api.service.ConquistaService;
+import com.semac.java_api.service.DiaIngressoService;
 import com.semac.java_api.service.PessoaService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,13 +39,17 @@ public class PessoaController {
 
     private final PessoaService pessoaService;
     private final ConquistaService conquistaService;
+    private final DiaIngressoService diaIngressoService;
 
     @Value("${app.upload.dir}")
     private String uploadDir;
 
-    public PessoaController(PessoaService pessoaService, ConquistaService conquistaService) {
+    public PessoaController(PessoaService pessoaService,
+                            ConquistaService conquistaService,
+                            DiaIngressoService diaIngressoService) {
         this.pessoaService = pessoaService;
         this.conquistaService = conquistaService;
+        this.diaIngressoService = diaIngressoService;
     }
 
     /* Cadastro manual pela comissão (botão "Adicionar participante" na aba
@@ -92,6 +99,22 @@ public class PessoaController {
     public PerfilResponseDTO atualizarMeuPerfil(@AuthenticationPrincipal Jwt jwt,
                                                 @Valid @RequestBody AtualizarPerfilDTO dto) {
         return pessoaService.atualizarPerfil(idDoToken(jwt), dto);
+    }
+
+    /* Dias em que vale o ingresso diário do participante logado (área
+       /participantes). Para quem não tem ingresso por dia devolve
+       porDia = false e nada a escolher. */
+    @GetMapping("/me/dias-ingresso")
+    public DiasIngressoResponseDTO meusDiasIngresso(@AuthenticationPrincipal Jwt jwt) {
+        return diaIngressoService.buscar(idDoToken(jwt));
+    }
+
+    /* Grava a escolha completa de dias (substitui a anterior). Regras de
+       quantidade, dias válidos e dias travados em DiaIngressoService. */
+    @PutMapping("/me/dias-ingresso")
+    public DiasIngressoResponseDTO escolherDiasIngresso(@AuthenticationPrincipal Jwt jwt,
+                                                        @Valid @RequestBody EscolherDiasIngressoRequestDTO dto) {
+        return diaIngressoService.salvar(idDoToken(jwt), dto.dias());
     }
 
     /* ── Conquistas de um participante (painel de revogação) ────── */
