@@ -14,7 +14,9 @@
   Regras de HTML para e-mail (nao e pagina web):
   - layout em <table>, porque Outlook ignora flex/grid;
   - estilo inline, porque Gmail descarta <style> em boa parte dos clientes;
-  - nada de imagem externa obrigatoria, que a maioria dos clientes bloqueia.
+  - nada de imagem externa obrigatoria, que a maioria dos clientes bloqueia
+    (o logo do cabecalho vai anexado inline, via cid:);
+  - nada de SVG: Gmail e Outlook nao exibem — imagem so em PNG/JPG.
 
   th:utext e nao th:text de proposito: `corpoHtml` ja e HTML montado pelo
   RenderizadorEmailService a partir do Markdown, com HTML bruto do editor
@@ -34,8 +36,8 @@
                 <tr>
                     <td class="celulaCabecalhoEmailSemac" align="center"
                         style="background-color:#590629; padding:32px 24px;">
-                        <h1 style="margin:0; color:#EDECEC; font-size:26px; letter-spacing:1px;">SEMAC XXXVI</h1>
-                        <p style="margin:8px 0 0; color:#E79839; font-size:15px;">Semana Acadêmica da Computação</p>
+                        <img class="imgLogoCabecalhoEmailSemac" src="cid:logoSemac" alt="SEMAC XXXVI" width="300"
+                             style="display:block; width:300px; max-width:100%; height:auto; border:0; margin:0 auto; color:#EDECEC; font-size:26px; font-weight:bold;"/>
                     </td>
                 </tr>
 

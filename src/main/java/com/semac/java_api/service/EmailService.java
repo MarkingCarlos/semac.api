@@ -4,6 +4,7 @@ import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -23,6 +24,13 @@ import java.nio.charset.StandardCharsets;
 public class EmailService {
 
     private static final Logger log = LoggerFactory.getLogger(EmailService.class);
+
+    /* Logo do cabeçalho do envelope (templates/email/envelope.html), que o
+       referencia como cid:logoSemac. Vai anexado inline em todo e-mail em
+       vez de ser um link para o site: imagem externa é bloqueada por
+       padrão em boa parte dos clientes. */
+    private static final String CID_LOGO_EMAIL = "logoSemac";
+    private static final ClassPathResource IMAGEM_LOGO_EMAIL = new ClassPathResource("email/logoSemac2026.png");
 
     private final JavaMailSender remetenteSmtp;
     private final boolean habilitado;
@@ -81,12 +89,22 @@ public class EmailService {
 
         try {
             MimeMessage mensagem = remetenteSmtp.createMimeMessage();
+            /* multipart = true: sem ele não dá para anexar o logo inline. */
             MimeMessageHelper montador =
-                    new MimeMessageHelper(mensagem, false, StandardCharsets.UTF_8.name());
+                    new MimeMessageHelper(mensagem, true, StandardCharsets.UTF_8.name());
             montador.setFrom(emailRemetente, nomeRemetente);
             montador.setTo(destinatario);
             montador.setSubject(assunto);
+            // setText antes de addInline: o JavaMail exige o corpo antes dos anexos inline.
             montador.setText(html, true);
+            /* Sem o arquivo, o e-mail sai mesmo assim — o cliente mostra o
+               alt do <img>. Um logo faltando não pode barrar confirmação. */
+            if (IMAGEM_LOGO_EMAIL.exists()) {
+                montador.addInline(CID_LOGO_EMAIL, IMAGEM_LOGO_EMAIL, "image/png");
+            } else {
+                log.warn("Logo do e-mail não encontrado no classpath ({}) — enviando sem ele.",
+                        IMAGEM_LOGO_EMAIL.getPath());
+            }
 
             remetenteSmtp.send(mensagem);
             log.info("E-mail \"{}\" enviado para {}.", assunto, destinatario);

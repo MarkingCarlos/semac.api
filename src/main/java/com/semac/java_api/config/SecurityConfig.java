@@ -84,6 +84,13 @@ public class SecurityConfig {
        PAPEIS_FINANCEIRO. */
     private static final String[] PAPEIS_DOACAO = { "DIRETOR_SITE", "PRESIDENTE", "DIRETOR_PATROCINIO" };
 
+    /* Quem configura a gamificação: regras de xp, níveis de participante e
+       o catálogo de conquistas (sub-aba Gamificação de Informações SEMAC).
+       Espelha PAPEIS_GAMIFICACAO do frontend (auth/sessao.js). O diretor de
+       conteúdo entra aqui, mas as configurações financeiras da mesma tela
+       (cotas, meta, camiseta, inscrições) seguem só com PAPEIS_FINANCEIRO. */
+    private static final String[] PAPEIS_GAMIFICACAO = { "DIRETOR_SITE", "PRESIDENTE", "DIRETOR_CONTEUDO" };
+
     private static final String PAPEL_PARTICIPANTE = "PARTICIPANTE";
 
     private final SecretKey chaveJwt;
@@ -162,11 +169,11 @@ public class SecurityConfig {
                         // Informações SEMAC. O GET é do card "COMO GANHAR XP" do
                         // /participantes, então vale para qualquer autenticado.
                         .requestMatchers(HttpMethod.GET, "/api/regra-xp").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/api/regra-xp/**").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers(HttpMethod.PUT, "/api/regra-xp/**").hasAnyRole(PAPEIS_GAMIFICACAO)
                         // Escrita de níveis de participante — gerenciada em Informações SEMAC (GET segue aberto)
-                        .requestMatchers(HttpMethod.POST, "/api/nivel/**").hasAnyRole(PAPEIS_FINANCEIRO)
-                        .requestMatchers(HttpMethod.PUT, "/api/nivel/**").hasAnyRole(PAPEIS_FINANCEIRO)
-                        .requestMatchers(HttpMethod.DELETE, "/api/nivel/**").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers(HttpMethod.POST, "/api/nivel/**").hasAnyRole(PAPEIS_GAMIFICACAO)
+                        .requestMatchers(HttpMethod.PUT, "/api/nivel/**").hasAnyRole(PAPEIS_GAMIFICACAO)
+                        .requestMatchers(HttpMethod.DELETE, "/api/nivel/**").hasAnyRole(PAPEIS_GAMIFICACAO)
                         // Exclusivos do /admin (qualquer papel de comissão). GET /api/evento e
                         // GET /api/tipo-inscricao seguem abertos de propósito — alimentam a
                         // programação pública e o cadastro em /inscricoes, respectivamente.
@@ -225,16 +232,16 @@ public class SecurityConfig {
                         // MEMBRO segue podendo marcar presença, mas não conceder.
                         .requestMatchers(HttpMethod.POST, "/api/conquista/*/conceder").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         // Reavaliação em massa das regras automáticas (botão do /admin)
-                        .requestMatchers(HttpMethod.POST, "/api/conquista/reavaliar").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers(HttpMethod.POST, "/api/conquista/reavaliar").hasAnyRole(PAPEIS_GAMIFICACAO)
                         // Conquistas de um participante e revogação — mesmo público
                         // da concessão, já que revogar é desfazer uma concessão.
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/*/conquistas").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers(HttpMethod.DELETE, "/api/pessoa/*/conquistas/*").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         // Configuração do catálogo (texto, pontos, imagem, ativa) —
-                        // mesmo público que edita níveis e cotas em Informações SEMAC.
-                        .requestMatchers(HttpMethod.PUT, "/api/conquista/*").hasAnyRole(PAPEIS_FINANCEIRO)
-                        .requestMatchers(HttpMethod.PATCH, "/api/conquista/*/ativa").hasAnyRole(PAPEIS_FINANCEIRO)
-                        .requestMatchers(HttpMethod.POST, "/api/conquista/*/imagem").hasAnyRole(PAPEIS_FINANCEIRO)
+                        // mesmo público que edita níveis e regras de xp em Informações SEMAC.
+                        .requestMatchers(HttpMethod.PUT, "/api/conquista/*").hasAnyRole(PAPEIS_GAMIFICACAO)
+                        .requestMatchers(HttpMethod.PATCH, "/api/conquista/*/ativa").hasAnyRole(PAPEIS_GAMIFICACAO)
+                        .requestMatchers(HttpMethod.POST, "/api/conquista/*/imagem").hasAnyRole(PAPEIS_GAMIFICACAO)
                         // Rede de segurança: como a regra final é permitAll, qualquer
                         // rota de conquista que venha a existir e não esteja listada
                         // acima nasceria pública. Aqui ela exige ao menos comissão.
