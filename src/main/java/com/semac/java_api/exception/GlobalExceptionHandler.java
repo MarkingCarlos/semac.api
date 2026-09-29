@@ -1,5 +1,6 @@
 package com.semac.java_api.exception;
 
+import com.semac.java_api.dto.BloqueioRespostaDTO;
 import com.semac.java_api.dto.ErroRespostaDTO;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -18,6 +19,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RecursoDuplicadoException.class)
     public ResponseEntity<ErroRespostaDTO> tratarRecursoDuplicado(RecursoDuplicadoException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErroRespostaDTO(ex.getMessage()));
+    }
+
+    /* Tentativas demais (ex.: código de recuperação de senha) → 429 com o
+       tempo de espera, para o front mostrar a contagem regressiva. */
+    @ExceptionHandler(BloqueioTentativasException.class)
+    public ResponseEntity<BloqueioRespostaDTO> tratarBloqueio(BloqueioTentativasException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(new BloqueioRespostaDTO(ex.getMessage(), ex.getSegundosRestantes()));
     }
 
     /* Falha de validação dos DTOs (@Valid) → 400 com a primeira mensagem. */

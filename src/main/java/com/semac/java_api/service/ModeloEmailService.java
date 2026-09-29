@@ -101,6 +101,20 @@ public class ModeloEmailService {
                 renderizador.renderizar(modelo.getCorpoMarkdown(), variaveis), false);
     }
 
+    /* Para mensagens que não podem deixar de sair (ex.: código de
+       recuperação de senha): desligada no /admin, usa o texto padrão do
+       catálogo em vez de devolver html nulo. */
+    @Transactional(readOnly = true)
+    public MensagemPronta montarObrigatoria(String chave, Map<String, String> variaveis) {
+        MensagemPronta mensagem = montar(chave, variaveis);
+        if (mensagem.html() != null) {
+            return mensagem;
+        }
+        ModeloSemeado padrao = exigirCatalogo(chave);
+        return new MensagemPronta(padrao.assuntoPadrao(),
+                renderizador.renderizar(padrao.corpoPadrao(), variaveis), true);
+    }
+
     /* `html` nulo significa mensagem desligada no /admin — não envie. */
     public record MensagemPronta(String assunto, String html, boolean usouPadrao) {
     }

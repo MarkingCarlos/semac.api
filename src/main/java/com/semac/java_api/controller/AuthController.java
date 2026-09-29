@@ -3,8 +3,13 @@ package com.semac.java_api.controller;
 import com.semac.java_api.dto.ErroRespostaDTO;
 import com.semac.java_api.dto.LoginRequestDTO;
 import com.semac.java_api.dto.LoginResponseDTO;
+import com.semac.java_api.dto.RedefinirSenhaRequestDTO;
+import com.semac.java_api.dto.SolicitarCodigoSenhaRequestDTO;
+import com.semac.java_api.dto.VerificarCodigoSenhaRequestDTO;
+import com.semac.java_api.dto.VerificarCodigoSenhaResponseDTO;
 import com.semac.java_api.model.Pessoa;
 import com.semac.java_api.repository.PessoaRepository;
+import com.semac.java_api.service.RecuperacaoSenhaService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,13 +34,16 @@ public class AuthController {
     private final PessoaRepository pessoaRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtEncoder jwtEncoder;
+    private final RecuperacaoSenhaService recuperacaoSenhaService;
 
     public AuthController(PessoaRepository pessoaRepository,
                           PasswordEncoder passwordEncoder,
-                          JwtEncoder jwtEncoder) {
+                          JwtEncoder jwtEncoder,
+                          RecuperacaoSenhaService recuperacaoSenhaService) {
         this.pessoaRepository = pessoaRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtEncoder = jwtEncoder;
+        this.recuperacaoSenhaService = recuperacaoSenhaService;
     }
 
     /* Valida e-mail + senha. A senha é comparada com o hash BCrypt via
@@ -81,6 +89,32 @@ public class AuthController {
         return ResponseEntity.ok(
                 new LoginResponseDTO(token, pessoa.getId(), pessoa.getNome(), pessoa.getEmail(), role, pessoa.getUuid())
         );
+    }
+
+    /* Recuperação de senha — regras em RecuperacaoSenhaService.
+
+       Etapa 1: a resposta é sempre a mesma, exista o e-mail ou não, para a
+       rota não servir de consulta de quem tem conta. */
+    @PostMapping("/recuperar-senha/solicitar")
+    public ResponseEntity<ErroRespostaDTO> solicitarCodigoSenha(@Valid @RequestBody SolicitarCodigoSenhaRequestDTO dto) {
+        recuperacaoSenhaService.solicitarCodigo(dto.email());
+        return ResponseEntity.ok(new ErroRespostaDTO(
+                "Se o e-mail estiver cadastrado, você vai receber um código em instantes."));
+    }
+
+    /* Etapa 2: código certo devolve o token que autoriza a troca. Errado
+       devolve 400 com as tentativas restantes, ou 429 quando bloqueia. */
+    @PostMapping("/recuperar-senha/verificar")
+    public VerificarCodigoSenhaResponseDTO verificarCodigoSenha(@Valid @RequestBody VerificarCodigoSenhaRequestDTO dto) {
+        return new VerificarCodigoSenhaResponseDTO(
+                recuperacaoSenhaService.verificarCodigo(dto.email(), dto.codigo()));
+    }
+
+    /* Etapa 3: grava a senha nova. O token só vale uma vez. */
+    @PostMapping("/recuperar-senha/redefinir")
+    public ResponseEntity<Void> redefinirSenha(@Valid @RequestBody RedefinirSenhaRequestDTO dto) {
+        recuperacaoSenhaService.redefinirSenha(dto.tokenTroca(), dto.novaSenha());
+        return ResponseEntity.noContent().build();
     }
 
     private String gerarToken(Pessoa pessoa, String role) {

@@ -113,6 +113,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Públicos / abertos
                         .requestMatchers("/api/auth/login", "/api/inscricao").permitAll()
+                        // Recuperação de senha: quem usa é justamente quem não consegue entrar
+                        .requestMatchers(HttpMethod.POST, "/api/auth/recuperar-senha/**").permitAll()
                         // Cobrança do cartão — chamada logo após o cadastro público acima
                         .requestMatchers(HttpMethod.POST, "/api/pagamento/cartao").permitAll()
                         // Perfil próprio: qualquer usuário autenticado (identificado pelo token)

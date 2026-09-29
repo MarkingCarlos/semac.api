@@ -34,6 +34,7 @@ public final class CatalogoVariaveisEmail {
     }
 
     public static final String INSCRICAO_CONFIRMADA = "INSCRICAO_CONFIRMADA";
+    public static final String RECUPERACAO_SENHA = "RECUPERACAO_SENHA";
 
     private static final List<ModeloSemeado> MODELOS = List.of(
             new ModeloSemeado(
@@ -64,7 +65,31 @@ public final class CatalogoVariaveisEmail {
                             new VariavelEmail("valorIngresso", "Valor pago, já formatado", "R$ 45,00"),
                             new VariavelEmail("diasInscricao", "Quantidade de diárias", "5"),
                             new VariavelEmail("urlAreaParticipante", "Link da área do participante",
-                                    "https://semac.cc/participantes"))));
+                                    "https://semac.cc/participantes"))),
+            new ModeloSemeado(
+                    RECUPERACAO_SENHA,
+                    "Recuperação de senha",
+                    "Enviada quando alguém pede para recuperar a senha na tela de login. "
+                            + "Leva o código de 5 dígitos. Desligar esta mensagem não a impede de sair: "
+                            + "sem ela ninguém recupera a senha, então o texto padrão é usado no lugar.",
+                    "Seu código para recuperar a senha da SEMAC",
+                    """
+                    Olá, **{{nomeParticipante}}**!
+
+                    Recebemos um pedido para recuperar a senha da sua conta na SEMAC. \
+                    Use o código abaixo na tela de login:
+
+                    ## {{codigo}}
+
+                    O código vale por **{{validadeMinutos}} minutos** e só pode ser usado uma vez.
+
+                    > Não pediu para trocar a senha? Pode ignorar este e-mail — sua senha \
+                    continua a mesma.
+                    """,
+                    List.of(
+                            new VariavelEmail("nomeParticipante", "Nome de quem recebe", "Maria Souza"),
+                            new VariavelEmail("codigo", "Código de 5 dígitos", "48213"),
+                            new VariavelEmail("validadeMinutos", "Por quantos minutos o código vale", "15"))));
 
     /* Variáveis de um comunicado avulso (/admin -> Comunicados). Curta de
        propósito: um comunicado é escrito para um público inteiro, então só
