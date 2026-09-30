@@ -46,7 +46,7 @@ public class InscricaoEventoService {
 
     /* Status que ocupam vaga. AUSENTE fica de fora: ele é atribuído
        quando o evento termina sem check-in, e aí a vaga não existe mais. */
-    private static final Set<StatusPresenca> STATUS_OCUPA_VAGA =
+    public static final Set<StatusPresenca> STATUS_OCUPA_VAGA =
             Set.of(StatusPresenca.INSCRITO, StatusPresenca.PRESENTE);
 
     /* Teto do "INICIAR EVENTO" (ver inicioEfetivo). Hardcoded de propósito,
@@ -57,7 +57,7 @@ public class InscricaoEventoService {
     /* O check-in de um evento só abre 15min antes do horário agendado.
        Antes disso a leitura é recusada e fica registrada (ver
        marcarPresente). */
-    private static final long ANTECEDENCIA_MAXIMA_CHECKIN_MINUTOS = 15;
+    public static final long ANTECEDENCIA_MAXIMA_CHECKIN_MINUTOS = 15;
 
     private static final DateTimeFormatter HORA_CHECKIN = DateTimeFormatter.ofPattern("HH:mm");
 
@@ -252,22 +252,13 @@ public class InscricaoEventoService {
     /* Marca presença a partir do uuid do crachá do participante (leitura
        de câmera). "Não cadastrado" cobre tanto uuid inexistente quanto
        pessoa sem inscrição nesse evento específico — para quem opera o
-       check-in os dois casos pedem a mesma ação (busca manual ou
-       confirmar a inscrição na secretaria), então a mensagem é a mesma. */
+       check-in os dois casos pedem a mesma ação (confirmar a inscrição
+       na secretaria), então a mensagem é a mesma. Não existe marcação
+       manual: toda presença passa pelo QR, para ficar registrado quem
+       leu o crachá. */
     @Transactional
     public PresencaConfirmadaDTO registrarPresencaPorUuid(Integer eventoId, String uuid, OperadorCheckinDTO operador) {
         Pessoa participante = pessoaRepository.findByUuid(uuid)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Este participante não está cadastrado para esse evento."));
-        return marcarPresente(eventoId, participante, operador);
-    }
-
-    /* Confirmação manual (busca por nome/e-mail na ferramenta /checkin,
-       quando a leitura do QR falha). O participante já foi identificado
-       visualmente pela lista, então basta o id. */
-    @Transactional
-    public PresencaConfirmadaDTO registrarPresencaPorId(Integer eventoId, Integer participanteId, OperadorCheckinDTO operador) {
-        Pessoa participante = pessoaRepository.findById(participanteId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Este participante não está cadastrado para esse evento."));
         return marcarPresente(eventoId, participante, operador);
@@ -297,6 +288,8 @@ public class InscricaoEventoService {
         inscricao.setStatus(StatusPresenca.PRESENTE);
         inscricao.setPresencaEm(agora);
         inscricao.setXpCreditado(xpCreditado);
+        inscricao.setRegistradoPorId(operador.id());
+        inscricao.setRegistradoPorNome(operador.nome());
         eventoParticipanteRepository.save(inscricao);
 
         if (xpCreditado > 0) {

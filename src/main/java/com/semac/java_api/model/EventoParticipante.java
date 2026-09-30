@@ -42,4 +42,13 @@ public class EventoParticipante {
 
     @Column(name = "xp_creditado")
     private Integer xpCreditado;
+
+    /* Membro da comissão que leu o QR code neste check-in (id e nome
+       copiados do token no momento, sem FK — ver V47). Nulo em presenças
+       marcadas antes da V47. */
+    @Column(name = "registrado_por_id")
+    private Integer registradoPorId;
+
+    @Column(name = "registrado_por_nome")
+    private String registradoPorNome;
 }

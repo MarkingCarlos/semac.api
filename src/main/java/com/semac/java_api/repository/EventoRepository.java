@@ -19,6 +19,10 @@ public interface EventoRepository extends JpaRepository<Evento, Integer> {
        confirmado é pré-inscrito neles, sem checagem de capacidade. */
     List<Evento> findByTipoEvento_ExigeInscricaoFalse();
 
+    /* Minicursos (tipos que exigem inscrição e têm lotação) — card de
+       vagas da dashboard do /admin. */
+    List<Evento> findByTipoEvento_ExigeInscricaoTrueOrderByDataHoraInicioAsc();
+
     /* Trava a linha do evento (SELECT ... FOR UPDATE) enquanto a inscrição
        em minicurso conta as vagas e grava — sem isso, duas pessoas podem
        passar pela contagem ao mesmo tempo e estourar a lotação. */

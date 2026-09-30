@@ -80,26 +80,14 @@ public class InscricaoEventoController {
        restrito a papéis de comissão via SecurityConfig
        (hasAnyRole(PAPEIS_ADMIN)).
 
-       Quem opera a leitura é identificado pelo token só para o log de
-       tentativas fora da janela de check-in (ver
-       InscricaoEventoService.exigirJanelaDeCheckinAberta) — o check-in
-       em si não depende de quem o fez. */
+       Quem opera a leitura é identificado pelo token: fica gravado no
+       check-in (dashboard do /admin) e no log de tentativas fora da
+       janela (ver InscricaoEventoService.exigirJanelaDeCheckinAberta). */
     @PostMapping("/{id}/presenca")
     public PresencaConfirmadaDTO registrarPresencaPorQr(@AuthenticationPrincipal Jwt jwt,
                                                          @PathVariable Integer id,
                                                          @Valid @RequestBody RegistrarPresencaRequestDTO dto) {
         return inscricaoEventoService.registrarPresencaPorUuid(id, dto.uuid(), operadorDoToken(jwt));
-    }
-
-    /* Confirmação manual de presença (busca por nome/e-mail), para quando
-       a leitura do QR falha ou o participante não tem o crachá em mãos.
-       Passa pela mesma janela de check-in da leitura por QR — senão a
-       busca manual seria a porta dos fundos da regra. */
-    @PostMapping("/{id}/presenca/{participanteId}")
-    public PresencaConfirmadaDTO registrarPresencaManual(@AuthenticationPrincipal Jwt jwt,
-                                                          @PathVariable Integer id,
-                                                          @PathVariable Integer participanteId) {
-        return inscricaoEventoService.registrarPresencaPorId(id, participanteId, operadorDoToken(jwt));
     }
 
     /* Marca o evento como começado (botão "INICIAR EVENTO" do /checkin):
@@ -111,7 +99,7 @@ public class InscricaoEventoController {
     }
 
     /* Identidade de quem opera o /checkin, das claims gravadas no login
-       (ver AuthController). Só alimenta o log de tentativas recusadas. */
+       (ver AuthController). Gravada no check-in e no log de tentativas recusadas. */
     private OperadorCheckinDTO operadorDoToken(Jwt jwt) {
         if (jwt == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sessão inválida.");

@@ -1,6 +1,5 @@
 package com.semac.java_api.service;
 
-import com.semac.java_api.dto.AtualizarCamisetaPerfilDTO;
 import com.semac.java_api.dto.AtualizarPerfilDTO;
 import com.semac.java_api.dto.CadastroManualRequestDTO;
 import com.semac.java_api.dto.CamisetaAdminDTO;
@@ -478,10 +477,9 @@ public class PessoaService {
         return paraPerfil(pessoa);
     }
 
-    /* Atualiza os campos editáveis do próprio perfil: RA e o modelo/tamanho
-       das camisetas já existentes. Não cria nem apaga camiseta — o `id`
-       enviado precisa bater exatamente com o conjunto de camisa_pedido da
-       pessoa (nem a mais, nem a menos), senão 400. */
+    /* Atualiza o único campo editável do próprio perfil: o RA. As
+       camisetas já foram encomendadas e não mudam mais (nem por aqui, nem
+       pelo /admin). */
     @Transactional
     public PerfilResponseDTO atualizarPerfil(Integer id, AtualizarPerfilDTO dto) {
         Pessoa pessoa = pessoaRepository.findById(id)
@@ -492,31 +490,7 @@ public class PessoaService {
         pessoa.setRa(ra);
         pessoaRepository.save(pessoa);
 
-        List<CamisaPedido> existentes = camisaPedidoRepository.findByPessoaId(id);
-        if (existentes.size() != dto.camisetas().size()
-                || !existentes.stream().map(CamisaPedido::getId)
-                        .allMatch(existenteId -> dto.camisetas().stream()
-                                .anyMatch(item -> item.id().equals(existenteId)))) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Não é possível adicionar ou remover camisetas por aqui.");
-        }
-
-        for (AtualizarCamisetaPerfilDTO item : dto.camisetas()) {
-            CamisaPedido pedido = existentes.stream()
-                    .filter(p -> p.getId().equals(item.id()))
-                    .findFirst()
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                            "Camiseta não encontrada."));
-            pedido.setModelo(item.modelo());
-            pedido.setTamanho(item.tamanho());
-        }
-        camisaPedidoRepository.saveAll(existentes);
-
-        // Constrói a resposta a partir da lista recém-salva — a coleção
-        // lazy da pessoa pode não refletir a atualização ainda nesta
-        // transação (mesmo cuidado de atualizarCamisetas).
-        List<CamisetaPerfilDTO> camisetas = existentes.stream().map(this::paraCamisetaPerfil).toList();
-        return paraPerfil(pessoa, camisetas);
+        return paraPerfil(pessoa);
     }
 
     private PerfilResponseDTO paraPerfil(Pessoa pessoa) {
@@ -654,38 +628,6 @@ public class PessoaService {
 
     private CamisetaPerfilDTO paraCamisetaPerfil(CamisaPedido pedido) {
         return new CamisetaPerfilDTO(pedido.getId(), pedido.getModelo().name(), pedido.getTamanho().name(), pedido.getAvulsa());
-    }
-
-    /* Substitui a lista inteira de camisetas da pessoa pela enviada
-       (replace-all) — editor do /admin, restrito a DIRETOR_SITE/PRESIDENTE
-       (ver SecurityConfig). Cobre tanto participante quanto comissão: dá
-       pra marcar qualquer camiseta como avulsa, mesmo de alguém da
-       comissão, que antes era sempre grátis por regra fixa no código. */
-    @Transactional
-    public ParticipanteResponseDTO atualizarCamisetas(Integer id, List<CamisetaAdminDTO> camisetas) {
-        Pessoa pessoa = pessoaRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Pessoa não encontrada."));
-
-        camisaPedidoRepository.deleteByPessoaId(id);
-
-        List<CamisaPedido> novos = camisetas.stream()
-                .map(item -> {
-                    CamisaPedido pedido = new CamisaPedido();
-                    pedido.setPessoa(pessoa);
-                    pedido.setModelo(item.modelo());
-                    pedido.setTamanho(item.tamanho());
-                    pedido.setAvulsa(item.avulsa());
-                    return pedido;
-                })
-                .toList();
-        camisaPedidoRepository.saveAll(novos);
-
-        // Resposta construída a partir da lista recém-salva — a coleção
-        // lazy da pessoa pode não refletir o replace-all ainda nesta
-        // transação (mesmo cuidado de atualizarPerfil).
-        List<CamisetaParticipanteDTO> resposta = novos.stream().map(this::paraCamiseta).toList();
-        return paraResposta(pessoa, resposta);
     }
 
     /* Registra mais uma tentativa de cobrança no cartão (aprovada, recusada

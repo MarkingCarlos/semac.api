@@ -91,6 +91,12 @@ public class SecurityConfig {
        (cotas, meta, camiseta, inscrições) seguem só com PAPEIS_FINANCEIRO. */
     private static final String[] PAPEIS_GAMIFICACAO = { "DIRETOR_SITE", "PRESIDENTE", "DIRETOR_CONTEUDO" };
 
+    /* Quem vê a dashboard da seção Início do /admin. Por enquanto só a
+       presidência (que vê tudo) e a diretoria de site (quem mantém o
+       sistema); a divisão por papel vem depois. Espelha PAPEIS_DASHBOARD
+       do frontend (auth/sessao.js). */
+    private static final String[] PAPEIS_DASHBOARD = { "PRESIDENTE", "DIRETOR_SITE" };
+
     private static final String PAPEL_PARTICIPANTE = "PARTICIPANTE";
 
     private final SecretKey chaveJwt;
@@ -143,9 +149,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/previsao", "/api/previsao/resumo", "/api/previsao-categoria", "/api/orcamento").hasAnyRole(PAPEIS_LEITURA_PREVISAO)
                         .requestMatchers("/api/previsao/**", "/api/previsao-categoria/**", "/api/orcamento/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/inscricoes").hasAnyRole(PAPEIS_FINANCEIRO)
-                        // Editar quantas camisetas uma pessoa tem (grátis/inclusas ou avulsas) —
-                        // mesmo acesso do financeiro, tanto para comissão quanto para participantes.
-                        .requestMatchers(HttpMethod.PUT, "/api/pessoa/*/camisetas").hasAnyRole(PAPEIS_FINANCEIRO)
                         // Escrita de patrocínio/cota acontece só no financeiro (GET segue aberto)
                         .requestMatchers(HttpMethod.POST, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.PUT, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)
@@ -185,6 +188,7 @@ public class SecurityConfig {
                         // Reconsulta de status do pagamento no cartão — mesmo público do comprovante acima
                         .requestMatchers(HttpMethod.GET, "/api/pagamento/cartao/*/status").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.GET, "/api/relatorio/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
+                        .requestMatchers(HttpMethod.GET, "/api/dashboard/**").hasAnyRole(PAPEIS_DASHBOARD)
                         // Crachás impressos — devolve o uuid de check-in de todo mundo, então
                         // fica com quem gerencia pessoas (mesmo público da aba Pessoas)
                         .requestMatchers(HttpMethod.GET, "/api/cracha").hasAnyRole(PAPEIS_FINANCEIRO)
@@ -198,7 +202,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/evento/*").hasAnyRole(PAPEIS_CONTEUDO)
                         .requestMatchers(HttpMethod.DELETE, "/api/evento/*").hasAnyRole(PAPEIS_CONTEUDO)
                         // Marcar presença segue com qualquer papel de comissão: quem opera o /checkin
-                        .requestMatchers(HttpMethod.POST, "/api/evento/*/presenca", "/api/evento/*/presenca/*").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.POST, "/api/evento/*/presenca").hasAnyRole(PAPEIS_ADMIN)
                         // "INICIAR EVENTO" do /admin: move o marco do atraso pro início real
                         .requestMatchers(HttpMethod.POST, "/api/evento/*/iniciar").hasAnyRole(PAPEIS_CONTEUDO)
                         .requestMatchers("/api/tipo-evento/**").hasAnyRole(PAPEIS_ADMIN)

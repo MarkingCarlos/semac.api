@@ -6,7 +6,6 @@ import com.semac.java_api.dto.ConquistaDoParticipanteDTO;
 import com.semac.java_api.dto.DiasIngressoResponseDTO;
 import com.semac.java_api.dto.EscolherDiasIngressoRequestDTO;
 import com.semac.java_api.dto.AtribuirRoleDTO;
-import com.semac.java_api.dto.AtualizarCamisetasRequestDTO;
 import com.semac.java_api.dto.AtualizarPerfilDTO;
 import com.semac.java_api.dto.InscricaoFinanceiraDTO;
 import com.semac.java_api.dto.ParticipanteResponseDTO;
@@ -169,14 +168,6 @@ public class PessoaController {
     @DeleteMapping("/{id}")
     public void excluir(@PathVariable Integer id) {
         pessoaService.excluir(id);
-    }
-
-    /* Substitui a lista de camisetas da pessoa (replace-all) — editor do
-       /admin restrito a DIRETOR_SITE/PRESIDENTE (ver SecurityConfig). */
-    @PutMapping("/{id}/camisetas")
-    public ParticipanteResponseDTO atualizarCamisetas(@PathVariable Integer id,
-                                                       @Valid @RequestBody AtualizarCamisetasRequestDTO dto) {
-        return pessoaService.atualizarCamisetas(id, dto.camisetas());
     }
 
     /* Serve o comprovante de pagamento anexado no cadastro — quem confirma

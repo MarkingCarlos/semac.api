@@ -123,11 +123,14 @@ class RegrasEventoParticipanteTest {
             pessoa.setEmail("p" + i + "@semac.cc");
             pessoa.setRole(Role.PARTICIPANTE);
             pessoa.setXp(0);
+            pessoa.setUuid("uuid-" + i);
             participantesConfirmados.add(pessoa);
         }
         when(pessoaRepository.findAllByRole(Role.PARTICIPANTE)).thenReturn(participantesConfirmados);
         when(pessoaRepository.getReferenceById(any())).thenAnswer(
                 chamada -> participantesConfirmados.get((Integer) chamada.getArgument(0) - 1));
+        when(pessoaRepository.findByUuid(any())).thenAnswer(chamada -> participantesConfirmados.stream()
+                .filter(p -> p.getUuid().equals(chamada.getArgument(0))).findFirst());
         when(pessoaRepository.findById(any())).thenAnswer(
                 chamada -> Optional.of(participantesConfirmados.get((Integer) chamada.getArgument(0) - 1)));
 
@@ -198,8 +201,8 @@ class RegrasEventoParticipanteTest {
         Evento palestra = palestraComecandoEm(LocalDateTime.now().plusMinutes(JANELA_CHECKIN_MINUTOS));
         Pessoa participante = inscreverNaPalestra(palestra, 1);
 
-        PresencaConfirmadaDTO resposta = inscricaoEventoService.registrarPresencaPorId(
-                ID_PALESTRA, participante.getId(), operador());
+        PresencaConfirmadaDTO resposta = inscricaoEventoService.registrarPresencaPorUuid(
+                ID_PALESTRA, participante.getUuid(), operador());
 
         System.out.println(">>> [P2] check-in " + JANELA_CHECKIN_MINUTOS + "min antes: PASSOU | xpGanho="
                 + resposta.xpGanho()
@@ -212,6 +215,10 @@ class RegrasEventoParticipanteTest {
         assertEquals(StatusPresenca.PRESENTE,
                 tabelaEventoParticipante.get(new EventoParticipantePK(ID_PALESTRA, 1)).getStatus());
         verify(tentativaCheckinService, never()).registrar(any(), any(), any(), any(), anyLong());
+
+        EventoParticipante linha = tabelaEventoParticipante.get(new EventoParticipantePK(ID_PALESTRA, 1));
+        assertEquals(90, linha.getRegistradoPorId());
+        assertEquals("Operador Teste", linha.getRegistradoPorNome());
     }
 
     @Test
@@ -220,7 +227,7 @@ class RegrasEventoParticipanteTest {
         Pessoa participante = inscreverNaPalestra(palestra, 1);
 
         ResponseStatusException erro = assertThrows(ResponseStatusException.class, () ->
-                inscricaoEventoService.registrarPresencaPorId(ID_PALESTRA, participante.getId(), operador()));
+                inscricaoEventoService.registrarPresencaPorUuid(ID_PALESTRA, participante.getUuid(), operador()));
 
         System.out.println(">>> [P2] check-in " + (JANELA_CHECKIN_MINUTOS + 1) + "min antes: "
                 + erro.getStatusCode() + " | " + erro.getReason()
@@ -240,7 +247,7 @@ class RegrasEventoParticipanteTest {
         Pessoa participante = inscreverNaPalestra(palestra, 1);
 
         ResponseStatusException erro = assertThrows(ResponseStatusException.class, () ->
-                inscricaoEventoService.registrarPresencaPorId(ID_PALESTRA, participante.getId(), operador()));
+                inscricaoEventoService.registrarPresencaPorUuid(ID_PALESTRA, participante.getUuid(), operador()));
 
         System.out.println(">>> [P2] check-in 1h antes: " + erro.getStatusCode()
                 + " | " + erro.getReason());
@@ -269,8 +276,8 @@ class RegrasEventoParticipanteTest {
 
         /* 1. A palestra de amanha esta fora da janela. */
         ResponseStatusException erro = assertThrows(ResponseStatusException.class, () ->
-                inscricaoEventoService.registrarPresencaPorId(
-                        ID_PALESTRA_DIA_SEGUINTE, participante.getId(), operador()));
+                inscricaoEventoService.registrarPresencaPorUuid(
+                        ID_PALESTRA_DIA_SEGUINTE, participante.getUuid(), operador()));
 
         ArgumentCaptor<Long> minutosAntes = ArgumentCaptor.forClass(Long.class);
         verify(tentativaCheckinService).registrar(any(), any(), any(), any(), minutosAntes.capture());
@@ -291,8 +298,8 @@ class RegrasEventoParticipanteTest {
                 "minutosAntes fora do esperado: " + minutosAntes.getValue());
 
         /* 2. No mesmo instante, a palestra de hoje aceita (faltam 5min). */
-        PresencaConfirmadaDTO resposta = inscricaoEventoService.registrarPresencaPorId(
-                ID_PALESTRA, participante.getId(), operador());
+        PresencaConfirmadaDTO resposta = inscricaoEventoService.registrarPresencaPorUuid(
+                ID_PALESTRA, participante.getUuid(), operador());
 
         System.out.println(">>> [P3] check-in na palestra de HOJE, mesmo instante: PASSOU | xpGanho="
                 + resposta.xpGanho());
@@ -309,8 +316,8 @@ class RegrasEventoParticipanteTest {
         Evento palestra = palestraComecandoEm(LocalDateTime.now());
         Pessoa participante = inscreverNaPalestra(palestra, 1);
 
-        PresencaConfirmadaDTO resposta = inscricaoEventoService.registrarPresencaPorId(
-                ID_PALESTRA, participante.getId(), operador());
+        PresencaConfirmadaDTO resposta = inscricaoEventoService.registrarPresencaPorUuid(
+                ID_PALESTRA, participante.getUuid(), operador());
 
         System.out.println(">>> [P2] check-in no horario marcado: xpGanho=" + resposta.xpGanho()
                 + " | atrasoMinutos=" + resposta.atrasoMinutos());
@@ -323,8 +330,8 @@ class RegrasEventoParticipanteTest {
         palestra.setIniciadoEm(LocalDateTime.now().minusMinutes(5)); // clique adiantado
         Pessoa participante = inscreverNaPalestra(palestra, 1);
 
-        PresencaConfirmadaDTO resposta = inscricaoEventoService.registrarPresencaPorId(
-                ID_PALESTRA, participante.getId(), operador());
+        PresencaConfirmadaDTO resposta = inscricaoEventoService.registrarPresencaPorUuid(
+                ID_PALESTRA, participante.getUuid(), operador());
 
         System.out.println(">>> [P2] check-in na abertura com INICIAR EVENTO adiantado: xpGanho="
                 + resposta.xpGanho() + " | atrasoMinutos=" + resposta.atrasoMinutos());

@@ -4,6 +4,7 @@ import com.semac.java_api.model.EventoParticipante;
 import com.semac.java_api.model.enums.StatusPresenca;
 import com.semac.java_api.model.pk.EventoParticipantePK;
 import com.semac.java_api.repository.projection.InscritosEventoView;
+import com.semac.java_api.repository.projection.LeiturasOperadorView;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -45,6 +46,26 @@ public interface EventoParticipanteRepository extends JpaRepository<EventoPartic
             WHERE ep.pk.participanteId = :participanteId
             """)
     List<EventoParticipante> buscarComEventoPorParticipante(@Param("participanteId") Integer participanteId);
+
+    /* Linhas de um evento com o participante já carregado, para listas da
+       dashboard do /admin (inscritos de um minicurso, leituras de QR). */
+    @Query("""
+            SELECT ep FROM EventoParticipante ep
+            JOIN FETCH ep.participante
+            WHERE ep.pk.eventoId = :eventoId
+              AND ep.status IN :status
+            """)
+    List<EventoParticipante> buscarComParticipantePorEvento(@Param("eventoId") Integer eventoId,
+                                                            @Param("status") Collection<StatusPresenca> status);
+
+    /* Leituras de QR por membro da comissão, somando todos os eventos. */
+    @Query("""
+            SELECT ep.registradoPorId AS operadorId, ep.registradoPorNome AS operadorNome, COUNT(ep) AS total
+            FROM EventoParticipante ep
+            WHERE ep.status = com.semac.java_api.model.enums.StatusPresenca.PRESENTE
+            GROUP BY ep.registradoPorId, ep.registradoPorNome
+            """)
+    List<LeiturasOperadorView> contarLeiturasPorOperador();
 
     void deleteByPk_ParticipanteId(Integer participanteId);
 
