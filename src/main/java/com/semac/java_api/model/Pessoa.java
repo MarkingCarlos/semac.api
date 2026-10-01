@@ -90,7 +90,7 @@ public class Pessoa {
     private List<ParticipanteConquista> participanteConquistas = new ArrayList<>();
 
     @OneToMany(mappedBy = "organizador")
-    private List<Sorteio> sorteiosOrganizados = new ArrayList<>();
+    private List<GanhadoresSorteio> sorteiosRealizados = new ArrayList<>();
 
     @OneToMany(mappedBy = "participante")
     private List<GanhadoresSorteio> ganhadoresSorteio = new ArrayList<>();

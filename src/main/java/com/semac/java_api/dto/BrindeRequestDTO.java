@@ -6,5 +6,6 @@ import jakarta.validation.constraints.Positive;
 
 public record BrindeRequestDTO(
         @NotBlank String nome,
-        @NotNull @Positive Integer quantidade
+        @NotNull @Positive Integer quantidade,
+        @NotNull Integer sorteioId
 ) {}

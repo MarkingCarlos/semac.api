@@ -30,7 +30,6 @@ import com.semac.java_api.repository.GanhadoresSorteioRepository;
 import com.semac.java_api.repository.NivelRepository;
 import com.semac.java_api.repository.ParticipanteConquistaRepository;
 import com.semac.java_api.repository.PessoaRepository;
-import com.semac.java_api.repository.SorteioRepository;
 import com.semac.java_api.repository.TipoInscricaoRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
@@ -68,7 +67,6 @@ public class PessoaService {
     private final CamisetaExtraRepository camisetaExtraRepository;
     private final NivelRepository nivelRepository;
     private final InscricaoEventoService inscricaoEventoService;
-    private final SorteioRepository sorteioRepository;
     private final CaixaRepository caixaRepository;
     private final ParticipanteConquistaRepository participanteConquistaRepository;
     private final GanhadoresSorteioRepository ganhadoresSorteioRepository;
@@ -81,7 +79,6 @@ public class PessoaService {
                          CamisetaExtraRepository camisetaExtraRepository,
                          NivelRepository nivelRepository,
                          InscricaoEventoService inscricaoEventoService,
-                         SorteioRepository sorteioRepository,
                          CaixaRepository caixaRepository,
                          ParticipanteConquistaRepository participanteConquistaRepository,
                          GanhadoresSorteioRepository ganhadoresSorteioRepository,
@@ -93,7 +90,6 @@ public class PessoaService {
         this.camisetaExtraRepository = camisetaExtraRepository;
         this.nivelRepository = nivelRepository;
         this.inscricaoEventoService = inscricaoEventoService;
-        this.sorteioRepository = sorteioRepository;
         this.caixaRepository = caixaRepository;
         this.participanteConquistaRepository = participanteConquistaRepository;
         this.ganhadoresSorteioRepository = ganhadoresSorteioRepository;
@@ -440,7 +436,7 @@ public class PessoaService {
     /* Exclui definitivamente um participante ou membro da comissão (ação
        irreversível — para preservar histórico, prefira "Desativar").
        Bloqueada se a pessoa for responsável por registros de auditoria que
-       não podem ficar órfãos: sorteios que organizou (organizador_id é
+       não podem ficar órfãos: sorteios que realizou (organizador_id é
        NOT NULL) e o último ajuste de algum caixa. Os demais vínculos
        (camisetas, inscrições em eventos, conquistas e prêmios ganhos) são
        apagados junto, por serem exclusivos dessa pessoa. */
@@ -450,7 +446,7 @@ public class PessoaService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Pessoa não encontrada."));
 
-        if (sorteioRepository.existsByOrganizador_Id(id)) {
+        if (ganhadoresSorteioRepository.existsByOrganizador_Id(id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Esta pessoa organizou sorteios e não pode ser excluída. Desative-a em vez disso.");
         }

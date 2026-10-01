@@ -78,8 +78,9 @@ public class SecurityConfig {
        mexer na programação chamando a API direto. */
     private static final String[] PAPEIS_CONTEUDO = { "DIRETOR_SITE", "PRESIDENTE", "DIRETOR_CONTEUDO" };
 
-    /* Quem cadastra, edita e exclui doações (tabela `doador`). Espelha os
-       papéis da aba Doações do /admin (Admin.jsx). O diretor de patrocínio
+    /* Quem cadastra, edita e exclui doações (tabela `doador`). Espelha
+       PAPEIS_DOACAO do frontend (auth/sessao.js) — aba Doações do
+       /financeiro. O diretor de patrocínio
        entra aqui, mas patrocinador/cota e a meta de doação seguem só com
        PAPEIS_FINANCEIRO. */
     private static final String[] PAPEIS_DOACAO = { "DIRETOR_SITE", "PRESIDENTE", "DIRETOR_PATROCINIO" };
@@ -154,7 +155,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.PATCH, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.DELETE, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)
-                        // Escrita de doador — aba Doações do /admin, que o diretor de
+                        // Escrita de doador — aba Doações do /financeiro, que o diretor de
                         // patrocínio também usa (GET segue aberto)
                         .requestMatchers(HttpMethod.POST, "/api/doador/**").hasAnyRole(PAPEIS_DOACAO)
                         .requestMatchers(HttpMethod.PUT, "/api/doador/**").hasAnyRole(PAPEIS_DOACAO)
@@ -215,7 +216,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/brinde/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers(HttpMethod.PUT, "/api/brinde/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers(HttpMethod.DELETE, "/api/brinde/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
-                        .requestMatchers("/api/sorteio/**").hasAnyRole(PAPEIS_ADMIN)
+                        // Sorteios seguem a mesma regra: MEMBRO lista e realiza (elegíveis +
+                        // entrega), só a diretoria cria, edita ou exclui o cadastro.
+                        .requestMatchers(HttpMethod.GET, "/api/sorteio/**").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.POST, "/api/sorteio/*/entrega").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.POST, "/api/sorteio").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
+                        .requestMatchers(HttpMethod.PUT, "/api/sorteio/*").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
+                        .requestMatchers(HttpMethod.DELETE, "/api/sorteio/*").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         // Verificação do código de acesso do ingresso — pública de propósito,
                         // usada pelo cadastro em /inscricoes; nunca revela o código real.
                         .requestMatchers(HttpMethod.POST, "/api/tipo-inscricao/*/verificar-codigo").permitAll()

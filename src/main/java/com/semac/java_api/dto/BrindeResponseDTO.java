@@ -4,5 +4,7 @@ public record BrindeResponseDTO(
         Integer id,
         String nome,
         Integer quantidade,
-        Integer quantidadeEntregue
+        Integer quantidadeEntregue,
+        Integer sorteioId,
+        String sorteioNome
 ) {}

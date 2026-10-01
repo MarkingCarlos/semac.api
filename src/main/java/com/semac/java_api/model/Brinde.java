@@ -25,6 +25,10 @@ public class Brinde {
     @Column(nullable = false)
     private Integer quantidade;
 
+    @ManyToOne
+    @JoinColumn(name = "sorteio_id", nullable = false)
+    private Sorteio sorteio;
+
     @OneToMany(mappedBy = "brinde")
-    private List<Sorteio> sorteios = new ArrayList<>();
+    private List<GanhadoresSorteio> entregas = new ArrayList<>();
 }

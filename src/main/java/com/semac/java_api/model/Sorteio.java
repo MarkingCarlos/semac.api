@@ -3,8 +3,12 @@ package com.semac.java_api.model;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
+/* Sorteio cadastrado no /admin (aba Brindes → Sorteios): nome + evento
+   onde acontece. Um evento pode ter vários sorteios; cada brinde
+   pertence a um sorteio, e cada entrega fica em `ganhadores_sorteio`. */
 @Entity
 @Table(name = "sorteio")
 @Getter
@@ -18,18 +22,16 @@ public class Sorteio {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    @Column(nullable = false)
+    private String nome;
+
     @ManyToOne
     @JoinColumn(name = "evento_id", nullable = false)
     private Evento evento;
 
-    @ManyToOne
-    @JoinColumn(name = "organizador_id", nullable = false)
-    private Pessoa organizador;
+    @OneToMany(mappedBy = "sorteio")
+    private List<Brinde> brindes = new ArrayList<>();
 
-    @ManyToOne
-    @JoinColumn(name = "brinde_id")
-    private Brinde brinde;
-
-    @Column(name = "realizado_em", nullable = false)
-    private LocalDateTime realizadoEm;
+    @OneToMany(mappedBy = "sorteio")
+    private List<GanhadoresSorteio> ganhadores = new ArrayList<>();
 }

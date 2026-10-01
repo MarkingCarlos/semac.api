@@ -1,5 +1,7 @@
 package com.semac.java_api.controller;
 
+import com.semac.java_api.dto.EntregaSorteioRequestDTO;
+import com.semac.java_api.dto.GanhadorSorteioDTO;
 import com.semac.java_api.dto.ParticipanteElegivelDTO;
 import com.semac.java_api.dto.SorteioRequestDTO;
 import com.semac.java_api.dto.SorteioResponseDTO;
@@ -14,10 +16,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
-/* Sorteio de brindes, usado pela tela /sorteio. O organizador é sempre
-   identificado pela claim `id` do Bearer token — nunca por parâmetro
-   (mesmo padrão de InscricaoEventoController), já que só quem tem sessão
-   de comissão consegue realizar um sorteio. */
+/* Sorteios de brindes. O CRUD (nome + evento) é gerenciado no /admin,
+   aba Brindes → Sorteios; a realização (elegíveis + entrega) é usada
+   pela tela /sorteio. O organizador da entrega é sempre identificado
+   pela claim `id` do Bearer token — nunca por parâmetro (mesmo padrão
+   de InscricaoEventoController). */
 @RestController
 @RequestMapping("/api/sorteio")
 public class SorteioController {
@@ -28,16 +31,38 @@ public class SorteioController {
         this.sorteioService = sorteioService;
     }
 
-    @GetMapping("/elegiveis")
-    public List<ParticipanteElegivelDTO> elegiveis(@RequestParam Integer eventoId) {
-        return sorteioService.elegiveis(eventoId);
+    @GetMapping
+    public List<SorteioResponseDTO> listar() {
+        return sorteioService.listar();
     }
 
     @PostMapping
-    public ResponseEntity<SorteioResponseDTO> registrar(@AuthenticationPrincipal Jwt jwt,
-                                                         @Valid @RequestBody SorteioRequestDTO dto) {
-        SorteioResponseDTO resposta = sorteioService.registrarGanhador(
-                dto.eventoId(), dto.brindeId(), dto.participanteId(), idDoToken(jwt));
+    public ResponseEntity<SorteioResponseDTO> criar(@Valid @RequestBody SorteioRequestDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(sorteioService.criar(dto));
+    }
+
+    @PutMapping("/{id}")
+    public SorteioResponseDTO atualizar(@PathVariable Integer id, @Valid @RequestBody SorteioRequestDTO dto) {
+        return sorteioService.atualizar(id, dto);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> excluir(@PathVariable Integer id) {
+        sorteioService.excluir(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/elegiveis")
+    public List<ParticipanteElegivelDTO> elegiveis(@PathVariable Integer id) {
+        return sorteioService.elegiveis(id);
+    }
+
+    @PostMapping("/{id}/entrega")
+    public ResponseEntity<GanhadorSorteioDTO> registrarEntrega(@AuthenticationPrincipal Jwt jwt,
+                                                               @PathVariable Integer id,
+                                                               @Valid @RequestBody EntregaSorteioRequestDTO dto) {
+        GanhadorSorteioDTO resposta = sorteioService.registrarGanhador(
+                id, dto.brindeId(), dto.participanteId(), idDoToken(jwt));
         return ResponseEntity.status(HttpStatus.CREATED).body(resposta);
     }
 
