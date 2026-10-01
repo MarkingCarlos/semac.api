@@ -12,6 +12,7 @@ import com.semac.java_api.model.Evento;
 import com.semac.java_api.model.EventoParticipante;
 import com.semac.java_api.model.ParticipanteConquista;
 import com.semac.java_api.model.Pessoa;
+import com.semac.java_api.model.enums.CodigoTipoEvento;
 import com.semac.java_api.model.enums.Role;
 import com.semac.java_api.model.enums.TipoValidacaoConquista;
 import com.semac.java_api.model.enums.StatusPresenca;
@@ -32,6 +33,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -147,9 +149,15 @@ public class ConquistaService {
 
     /* ── Vitrine do participante ─────────────────────────────────── */
 
-    /* Todas as conquistas ativas, marcando quais esta pessoa já tem. As
-       bloqueadas vêm junto de propósito: é o card em preto e branco, com a
-       descrição servindo de meta. */
+    /* As conquistas ativas que fazem sentido para esta pessoa, marcando
+       quais ela já tem. As bloqueadas vêm junto de propósito: é o card em
+       preto e branco, com a descrição servindo de meta.
+
+       A exceção é "Minicurso Concluído" para quem não está inscrito em
+       minicurso nenhum: a meta é inalcançável para essa pessoa, então o
+       card sai da vitrine. Quem já tem a conquista continua vendo, mesmo
+       que tenha saído das inscrições depois — o xp dela já foi creditado
+       e o card é o que explica de onde ele veio. */
     @Transactional(readOnly = true)
     public List<ConquistaParticipanteDTO> listarDoParticipante(Integer participanteId) {
         Map<Integer, ParticipanteConquista> obtidas = new HashMap<>();
@@ -157,7 +165,14 @@ public class ConquistaService {
             obtidas.put(vinculo.getPk().getConquistaId(), vinculo);
         }
 
+        boolean inscritoEmMinicurso = eventoParticipanteRepository.buscarComEventoPorParticipante(participanteId)
+                .stream()
+                .anyMatch(vinculo -> exigeInscricao(vinculo.getEvento()));
+
         return conquistaRepository.findByAtivaTrueOrderByOrdemAscIdAsc().stream()
+                .filter(conquista -> inscritoEmMinicurso
+                        || obtidas.containsKey(conquista.getId())
+                        || !CatalogoConquistas.CODIGO_MINICURSO_CONCLUIDO.equals(conquista.getCodigo()))
                 .map(conquista -> {
                     ParticipanteConquista vinculo = obtidas.get(conquista.getId());
                     return new ConquistaParticipanteDTO(
@@ -208,10 +223,23 @@ public class ConquistaService {
        presença e qualquer outro status é falta. Assim as regras funcionam
        sem depender de rotina noturna nenhuma. */
 
-    /* Reavalia as três conquistas automáticas de um participante. Chamada
-       a cada check-in (o momento em que o quadro dele muda), no boot e pelo
-       botão "Reavaliar" do /admin. Idempotente: conceder() ignora quem já
-       tem, então rodar de novo não duplica nem recredita. */
+    /* Tipos de evento abertos cuja presença conta para Presença Total e
+       Dia Cheio. Ficam de fora o coffee-break e o credenciamento (onde a
+       pessoa ainda está pegando o kit). Minicursos entram à parte, pelos
+       vínculos: só contam os que a própria pessoa escolheu. */
+    private static final Set<CodigoTipoEvento> TIPOS_QUE_CONTAM_PRESENCA = EnumSet.of(
+            CodigoTipoEvento.ABERTURA,
+            CodigoTipoEvento.ENCERRAMENTO,
+            CodigoTipoEvento.PALESTRA,
+            CodigoTipoEvento.MESA_REDONDA,
+            CodigoTipoEvento.DEBATE,
+            CodigoTipoEvento.MOSTRA_TECNICA,
+            CodigoTipoEvento.ATIVIDADES_NOTURNAS);
+
+    /* Reavalia as conquistas automáticas de um participante. Chamada a cada
+       check-in (o momento em que o quadro dele muda), no boot e pelo botão
+       "Reavaliar" do /admin. Idempotente: conceder() ignora quem já tem,
+       então rodar de novo não duplica nem recredita. */
     @Transactional
     public void reavaliarAutomaticas(Pessoa participante) {
         if (participante == null || participante.getRole() != Role.PARTICIPANTE) {
@@ -220,11 +248,16 @@ public class ConquistaService {
 
         List<EventoParticipante> vinculos =
                 eventoParticipanteRepository.buscarComEventoPorParticipante(participante.getId());
+        List<Evento> catalogoQueConta = eventoRepository.buscarComTipoPorCodigos(TIPOS_QUE_CONTAM_PRESENCA).stream()
+                .filter(evento -> !exigeInscricao(evento))
+                .toList();
         LocalDateTime agora = LocalDateTime.now();
 
-        avaliarPresencaTotal(participante, vinculos, agora);
-        avaliarDiaCompleto(participante, vinculos, agora);
+        avaliarPresencaTotal(participante, vinculos, catalogoQueConta, agora);
+        avaliarDiaCompleto(participante, vinculos, catalogoQueConta, agora);
         avaliarMinicursoConcluido(participante, vinculos, agora);
+        avaliarAtividadesNoturnas(participante, vinculos, catalogoQueConta, agora);
+        avaliarAbertura(participante, vinculos, catalogoQueConta);
     }
 
     /* Passa por todo participante confirmado. Usada no boot e pelo botão
@@ -241,68 +274,54 @@ public class ConquistaService {
         return participantes.size();
     }
 
-    /* "Presença Total": presente em TODA palestra/mesa/debate já encerrada
-       do evento, mais todos os minicursos que a pessoa escolheu.
+    /* "Presença Total": presente em TODO evento dos TIPOS_QUE_CONTAM_PRESENCA
+       da semana, mais todos os minicursos que a pessoa escolheu. Só é
+       concedida quando todos eles já terminaram — antes disso "todos" ainda
+       não aconteceu, e quem foi a tudo no primeiro dia não pode levar.
 
-       O denominador das palestras é o catálogo de eventos abertos, não a
-       lista de vínculos da pessoa. A diferença importa: se alguém não tem
-       linha em `evento_participante` para uma palestra encerrada — por
-       pré-inscrição que não rodou, vínculo removido à mão, seja o que for
-       — contar só os vínculos daria a conquista a quem foi a dois
-       minicursos e a nenhuma palestra. Faltar e não constar têm que pesar
-       igual.
+       O denominador dos eventos abertos é o catálogo, não a lista de
+       vínculos da pessoa. A diferença importa: se alguém não tem linha em
+       `evento_participante` para uma palestra — por pré-inscrição que não
+       rodou, vínculo removido à mão, seja o que for — contar só os
+       vínculos daria a conquista a quem foi a dois minicursos e a nenhuma
+       palestra. Faltar e não constar têm que pesar igual.
 
        Quem confirmou a inscrição no meio da semana não leva: as palestras
        anteriores continuam no denominador. É o critério combinado — vale
        "compareceu a tudo", e não "a tudo desde que chegou".
 
        O guard de lista vazia importa: sem ele, "todos" seria verdade por
-       vacuidade e a base inteira ganharia a conquista antes do primeiro
-       evento terminar. */
-    private void avaliarPresencaTotal(Pessoa participante, List<EventoParticipante> vinculos, LocalDateTime agora) {
-        List<Evento> abertosEncerrados = eventoRepository.findByTipoEvento_ExigeInscricaoFalse().stream()
-                .filter(evento -> jaEncerrou(evento, agora))
-                .toList();
+       vacuidade e a base inteira ganharia a conquista. */
+    private void avaliarPresencaTotal(Pessoa participante, List<EventoParticipante> vinculos,
+                                      List<Evento> catalogoQueConta, LocalDateTime agora) {
+        List<Evento> exigidos = new ArrayList<>(catalogoQueConta);
+        exigidos.addAll(minicursosEscolhidos(vinculos));
 
-        List<EventoParticipante> meusEncerrados = encerrados(vinculos, agora);
-        if (abertosEncerrados.isEmpty() && meusEncerrados.isEmpty()) {
+        if (exigidos.isEmpty() || !todosEncerrados(exigidos, agora)) {
             return;
         }
-
-        Set<Integer> presencas = meusEncerrados.stream()
-                .filter(this::compareceu)
-                .map(vinculo -> vinculo.getEvento().getId())
-                .collect(Collectors.toSet());
-
-        boolean faltouAlgumaPalestra = abertosEncerrados.stream()
-                .anyMatch(evento -> !presencas.contains(evento.getId()));
-        if (faltouAlgumaPalestra) {
-            return;
+        if (compareceuATodos(exigidos, presencas(vinculos))) {
+            conceder(participante, CatalogoConquistas.CODIGO_PRESENCA_TOTAL);
         }
-
-        /* Os minicursos escolhidos entram pelos vínculos: só a própria
-           pessoa decide de quais participa. */
-        boolean faltouAlgumMinicurso = meusEncerrados.stream()
-                .filter(vinculo -> exigeInscricao(vinculo.getEvento()))
-                .anyMatch(vinculo -> !compareceu(vinculo));
-        if (faltouAlgumMinicurso) {
-            return;
-        }
-
-        conceder(participante, CatalogoConquistas.CODIGO_PRESENCA_TOTAL);
     }
 
     /* "Dia Cheio": existe pelo menos um dia, já inteiramente encerrado, em
-       que a pessoa compareceu a tudo o que tinha. Basta um dia assim. */
-    private void avaliarDiaCompleto(Pessoa participante, List<EventoParticipante> vinculos, LocalDateTime agora) {
-        Map<LocalDate, List<EventoParticipante>> porDia = new LinkedHashMap<>();
-        for (EventoParticipante vinculo : encerrados(vinculos, agora)) {
-            porDia.computeIfAbsent(vinculo.getEvento().getDataHoraInicio().toLocalDate(), d -> new ArrayList<>())
-                    .add(vinculo);
+       que a pessoa compareceu a tudo o que contava naquele dia — os eventos
+       dos TIPOS_QUE_CONTAM_PRESENCA mais os minicursos que escolheu. Basta
+       um dia assim. Mesmo denominador por catálogo da Presença Total. */
+    private void avaliarDiaCompleto(Pessoa participante, List<EventoParticipante> vinculos,
+                                    List<Evento> catalogoQueConta, LocalDateTime agora) {
+        List<Evento> exigidos = new ArrayList<>(catalogoQueConta);
+        exigidos.addAll(minicursosEscolhidos(vinculos));
+
+        Map<LocalDate, List<Evento>> porDia = new LinkedHashMap<>();
+        for (Evento evento : exigidos) {
+            porDia.computeIfAbsent(evento.getDataHoraInicio().toLocalDate(), d -> new ArrayList<>()).add(evento);
         }
 
+        Set<Integer> presencas = presencas(vinculos);
         boolean temDiaCheio = porDia.values().stream()
-                .anyMatch(doDia -> doDia.stream().allMatch(this::compareceu));
+                .anyMatch(doDia -> todosEncerrados(doDia, agora) && compareceuATodos(doDia, presencas));
         if (temDiaCheio) {
             conceder(participante, CatalogoConquistas.CODIGO_DIA_COMPLETO);
         }
@@ -336,10 +355,60 @@ public class ConquistaService {
         }
     }
 
-    private List<EventoParticipante> encerrados(List<EventoParticipante> vinculos, LocalDateTime agora) {
-        return vinculos.stream()
-                .filter(vinculo -> jaEncerrou(vinculo.getEvento(), agora))
+    /* "Criatura das Trevas": presente em todas as atividades noturnas da
+       SEMAC. Mesmo critério da Presença Total, restrito a esse tipo:
+       denominador pelo catálogo, concedida só quando a última já terminou,
+       e ninguém leva se não houver nenhuma cadastrada. */
+    private void avaliarAtividadesNoturnas(Pessoa participante, List<EventoParticipante> vinculos,
+                                           List<Evento> catalogoQueConta, LocalDateTime agora) {
+        List<Evento> noturnas = catalogoQueConta.stream()
+                .filter(evento -> evento.getTipoEvento().getCodigo() == CodigoTipoEvento.ATIVIDADES_NOTURNAS)
                 .toList();
+
+        if (noturnas.isEmpty() || !todosEncerrados(noturnas, agora)) {
+            return;
+        }
+        if (compareceuATodos(noturnas, presencas(vinculos))) {
+            conceder(participante, CatalogoConquistas.CODIGO_ATIVIDADES_NOTURNAS);
+        }
+    }
+
+    /* "E lá vamos nós": presente na abertura da SEMAC. Exceção à regra do
+       relógio das demais: aqui não há falta a descobrir, só presença a
+       confirmar — então sai no próprio check-in, sem esperar a abertura
+       terminar. Havendo mais de uma abertura cadastrada, vale estar em
+       todas. Nenhuma cadastrada, ninguém leva. */
+    private void avaliarAbertura(Pessoa participante, List<EventoParticipante> vinculos,
+                                 List<Evento> catalogoQueConta) {
+        List<Evento> aberturas = catalogoQueConta.stream()
+                .filter(evento -> evento.getTipoEvento().getCodigo() == CodigoTipoEvento.ABERTURA)
+                .toList();
+
+        if (!aberturas.isEmpty() && compareceuATodos(aberturas, presencas(vinculos))) {
+            conceder(participante, CatalogoConquistas.CODIGO_ABERTURA_PRESENTE);
+        }
+    }
+
+    private List<Evento> minicursosEscolhidos(List<EventoParticipante> vinculos) {
+        return vinculos.stream()
+                .map(EventoParticipante::getEvento)
+                .filter(this::exigeInscricao)
+                .toList();
+    }
+
+    private Set<Integer> presencas(List<EventoParticipante> vinculos) {
+        return vinculos.stream()
+                .filter(this::compareceu)
+                .map(vinculo -> vinculo.getEvento().getId())
+                .collect(Collectors.toSet());
+    }
+
+    private boolean todosEncerrados(List<Evento> eventos, LocalDateTime agora) {
+        return eventos.stream().allMatch(evento -> jaEncerrou(evento, agora));
+    }
+
+    private boolean compareceuATodos(List<Evento> eventos, Set<Integer> presencas) {
+        return eventos.stream().allMatch(evento -> presencas.contains(evento.getId()));
     }
 
     private boolean jaEncerrou(Evento evento, LocalDateTime agora) {

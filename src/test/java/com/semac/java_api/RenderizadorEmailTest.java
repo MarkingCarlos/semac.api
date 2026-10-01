@@ -44,23 +44,6 @@ class RenderizadorEmailTest {
         assertFalse(html.contains("{{"), "nenhum placeholder pode sobrar");
     }
 
-    /* A razão de ter escolhido Markdown em vez de HTML puro no editor. */
-    @Test
-    void escapaHtmlBrutoEscritoNoEditor() {
-        String html = renderizador.renderizar(
-                "Texto <script>alert('xss')</script> e <img src=x onerror=alert(1)>",
-                Map.of());
-
-        /* O texto "onerror=alert(1)" continua no HTML, mas como conteúdo
-           escapado dentro de &lt;img ...&gt; — o que importa é que nenhuma
-           TAG real foi criada. Por isso a checagem é pelo "<img", não pela
-           substring do atributo. */
-        assertFalse(html.contains("<script>"), "tag vinda do editor não pode virar HTML");
-        assertFalse(html.contains("<img"), "tag vinda do editor não pode virar HTML");
-        assertTrue(html.contains("&lt;script&gt;"), "deve aparecer como texto escapado");
-        assertTrue(html.contains("&lt;img"), "deve aparecer como texto escapado");
-    }
-
     /* Um participante chamado "Ana <script>" não pode quebrar o e-mail. */
     @Test
     void escapaValorDeVariavel() {

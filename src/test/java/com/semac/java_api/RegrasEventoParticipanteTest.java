@@ -7,6 +7,7 @@ import com.semac.java_api.model.Evento;
 import com.semac.java_api.model.EventoParticipante;
 import com.semac.java_api.model.Pessoa;
 import com.semac.java_api.model.TipoEvento;
+import com.semac.java_api.model.enums.CodigoTipoEvento;
 import com.semac.java_api.model.enums.Role;
 import com.semac.java_api.model.enums.StatusPresenca;
 import com.semac.java_api.model.pk.EventoParticipantePK;
@@ -344,6 +345,7 @@ class RegrasEventoParticipanteTest {
     private TipoEvento tipoPalestra() {
         TipoEvento tipo = new TipoEvento();
         tipo.setId(1);
+        tipo.setCodigo(CodigoTipoEvento.PALESTRA);
         tipo.setNome("Palestra");
         tipo.setPontos(PONTOS_PALESTRA);
         tipo.setExigeInscricao(false);
@@ -353,6 +355,7 @@ class RegrasEventoParticipanteTest {
     private TipoEvento tipoMinicurso() {
         TipoEvento tipo = new TipoEvento();
         tipo.setId(2);
+        tipo.setCodigo(CodigoTipoEvento.MINICURSO);
         tipo.setNome("Minicurso");
         tipo.setPontos(20);
         tipo.setExigeInscricao(true);

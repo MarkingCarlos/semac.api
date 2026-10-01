@@ -1,6 +1,7 @@
 package com.semac.java_api.repository;
 
 import com.semac.java_api.model.Evento;
+import com.semac.java_api.model.enums.CodigoTipoEvento;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -8,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,6 +20,11 @@ public interface EventoRepository extends JpaRepository<Evento, Integer> {
     /* Eventos abertos (palestra, mesa redonda, debate): todo participante
        confirmado é pré-inscrito neles, sem checagem de capacidade. */
     List<Evento> findByTipoEvento_ExigeInscricaoFalse();
+
+    /* Eventos dos tipos dados, já com o tipo carregado — base das
+       conquistas que contam presença por tipo (ver ConquistaService). */
+    @Query("SELECT e FROM Evento e JOIN FETCH e.tipoEvento t WHERE t.codigo IN :codigos")
+    List<Evento> buscarComTipoPorCodigos(@Param("codigos") Collection<CodigoTipoEvento> codigos);
 
     /* Minicursos (tipos que exigem inscrição e têm lotação) — card de
        vagas da dashboard do /admin. */

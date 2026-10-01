@@ -4,8 +4,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 
-/* `exigeInscricao` é opcional no corpo: ausente vale como false (evento
-   aberto), preservando os clientes que já criavam tipos sem o campo. */
+/* Corpo da edição de um tipo (PUT /api/tipo-evento/{id}). `exigeInscricao`
+   é opcional: ausente vale como false (evento aberto). O `codigo` não
+   entra — é do código, não do /admin. */
 public record TipoEventoRequestDTO(
         @NotBlank String nome,
         @NotNull @PositiveOrZero Integer pontos,

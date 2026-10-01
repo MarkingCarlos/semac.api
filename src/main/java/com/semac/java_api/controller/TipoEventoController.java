@@ -6,17 +6,19 @@ import com.semac.java_api.exception.RecursoDuplicadoException;
 import com.semac.java_api.model.TipoEvento;
 import com.semac.java_api.repository.TipoEventoRepository;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Comparator;
 import java.util.List;
 
-/* CRUD dos tipos de evento (tabela `tipo_evento`). Alimenta o seletor de
-   tipo no formulário de evento e é gerenciado na aba Conteúdo do /admin.
-   Excluir um tipo com eventos vinculados é barrado pela FK
-   (DataIntegrityViolationException → 409 no GlobalExceptionHandler). */
+/* Leitura e edição dos tipos de evento (tabela `tipo_evento`). Alimenta o
+   seletor de tipo no formulário de evento e é editado na aba Conteúdo do
+   /admin.
+
+   Não há criar nem excluir: desde a V49 os tipos são um catálogo fechado
+   em código (CodigoTipoEvento + CatalogoTiposEvento), porque as regras de
+   conquista reconhecem o tipo pelo `codigo`. Tipo novo é deploy. */
 @RestController
 @RequestMapping("/api/tipo-evento")
 public class TipoEventoController {
@@ -42,16 +44,6 @@ public class TipoEventoController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PostMapping
-    public ResponseEntity<TipoEventoResponseDTO> criar(@Valid @RequestBody TipoEventoRequestDTO dto) {
-        if (tipoEventoRepository.existsByNomeIgnoreCase(dto.nome())) {
-            throw new RecursoDuplicadoException("Já existe um tipo de evento com esse nome.");
-        }
-        TipoEvento tipo = new TipoEvento();
-        aplicar(tipo, dto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(paraResposta(tipoEventoRepository.save(tipo)));
-    }
-
     @PutMapping("/{id}")
     public ResponseEntity<TipoEventoResponseDTO> atualizar(@PathVariable Integer id,
                                                            @Valid @RequestBody TipoEventoRequestDTO dto) {
@@ -64,15 +56,6 @@ public class TipoEventoController {
                     return ResponseEntity.ok(paraResposta(tipoEventoRepository.save(tipo)));
                 })
                 .orElse(ResponseEntity.notFound().build());
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> excluir(@PathVariable Integer id) {
-        if (!tipoEventoRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
-        tipoEventoRepository.deleteById(id);
-        return ResponseEntity.noContent().build();
     }
 
     private void aplicar(TipoEvento tipo, TipoEventoRequestDTO dto) {

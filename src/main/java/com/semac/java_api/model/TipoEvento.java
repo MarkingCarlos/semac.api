@@ -1,5 +1,6 @@
 package com.semac.java_api.model;
 
+import com.semac.java_api.model.enums.CodigoTipoEvento;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,6 +19,13 @@ public class TipoEvento {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+
+    /* Chave estável do tipo — é por ela que as regras (conquistas, por
+       exemplo) reconhecem um tipo, já que o nome é editável no /admin.
+       Definida pelo TipoEventoSeedRunner e nunca alterada depois. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "codigo", nullable = false, unique = true, length = 40, updatable = false)
+    private CodigoTipoEvento codigo;
 
     @Column(nullable = false)
     private String nome;

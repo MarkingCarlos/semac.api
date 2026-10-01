@@ -28,6 +28,8 @@ public final class CatalogoConquistas {
     public static final String CODIGO_DIA_COMPLETO = "DIA_COMPLETO";
     public static final String CODIGO_MINICURSO_CONCLUIDO = "MINICURSO_CONCLUIDO";
     public static final String CODIGO_CARTAZ_COMPLETO = "CARTAZ_COMPLETO";
+    public static final String CODIGO_ATIVIDADES_NOTURNAS = "ATIVIDADES_NOTURNAS";
+    public static final String CODIGO_ABERTURA_PRESENTE = "ABERTURA_PRESENTE";
 
     /* Pontos com que toda conquista nasce. É só um ponto de partida
        razoável para a presidência ajustar no /admin — o que segura a
@@ -49,8 +51,9 @@ public final class CatalogoConquistas {
             new ConquistaSemeada(
                     CODIGO_PRESENCA_TOTAL,
                     "Presença Total",
-                    "Esteja presente em todas as palestras, mesas redondas e debates da semana, "
-                            + "e em todos os minicursos que você escolheu.",
+                    "Esteja presente na abertura, no encerramento e em todas as palestras, "
+                            + "mesas redondas, debates, mostras técnicas e atividades noturnas da "
+                            + "semana, e em todos os minicursos que você escolheu.",
                     AUTOMATICA, 5, 1),
             new ConquistaSemeada(
                     CODIGO_DIA_COMPLETO,
@@ -67,7 +70,17 @@ public final class CatalogoConquistas {
                     "Cartaz Completo",
                     "Complete o cartaz da SEMAC com todos os carimbos e mostre seu QR code "
                             + "para alguém da comissão validar.",
-                    MANUAL, 4, 4)
+                    MANUAL, 4, 4),
+            new ConquistaSemeada(
+                    CODIGO_ATIVIDADES_NOTURNAS,
+                    "Criatura das Trevas",
+                    "Esteja presente em todas as atividades noturnas da SEMAC.",
+                    AUTOMATICA, 2, 5),
+            new ConquistaSemeada(
+                    CODIGO_ABERTURA_PRESENTE,
+                    "E lá vamos nós",
+                    "Esteja presente na abertura da SEMAC.",
+                    AUTOMATICA, 1, 6)
     );
 
     private CatalogoConquistas() {
