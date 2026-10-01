@@ -5,6 +5,7 @@ import com.semac.java_api.model.Pessoa;
 import com.semac.java_api.model.enums.PublicoComunicado;
 import com.semac.java_api.repository.PessoaRepository;
 import com.semac.java_api.service.ComunicadoService;
+import com.semac.java_api.service.EmailService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,10 +26,14 @@ public class ComunicadoController {
 
     private final ComunicadoService comunicadoService;
     private final PessoaRepository pessoaRepository;
+    private final EmailService emailService;
 
-    public ComunicadoController(ComunicadoService comunicadoService, PessoaRepository pessoaRepository) {
+    public ComunicadoController(ComunicadoService comunicadoService,
+                                PessoaRepository pessoaRepository,
+                                EmailService emailService) {
         this.comunicadoService = comunicadoService;
         this.pessoaRepository = pessoaRepository;
+        this.emailService = emailService;
     }
 
     /* Públicos disponíveis, já com a contagem de cada um. */
@@ -47,7 +52,8 @@ public class ComunicadoController {
 
     @PostMapping("/previa")
     public PreviaEmailResponseDTO previa(@Valid @RequestBody PreviaEmailRequestDTO dto) {
-        return new PreviaEmailResponseDTO(dto.assunto(), comunicadoService.previa(dto.corpoMarkdown()));
+        return new PreviaEmailResponseDTO(dto.assunto(),
+                emailService.htmlParaPreviaNoNavegador(comunicadoService.previa(dto.corpoMarkdown())));
     }
 
     @PostMapping("/teste")

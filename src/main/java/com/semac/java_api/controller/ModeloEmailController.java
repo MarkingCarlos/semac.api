@@ -59,7 +59,8 @@ public class ModeloEmailController {
     @PostMapping("/{chave}/previa")
     public PreviaEmailResponseDTO previa(@PathVariable String chave,
                                          @Valid @RequestBody PreviaEmailRequestDTO dto) {
-        return modeloEmailService.previa(chave, dto.assunto(), dto.corpoMarkdown());
+        PreviaEmailResponseDTO previa = modeloEmailService.previa(chave, dto.assunto(), dto.corpoMarkdown());
+        return new PreviaEmailResponseDTO(previa.assunto(), emailService.htmlParaPreviaNoNavegador(previa.html()));
     }
 
     /* Manda a prévia para o e-mail de quem está logado. O iframe mostra o

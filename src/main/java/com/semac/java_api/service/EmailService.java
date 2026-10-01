@@ -10,7 +10,10 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 /* Envio de e-mail transacional da SEMAC. Só cuida do "como enviar" —
    quem decide o que mandar e para quem são os listeners de notificação.
@@ -54,6 +57,36 @@ public class EmailService {
     @Async("executorEmail")
     public void enviarHtmlPronto(String destinatario, String assunto, String html) {
         enviarAgora(destinatario, assunto, html);
+    }
+
+    /* Prévia do /admin: o HTML vai para um <iframe srcDoc>, onde não existe
+       anexo inline e o navegador não resolve cid: (ERR_UNKNOWN_URL_SCHEME).
+       Troca a referência pelo próprio PNG em data URI. Só para exibir —
+       o que é enviado de verdade continua usando cid:. */
+    public String htmlParaPreviaNoNavegador(String html) {
+        if (html == null) {
+            return null;
+        }
+        String dataUriLogo = dataUriLogoEmail();
+        if (dataUriLogo == null) {
+            return html;
+        }
+        return html.replace("cid:" + CID_LOGO_EMAIL, dataUriLogo);
+    }
+
+    /* Calculado uma vez: o arquivo vem do classpath e não muda em execução. */
+    private volatile String dataUriLogoEmailEmCache;
+
+    private String dataUriLogoEmail() {
+        if (dataUriLogoEmailEmCache == null && IMAGEM_LOGO_EMAIL.exists()) {
+            try (InputStream entrada = IMAGEM_LOGO_EMAIL.getInputStream()) {
+                dataUriLogoEmailEmCache = "data:image/png;base64,"
+                        + Base64.getEncoder().encodeToString(entrada.readAllBytes());
+            } catch (IOException e) {
+                log.warn("Não foi possível ler o logo do e-mail para a prévia: {}", e.getMessage());
+            }
+        }
+        return dataUriLogoEmailEmCache;
     }
 
     /* Três resultados, não dois: "não enviei porque está desligado" não é
