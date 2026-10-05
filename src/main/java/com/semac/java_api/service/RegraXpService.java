@@ -40,6 +40,7 @@ public class RegraXpService {
     public static final String CHAVE_TERMO_ACERTO = "TERMO_ACERTO";
     public static final String CHAVE_ATRASO_METADE_MINUTOS = "ATRASO_METADE_MINUTOS";
     public static final String CHAVE_ATRASO_ZERO_MINUTOS = "ATRASO_ZERO_MINUTOS";
+    public static final String CHAVE_CRIPTOGRAFIA_ACERTO = "CRIPTOGRAFIA_ACERTO";
 
     /* Valores de antes da V40, usados se a linha sumir do banco: o
        check-in e o Termo não podem quebrar por causa de configuração
@@ -47,6 +48,7 @@ public class RegraXpService {
     public static final int PADRAO_TERMO_ACERTO = 5;
     public static final long PADRAO_ATRASO_METADE_MINUTOS = 20;
     public static final long PADRAO_ATRASO_ZERO_MINUTOS = 30;
+    public static final int PADRAO_CRIPTOGRAFIA_ACERTO = 25;
 
     private static final String PREFIXO_TIPO_EVENTO = "TIPO_EVENTO:";
     private static final String ORIGEM_TIPO_EVENTO = "TIPO_EVENTO";
@@ -95,6 +97,12 @@ public class RegraXpService {
     @Transactional(readOnly = true)
     public long atrasoZeroMinutos() {
         return valorOuPadrao(CHAVE_ATRASO_ZERO_MINUTOS, (int) PADRAO_ATRASO_ZERO_MINUTOS);
+    }
+
+    /* Xp de um acerto na Criptografia (CriptografiaService). */
+    @Transactional(readOnly = true)
+    public int pontosCriptografiaAcerto() {
+        return valorOuPadrao(CHAVE_CRIPTOGRAFIA_ACERTO, PADRAO_CRIPTOGRAFIA_ACERTO);
     }
 
     /* ── Edição (/admin) ─────────────────────────────────────────── */
