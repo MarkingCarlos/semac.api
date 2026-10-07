@@ -30,6 +30,8 @@ public final class CatalogoConquistas {
     public static final String CODIGO_CARTAZ_COMPLETO = "CARTAZ_COMPLETO";
     public static final String CODIGO_ATIVIDADES_NOTURNAS = "ATIVIDADES_NOTURNAS";
     public static final String CODIGO_ABERTURA_PRESENTE = "ABERTURA_PRESENTE";
+    public static final String CODIGO_COFFEE_BREAK_COMPLETO = "COFFEE_BREAK_COMPLETO";
+    public static final String CODIGO_DEBATES_COMPLETO = "DEBATES_COMPLETO";
 
     /* Pontos com que toda conquista nasce. É só um ponto de partida
        razoável para a presidência ajustar no /admin — o que segura a
@@ -80,7 +82,17 @@ public final class CatalogoConquistas {
                     CODIGO_ABERTURA_PRESENTE,
                     "E lá vamos nós",
                     "Esteja presente na abertura da SEMAC.",
-                    AUTOMATICA, 1, 6)
+                    AUTOMATICA, 1, 6),
+            new ConquistaSemeada(
+                    CODIGO_COFFEE_BREAK_COMPLETO,
+                    "Café com Java",
+                    "Esteja presente em todos os coffee breaks da SEMAC.",
+                    AUTOMATICA, 1, 7),
+            new ConquistaSemeada(
+                    CODIGO_DEBATES_COMPLETO,
+                    "Treta Saudável",
+                    "Esteja presente em todos os debates da SEMAC.",
+                    AUTOMATICA, 1, 8)
     );
 
     private CatalogoConquistas() {

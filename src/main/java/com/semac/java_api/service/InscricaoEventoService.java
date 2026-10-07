@@ -7,6 +7,8 @@ import com.semac.java_api.model.Pessoa;
 import com.semac.java_api.model.enums.Role;
 import com.semac.java_api.model.enums.StatusPresenca;
 import com.semac.java_api.model.pk.EventoParticipantePK;
+import com.semac.java_api.model.ConfiguracaoInscricao;
+import com.semac.java_api.repository.ConfiguracaoInscricaoRepository;
 import com.semac.java_api.repository.EventoParticipanteRepository;
 import com.semac.java_api.repository.EventoRepository;
 import com.semac.java_api.repository.NivelRepository;
@@ -77,6 +79,10 @@ public class InscricaoEventoService {
        minicurso do diarista ficam presos a eles. */
     private final DiaIngressoService diaIngressoService;
 
+    /* Botão "Escolha de minicursos" do /admin (aba Conteúdo): fechado,
+       ninguém entra nem sai de minicurso (ver exigirEscolhaMinicursosAberta). */
+    private final ConfiguracaoInscricaoRepository configuracaoInscricaoRepository;
+
     public InscricaoEventoService(EventoRepository eventoRepository,
                                   EventoParticipanteRepository eventoParticipanteRepository,
                                   PessoaRepository pessoaRepository,
@@ -84,7 +90,8 @@ public class InscricaoEventoService {
                                   ConquistaService conquistaService,
                                   TentativaCheckinService tentativaCheckinService,
                                   RegraXpService regraXpService,
-                                  DiaIngressoService diaIngressoService) {
+                                  DiaIngressoService diaIngressoService,
+                                  ConfiguracaoInscricaoRepository configuracaoInscricaoRepository) {
         this.eventoRepository = eventoRepository;
         this.eventoParticipanteRepository = eventoParticipanteRepository;
         this.pessoaRepository = pessoaRepository;
@@ -93,6 +100,7 @@ public class InscricaoEventoService {
         this.tentativaCheckinService = tentativaCheckinService;
         this.regraXpService = regraXpService;
         this.diaIngressoService = diaIngressoService;
+        this.configuracaoInscricaoRepository = configuracaoInscricaoRepository;
     }
 
     /* ── Ocupação (usada para calcular vagas restantes) ──────────── */
@@ -184,6 +192,7 @@ public class InscricaoEventoService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Esse evento é aberto: todo participante confirmado já está na lista.");
         }
+        exigirEscolhaMinicursosAberta(evento);
         if (evento.getDataHoraInicio().isBefore(LocalDateTime.now())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Esse minicurso já começou.");
         }
@@ -230,6 +239,7 @@ public class InscricaoEventoService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Eventos abertos não podem ser cancelados.");
         }
+        exigirEscolhaMinicursosAberta(evento);
 
         EventoParticipante inscricao = eventoParticipanteRepository
                 .findById(new EventoParticipantePK(eventoId, participanteId))
@@ -444,6 +454,21 @@ public class InscricaoEventoService {
                         && escolhido.getDataHoraInicio().isBefore(candidato.getDataHoraFim()))
                 .findFirst()
                 .orElse(null);
+    }
+
+    /* Enquanto a escolha de minicursos não é liberada no /admin, ninguém
+       entra nem sai: quem já estava inscrito fica inscrito (sair agora
+       seria perder a vaga sem poder voltar). Vale o ano do minicurso, e
+       ano sem configuração conta como fechado. */
+    private void exigirEscolhaMinicursosAberta(Evento evento) {
+        boolean aberta = configuracaoInscricaoRepository
+                .findByAno(evento.getDataHoraInicio().getYear())
+                .map(ConfiguracaoInscricao::getEscolhaMinicursosAberta)
+                .orElse(Boolean.FALSE);
+        if (!aberta) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "A escolha de minicursos ainda não foi liberada.");
+        }
     }
 
     private boolean exigeInscricao(Evento evento) {

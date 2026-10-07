@@ -24,6 +24,7 @@ import com.semac.java_api.service.ConquistaService;
 import com.semac.java_api.service.DiaIngressoService;
 import com.semac.java_api.service.EventoService;
 import com.semac.java_api.service.InscricaoEventoService;
+import com.semac.java_api.repository.ConfiguracaoInscricaoRepository;
 import com.semac.java_api.service.RegraXpService;
 import com.semac.java_api.service.TentativaCheckinService;
 import org.junit.jupiter.api.BeforeEach;
@@ -146,7 +147,8 @@ class RegrasEventoParticipanteTest {
         inscricaoEventoService = new InscricaoEventoService(eventoRepository, eventoParticipanteRepository,
                 pessoaRepository, nivelRepository, conquistaService, tentativaCheckinService, regraXpService,
                 new DiaIngressoService(pessoaRepository, eventoRepository, eventoParticipanteRepository,
-                        mock(PessoaDiaIngressoRepository.class)));
+                        mock(PessoaDiaIngressoRepository.class)),
+                mock(ConfiguracaoInscricaoRepository.class));
         eventoService = new EventoService(eventoRepository, tipoEventoRepository, trilhaRepository,
                 palestranteRepository, eventoPalestranteRepository, inscricaoEventoService);
     }

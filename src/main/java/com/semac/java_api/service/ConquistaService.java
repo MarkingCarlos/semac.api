@@ -258,6 +258,8 @@ public class ConquistaService {
         avaliarMinicursoConcluido(participante, vinculos, agora);
         avaliarAtividadesNoturnas(participante, vinculos, catalogoQueConta, agora);
         avaliarAbertura(participante, vinculos, catalogoQueConta);
+        avaliarCoffeeBreaks(participante, vinculos, agora);
+        avaliarDebates(participante, vinculos, catalogoQueConta, agora);
     }
 
     /* Passa por todo participante confirmado. Usada no boot e pelo botão
@@ -386,6 +388,41 @@ public class ConquistaService {
 
         if (!aberturas.isEmpty() && compareceuATodos(aberturas, presencas(vinculos))) {
             conceder(participante, CatalogoConquistas.CODIGO_ABERTURA_PRESENTE);
+        }
+    }
+
+    /* "Café com Java": presente em todos os coffee breaks da SEMAC. Mesmo
+       critério da Criatura das Trevas — denominador pelo catálogo,
+       concedida só quando o último já terminou, ninguém leva se não houver
+       nenhum cadastrado. Coffee-break não está em TIPOS_QUE_CONTAM_PRESENCA
+       (não pesa na Presença Total nem no Dia Cheio), por isso a consulta
+       própria. */
+    private void avaliarCoffeeBreaks(Pessoa participante, List<EventoParticipante> vinculos, LocalDateTime agora) {
+        List<Evento> coffeeBreaks = eventoRepository.buscarComTipoPorCodigos(EnumSet.of(CodigoTipoEvento.COFFEE_BREAK));
+
+        if (coffeeBreaks.isEmpty() || !todosEncerrados(coffeeBreaks, agora)) {
+            return;
+        }
+        if (compareceuATodos(coffeeBreaks, presencas(vinculos))) {
+            conceder(participante, CatalogoConquistas.CODIGO_COFFEE_BREAK_COMPLETO);
+        }
+    }
+
+    /* "Treta Saudável": presente em todos os debates da SEMAC. Mesmo
+       critério da Criatura das Trevas — denominador pelo catálogo,
+       concedida só quando o último já terminou, ninguém leva se não houver
+       nenhum cadastrado. */
+    private void avaliarDebates(Pessoa participante, List<EventoParticipante> vinculos,
+                                List<Evento> catalogoQueConta, LocalDateTime agora) {
+        List<Evento> debates = catalogoQueConta.stream()
+                .filter(evento -> evento.getTipoEvento().getCodigo() == CodigoTipoEvento.DEBATE)
+                .toList();
+
+        if (debates.isEmpty() || !todosEncerrados(debates, agora)) {
+            return;
+        }
+        if (compareceuATodos(debates, presencas(vinculos))) {
+            conceder(participante, CatalogoConquistas.CODIGO_DEBATES_COMPLETO);
         }
     }
 

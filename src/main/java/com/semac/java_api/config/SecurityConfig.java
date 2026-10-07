@@ -171,6 +171,11 @@ public class SecurityConfig {
                         // Informações SEMAC. O GET segue aberto: a Home pública precisa
                         // saber se mostra o botão.
                         .requestMatchers(HttpMethod.PUT, "/api/configuracao-inscricao").hasAnyRole(PAPEIS_FINANCEIRO)
+                        // Liga/desliga a escolha de minicursos do /participantes —
+                        // editado na aba Conteúdo do /admin. O GET é de qualquer
+                        // usuário logado: o /participantes mostra ou esconde o botão.
+                        .requestMatchers(HttpMethod.GET, "/api/configuracao-inscricao/minicursos").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/configuracao-inscricao/minicursos").hasAnyRole(PAPEIS_CONTEUDO)
                         // Regras de xp (presença, Termo, cortes de atraso) — editadas em
                         // Informações SEMAC. O GET é do card "COMO GANHAR XP" do
                         // /participantes, então vale para qualquer autenticado.

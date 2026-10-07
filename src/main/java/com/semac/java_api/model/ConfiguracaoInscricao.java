@@ -30,4 +30,11 @@ public class ConfiguracaoInscricao {
 
     @Column(nullable = false)
     private Boolean inscricoesAbertas;
+
+    /* Libera a escolha de minicursos no /participantes (/admin, aba
+       Conteúdo). Fechada, ninguém entra nem sai de minicurso — quem já
+       estava inscrito continua inscrito. Inicializado aqui porque o PUT
+       do botão "Inscreva-se" pode criar a linha do ano sem mexer nele. */
+    @Column(nullable = false)
+    private Boolean escolhaMinicursosAberta = Boolean.FALSE;
 }
