@@ -22,11 +22,13 @@ public class CriptografiaController {
         this.criptografiaService = criptografiaService;
     }
 
+    /* Ler o estado atual do jogo da Criptografia. */
     @GetMapping("/estado")
     public CriptografiaEstadoDTO lerEstado(@AuthenticationPrincipal Jwt jwt) {
         return criptografiaService.estadoDeHoje(idDoToken(jwt));
     }
 
+    /* Enviar um palpite para o jogo da Criptografia. */
     @PostMapping("/palpite")
     public CriptografiaPalpiteRespostaDTO palpitar(@Valid @RequestBody              CriptografiaPalpiteDTO dto,
                                             @AuthenticationPrincipal Jwt jwt) {

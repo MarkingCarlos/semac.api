@@ -12,5 +12,6 @@ public interface CriptografiaPalavraRepository extends JpaRepository<Criptografi
     /* Lista todas as palavras do desafio da criptografia. */
     List<CriptografiaPalavra> findAll();
 
+    /* Lista as palavras do desafio da criptografia para uma data específica. */
     List<CriptografiaPalavra> findByData(LocalDate data);
 }

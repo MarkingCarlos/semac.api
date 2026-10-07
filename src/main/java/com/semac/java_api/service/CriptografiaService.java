@@ -54,11 +54,10 @@ public class CriptografiaService {
         return new CriptografiaEstadoDTO(true, false, regraXpService.pontosCriptografiaAcerto() * jogoAcertos.size(), jogoAcertos.size());
     }
 
-    /* Confere um palpite e gasta uma tentativa.
+    /* Confere um palpite.
 
-       Toda a decisão é aqui: se a palavra existe, se ainda há tentativa, o
-       padrão de cores, se venceu e se credita xp. O cliente só desenha o
-       que voltar. */
+       Toda a decisão é aqui: se a palavra é uma das palavras certas, 
+       se já acertou a palavra anteriormente e se credita xp. */
     @Transactional
     public CriptografiaPalpiteRespostaDTO palpitar(Integer pessoaId, String palpite){
         List<CriptografiaPalavra> palavras = carregarPalavras();
