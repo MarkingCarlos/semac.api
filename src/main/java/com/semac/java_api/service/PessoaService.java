@@ -1,5 +1,6 @@
 package com.semac.java_api.service;
 
+import com.semac.java_api.dto.AtualizarDadosPessoaDTO;
 import com.semac.java_api.dto.AtualizarPerfilDTO;
 import com.semac.java_api.dto.CadastroManualRequestDTO;
 import com.semac.java_api.dto.CamisetaAdminDTO;
@@ -421,6 +422,29 @@ public class PessoaService {
         inscricaoEventoService.removerInscricoesDoParticipante(id);
 
         return paraResposta(salva);
+    }
+
+    /* Correção de cadastro pela diretoria (nome, e-mail, RA e telefone),
+       para participantes e comissão. O e-mail é único no banco: se já for
+       de outra pessoa, devolve 409 em vez de estourar erro de banco. */
+    @Transactional
+    public ParticipanteResponseDTO atualizarDados(Integer id, AtualizarDadosPessoaDTO dto) {
+        Pessoa pessoa = pessoaRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Pessoa não encontrada."));
+
+        String email = dto.email().trim();
+        pessoaRepository.findByEmail(email)
+                .filter(outra -> !outra.getId().equals(id))
+                .ifPresent(outra -> {
+                    throw new RecursoDuplicadoException("Este e-mail já está cadastrado.");
+                });
+
+        pessoa.setNome(dto.nome().trim());
+        pessoa.setEmail(email);
+        pessoa.setRa(dto.ra() == null || dto.ra().isBlank() ? null : dto.ra().trim());
+        pessoa.setTelefone(dto.telefone());
+        return paraResposta(pessoaRepository.save(pessoa));
     }
 
     /* Ativa/desativa uma pessoa (ex.: suspender membro da comissão). */

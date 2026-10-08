@@ -257,6 +257,93 @@ public class InscricaoEventoService {
         eventoParticipanteRepository.delete(inscricao);
     }
 
+    /* ── Minicursos geridos pela diretoria (/admin) ──────────────── */
+
+    /* Minicursos em que o participante está (eventos abertos ficam de
+       fora: neles todo confirmado já entra e não há o que gerir). */
+    @Transactional(readOnly = true)
+    public List<EventoParticipante> listarMinicursosDoParticipante(Integer participanteId) {
+        return listarInscricoesDoParticipante(participanteId).stream()
+                .filter(inscricao -> exigeInscricao(inscricao.getEvento()))
+                .toList();
+    }
+
+    /* Coloca um participante em um minicurso pelo /admin (Diretor de Site
+       e Presidência). Ignora de propósito as travas de prazo do fluxo do
+       participante — escolha de minicursos fechada e minicurso já
+       começado —, que são justamente o que a diretoria precisa corrigir.
+       Mantém as regras do próprio minicurso: vagas, choque de horário e
+       dia do ingresso diário. */
+    @Transactional
+    public void inscreverPelaDiretoria(Integer participanteId, Integer eventoId) {
+        Pessoa participante = exigirParticipanteConfirmado(participanteId);
+
+        // Mesmo lock pessimista de inscrever(): vaga contada e gravada sem
+        // outra inscrição no meio.
+        Evento evento = eventoRepository.buscarParaInscricao(eventoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento não encontrado."));
+
+        if (!exigeInscricao(evento)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Esse evento é aberto: todo participante confirmado já está na lista.");
+        }
+
+        EventoParticipantePK pk = new EventoParticipantePK(eventoId, participanteId);
+        if (eventoParticipanteRepository.existsById(pk)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Essa pessoa já está nesse minicurso.");
+        }
+
+        if (ocupacaoDoEvento(eventoId) >= evento.getCapacidadeMaxima()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Esse minicurso está esgotado.");
+        }
+
+        if (!diaIngressoService.ingressoValeNoDia(participante, evento.getDataHoraInicio().toLocalDate())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "O ingresso diário dessa pessoa não vale em "
+                            + DiaIngressoService.formatarDia(evento.getDataHoraInicio().toLocalDate()) + ".");
+        }
+
+        Evento conflito = minicursoNoMesmoHorario(participanteId, evento);
+        if (conflito != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Essa pessoa já está em \"" + conflito.getNome() + "\" nesse horário.");
+        }
+
+        EventoParticipante inscricao = new EventoParticipante();
+        inscricao.setPk(pk);
+        inscricao.setEvento(evento);
+        inscricao.setParticipante(participante);
+        inscricao.setStatus(StatusPresenca.INSCRITO);
+        eventoParticipanteRepository.save(inscricao);
+    }
+
+    /* Tira um participante de um minicurso pelo /admin, liberando a vaga.
+       Sem as travas de prazo (ver inscreverPelaDiretoria), mas presença
+       já registrada não sai: ela creditou xp, e apagar o vínculo deixaria
+       esse xp sem origem. */
+    @Transactional
+    public void cancelarPelaDiretoria(Integer participanteId, Integer eventoId) {
+        Evento evento = eventoRepository.findById(eventoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento não encontrado."));
+
+        if (!exigeInscricao(evento)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Eventos abertos não podem ser cancelados.");
+        }
+
+        EventoParticipante inscricao = eventoParticipanteRepository
+                .findById(new EventoParticipantePK(eventoId, participanteId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Essa pessoa não está nesse minicurso."));
+
+        if (inscricao.getStatus() == StatusPresenca.PRESENTE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "A presença dessa pessoa nesse minicurso já foi registrada.");
+        }
+
+        eventoParticipanteRepository.delete(inscricao);
+    }
+
     /* ── Check-in por QR code (ferramenta /checkin) ──────────────── */
 
     /* Marca presença a partir do uuid do crachá do participante (leitura
@@ -483,6 +570,19 @@ public class InscricaoEventoService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Apenas participantes confirmados escolhem minicursos.");
         }
+    }
+
+    /* Versão de exigirParticipante para quem age em nome de outra pessoa:
+       id inexistente é 404 (não sessão inválida) e a mensagem fala da
+       pessoa, não de "você". */
+    private Pessoa exigirParticipanteConfirmado(Integer participanteId) {
+        Pessoa pessoa = pessoaRepository.findById(participanteId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pessoa não encontrada."));
+        if (pessoa.getRole() != Role.PARTICIPANTE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Só participantes confirmados podem entrar em minicursos.");
+        }
+        return pessoa;
     }
 
     private void inserirSeAusente(Integer eventoId, Integer participanteId) {

@@ -6,13 +6,19 @@ import com.semac.java_api.dto.ConquistaDoParticipanteDTO;
 import com.semac.java_api.dto.DiasIngressoResponseDTO;
 import com.semac.java_api.dto.EscolherDiasIngressoRequestDTO;
 import com.semac.java_api.dto.AtribuirRoleDTO;
+import com.semac.java_api.dto.AtualizarDadosPessoaDTO;
 import com.semac.java_api.dto.AtualizarPerfilDTO;
+import com.semac.java_api.dto.EventoResponseDTO;
 import com.semac.java_api.dto.InscricaoFinanceiraDTO;
+import com.semac.java_api.dto.MeuEventoResponseDTO;
 import com.semac.java_api.dto.ParticipanteResponseDTO;
 import com.semac.java_api.dto.PerfilResponseDTO;
 import com.semac.java_api.dto.RankingResponseDTO;
 import com.semac.java_api.service.ConquistaService;
+import com.semac.java_api.model.EventoParticipante;
 import com.semac.java_api.service.DiaIngressoService;
+import com.semac.java_api.service.EventoService;
+import com.semac.java_api.service.InscricaoEventoService;
 import com.semac.java_api.service.PessoaService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,6 +37,7 @@ import java.net.MalformedURLException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.stream.IntStream;
 
 @RestController
 @RequestMapping("/api/pessoa")
@@ -39,16 +46,22 @@ public class PessoaController {
     private final PessoaService pessoaService;
     private final ConquistaService conquistaService;
     private final DiaIngressoService diaIngressoService;
+    private final InscricaoEventoService inscricaoEventoService;
+    private final EventoService eventoService;
 
     @Value("${app.upload.dir}")
     private String uploadDir;
 
     public PessoaController(PessoaService pessoaService,
                             ConquistaService conquistaService,
-                            DiaIngressoService diaIngressoService) {
+                            DiaIngressoService diaIngressoService,
+                            InscricaoEventoService inscricaoEventoService,
+                            EventoService eventoService) {
         this.pessoaService = pessoaService;
         this.conquistaService = conquistaService;
         this.diaIngressoService = diaIngressoService;
+        this.inscricaoEventoService = inscricaoEventoService;
+        this.eventoService = eventoService;
     }
 
     /* Cadastro manual pela comissão (botão "Adicionar participante" na aba
@@ -132,6 +145,42 @@ public class PessoaController {
     public ResponseEntity<Void> revogarConquista(@PathVariable Integer id,
                                                  @PathVariable Integer conquistaId) {
         conquistaService.revogarDoParticipante(id, conquistaId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /* ── Gestão de um participante pela diretoria ──────────────────
+       Diretor de Site e Presidência (ver SecurityConfig). */
+
+    /* Corrige nome, e-mail, RA e telefone — de participante ou comissão. */
+    @PatchMapping("/{id}/dados")
+    public ParticipanteResponseDTO atualizarDados(@PathVariable Integer id,
+                                                  @Valid @RequestBody AtualizarDadosPessoaDTO dto) {
+        return pessoaService.atualizarDados(id, dto);
+    }
+
+    /* Minicursos em que o participante está, com o status dele em cada um. */
+    @GetMapping("/{id}/minicursos")
+    public List<MeuEventoResponseDTO> minicursosDoParticipante(@PathVariable Integer id) {
+        List<EventoParticipante> inscricoes = inscricaoEventoService.listarMinicursosDoParticipante(id);
+        List<EventoResponseDTO> eventos = eventoService.montarRespostas(
+                inscricoes.stream().map(EventoParticipante::getEvento).toList());
+        return IntStream.range(0, inscricoes.size())
+                .mapToObj(i -> new MeuEventoResponseDTO(eventos.get(i), inscricoes.get(i).getStatus().name()))
+                .toList();
+    }
+
+    /* Coloca o participante em um minicurso. Regras (vagas, horário, dia
+       do ingresso) em InscricaoEventoService.inscreverPelaDiretoria. */
+    @PostMapping("/{id}/minicursos/{eventoId}")
+    public ResponseEntity<Void> adicionarAoMinicurso(@PathVariable Integer id, @PathVariable Integer eventoId) {
+        inscricaoEventoService.inscreverPelaDiretoria(id, eventoId);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    /* Tira o participante de um minicurso, liberando a vaga. */
+    @DeleteMapping("/{id}/minicursos/{eventoId}")
+    public ResponseEntity<Void> removerDoMinicurso(@PathVariable Integer id, @PathVariable Integer eventoId) {
+        inscricaoEventoService.cancelarPelaDiretoria(id, eventoId);
         return ResponseEntity.noContent().build();
     }
 

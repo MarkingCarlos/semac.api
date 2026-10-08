@@ -98,6 +98,13 @@ public class SecurityConfig {
        do frontend (auth/sessao.js). */
     private static final String[] PAPEIS_DASHBOARD = { "PRESIDENTE", "DIRETOR_SITE" };
 
+    /* Quem corrige o cadastro de outra pessoa (nome, e-mail, RA, telefone)
+       e coloca/tira participante de minicurso pelo /admin. Espelha
+       PAPEIS_GESTAO_PARTICIPANTES do frontend (auth/sessao.js). Mesmos
+       papéis do financeiro, com nome próprio pelo mesmo motivo de
+       PAPEIS_MENSAGENS. */
+    private static final String[] PAPEIS_GESTAO_PARTICIPANTES = { "DIRETOR_SITE", "PRESIDENTE" };
+
     private static final String PAPEL_PARTICIPANTE = "PARTICIPANTE";
 
     private final SecretKey chaveJwt;
@@ -199,6 +206,9 @@ public class SecurityConfig {
                         // fica com quem gerencia pessoas (mesmo público da aba Pessoas)
                         .requestMatchers(HttpMethod.GET, "/api/cracha").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.PATCH, "/api/pessoa/*/role", "/api/pessoa/*/ativo", "/api/pessoa/*/desconfirmar").hasAnyRole(PAPEIS_ADMIN)
+                        // Correção de cadastro e minicursos de outra pessoa — só diretoria de site e presidência
+                        .requestMatchers(HttpMethod.PATCH, "/api/pessoa/*/dados").hasAnyRole(PAPEIS_GESTAO_PARTICIPANTES)
+                        .requestMatchers("/api/pessoa/*/minicursos", "/api/pessoa/*/minicursos/*").hasAnyRole(PAPEIS_GESTAO_PARTICIPANTES)
                         // Cadastro manual de participante (inscrição de balcão) — mesmo público
                         // de quem confirma ou exclui inscrição
                         .requestMatchers(HttpMethod.POST, "/api/pessoa").hasAnyRole(PAPEIS_ADMIN)
