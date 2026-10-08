@@ -219,6 +219,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/evento/*").hasAnyRole(PAPEIS_CONTEUDO)
                         // Marcar presença segue com qualquer papel de comissão: quem opera o /checkin
                         .requestMatchers(HttpMethod.POST, "/api/evento/*/presenca").hasAnyRole(PAPEIS_ADMIN)
+                        // "Testar leitura" do /checkin (só leitura) — mesmo público de marcar presença
+                        .requestMatchers(HttpMethod.GET, "/api/checkin/teste/*").hasAnyRole(PAPEIS_ADMIN)
                         // "INICIAR EVENTO" do /admin: move o marco do atraso pro início real
                         .requestMatchers(HttpMethod.POST, "/api/evento/*/iniciar").hasAnyRole(PAPEIS_CONTEUDO)
                         .requestMatchers("/api/tipo-evento/**").hasAnyRole(PAPEIS_ADMIN)
