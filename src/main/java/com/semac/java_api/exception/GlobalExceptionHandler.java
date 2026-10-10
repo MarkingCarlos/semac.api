@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 
 /* Centraliza o tratamento de erros da API, devolvendo sempre um corpo
@@ -45,6 +46,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErroRespostaDTO> tratarStatus(ResponseStatusException ex) {
         return ResponseEntity.status(ex.getStatusCode())
                 .body(new ErroRespostaDTO(ex.getReason()));
+    }
+
+    /* Arquivo acima do spring.servlet.multipart.max-file-size (5 MB). Sem
+       isto o Spring devolve um 500 genérico. */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErroRespostaDTO> tratarArquivoGrande(MaxUploadSizeExceededException ex) {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(new ErroRespostaDTO("O arquivo passa do limite de 5 MB."));
     }
 
     /* Rede de segurança: violação de restrição única no banco que tenha

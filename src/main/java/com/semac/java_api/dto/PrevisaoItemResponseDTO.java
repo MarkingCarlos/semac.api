@@ -6,7 +6,10 @@ import java.util.List;
 
 /* `fator` é o multiplicador que as escalas aplicaram: 1 sem escala (valor
    fechado), senão a soma dos contadores das escalas marcadas. Vai explícito na resposta para a
-   interface poder mostrar "R$ 98,00 × 140" sem reimplementar a regra. */
+   interface poder mostrar "R$ 98,00 × 140" sem reimplementar a regra.
+
+   `totalComprovantes` alimenta o contador do botão de anexos na tabela;
+   a lista em si sai de GET /api/previsao/{id}/comprovantes. */
 public record PrevisaoItemResponseDTO(
         Integer id,
         String descricao,
@@ -24,5 +27,6 @@ public record PrevisaoItemResponseDTO(
         String status,
         LocalDate dataPrevista,
         String observacao,
-        Integer compraId
+        Integer compraId,
+        Integer totalComprovantes
 ) {}

@@ -15,6 +15,7 @@ import com.semac.java_api.repository.CompraRepository;
 import com.semac.java_api.repository.FornecedorRepository;
 import com.semac.java_api.repository.PrevisaoCategoriaRepository;
 import com.semac.java_api.repository.PrevisaoItemRepository;
+import com.semac.java_api.service.PrevisaoComprovanteService;
 import com.semac.java_api.service.PrevisaoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -38,17 +39,20 @@ public class PrevisaoItemController {
     private final FornecedorRepository fornecedorRepository;
     private final CompraRepository compraRepository;
     private final PrevisaoService previsaoService;
+    private final PrevisaoComprovanteService comprovanteService;
 
     public PrevisaoItemController(PrevisaoItemRepository itemRepository,
                                   PrevisaoCategoriaRepository categoriaRepository,
                                   FornecedorRepository fornecedorRepository,
                                   CompraRepository compraRepository,
-                                  PrevisaoService previsaoService) {
+                                  PrevisaoService previsaoService,
+                                  PrevisaoComprovanteService comprovanteService) {
         this.itemRepository = itemRepository;
         this.categoriaRepository = categoriaRepository;
         this.fornecedorRepository = fornecedorRepository;
         this.compraRepository = compraRepository;
         this.previsaoService = previsaoService;
+        this.comprovanteService = comprovanteService;
     }
 
     @GetMapping
@@ -114,7 +118,12 @@ public class PrevisaoItemController {
         if (!itemRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
+        /* O ON DELETE CASCADE leva as linhas dos comprovantes junto com o
+           item, mas não os arquivos: os nomes são lidos antes e os
+           arquivos apagados só depois que a exclusão passou. */
+        List<String> arquivosComprovantes = comprovanteService.nomesArquivosDoItem(id);
         itemRepository.deleteById(id);
+        comprovanteService.apagarArquivos(arquivosComprovantes);
         return ResponseEntity.noContent().build();
     }
 

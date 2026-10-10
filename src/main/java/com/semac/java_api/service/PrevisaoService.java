@@ -45,6 +45,7 @@ public class PrevisaoService {
     private final PessoaRepository pessoaRepository;
     private final PalestranteRepository palestranteRepository;
     private final RelatorioService relatorioService;
+    private final PrevisaoComprovanteService comprovanteService;
 
     public PrevisaoService(PrevisaoItemRepository itemRepository,
                            PrevisaoCategoriaRepository categoriaRepository,
@@ -56,7 +57,8 @@ public class PrevisaoService {
                            PessoaService pessoaService,
                            PessoaRepository pessoaRepository,
                            PalestranteRepository palestranteRepository,
-                           RelatorioService relatorioService) {
+                           RelatorioService relatorioService,
+                           PrevisaoComprovanteService comprovanteService) {
         this.itemRepository = itemRepository;
         this.categoriaRepository = categoriaRepository;
         this.orcamentoRepository = orcamentoRepository;
@@ -68,6 +70,7 @@ public class PrevisaoService {
         this.pessoaRepository = pessoaRepository;
         this.palestranteRepository = palestranteRepository;
         this.relatorioService = relatorioService;
+        this.comprovanteService = comprovanteService;
     }
 
     /* ── Escala ──────────────────────────────────────────────────── */
@@ -132,12 +135,17 @@ public class PrevisaoService {
 
     public List<PrevisaoItemResponseDTO> listarItens() {
         Fatores fatores = fatoresVigentes();
+        Map<Integer, Long> comprovantesPorItem = comprovanteService.contarPorItem();
         return itemRepository.findAllByOrderByCategoria_OrdemAscIdAsc().stream()
-                .map(item -> paraResposta(item, fatores))
+                .map(item -> paraResposta(item, fatores, comprovantesPorItem.getOrDefault(item.getId(), 0L)))
                 .toList();
     }
 
     public PrevisaoItemResponseDTO paraResposta(PrevisaoItem item, Fatores fatores) {
+        return paraResposta(item, fatores, item.getId() == null ? 0L : comprovanteService.contar(item.getId()));
+    }
+
+    private PrevisaoItemResponseDTO paraResposta(PrevisaoItem item, Fatores fatores, long totalComprovantes) {
         PrevisaoCategoria categoria = item.getCategoria();
         Fornecedor fornecedor = item.getFornecedor();
         return new PrevisaoItemResponseDTO(
@@ -157,7 +165,8 @@ public class PrevisaoService {
                 item.getStatus().name(),
                 item.getDataPrevista(),
                 item.getObservacao(),
-                item.getCompra() == null ? null : item.getCompra().getId()
+                item.getCompra() == null ? null : item.getCompra().getId(),
+                (int) totalComprovantes
         );
     }
 
