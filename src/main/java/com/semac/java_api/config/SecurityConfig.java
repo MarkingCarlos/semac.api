@@ -292,6 +292,16 @@ public class SecurityConfig {
                         // rota de conquista que venha a existir e não esteja listada
                         // acima nasceria pública. Aqui ela exige ao menos comissão.
                         .requestMatchers("/api/conquista/**").hasAnyRole(PAPEIS_ADMIN)
+                        // ── Times (/time) ───────────────────────────────────────
+                        // Revelação do próprio time (id vem do token). Único lugar
+                        // em que o participante descobre o time.
+                        .requestMatchers(HttpMethod.GET, "/api/time/meu").hasRole(PAPEL_PARTICIPANTE)
+                        // Mascote vai direto num <img src> em /time e no /admin
+                        .requestMatchers(HttpMethod.GET, "/api/time/*/mascote").permitAll()
+                        // Aba Times do /admin: nomes, mascotes, sorteio e o
+                        // interruptor. Também é a rede de segurança das rotas
+                        // de time que venham a existir sem regra própria.
+                        .requestMatchers("/api/time", "/api/time/**").hasAnyRole(PAPEIS_GESTAO_PARTICIPANTES)
                         // ── Termo (/termo) ──────────────────────────────────────
                         // Jogar é do participante: a vitória credita xp e as
                         // tentativas são contadas por pessoa no banco.

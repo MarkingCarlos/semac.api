@@ -5,9 +5,11 @@ import com.semac.java_api.dto.InscricaoRequestDTO;
 import com.semac.java_api.dto.PessoaResponseDTO;
 import com.semac.java_api.exception.RecursoDuplicadoException;
 import com.semac.java_api.model.CamisaPedido;
+import com.semac.java_api.model.ConfiguracaoInscricao;
 import com.semac.java_api.model.Pessoa;
 import com.semac.java_api.model.TipoInscricao;
 import com.semac.java_api.repository.CamisaPedidoRepository;
+import com.semac.java_api.repository.ConfiguracaoInscricaoRepository;
 import com.semac.java_api.repository.PessoaRepository;
 import com.semac.java_api.repository.TipoInscricaoRepository;
 import org.springframework.http.HttpStatus;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -27,19 +30,39 @@ public class InscricaoService {
     private final CamisaPedidoRepository camisaPedidoRepository;
     private final TipoInscricaoRepository tipoInscricaoRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ConfiguracaoInscricaoRepository configuracaoInscricaoRepository;
 
     public InscricaoService(PessoaRepository pessoaRepository,
                             CamisaPedidoRepository camisaPedidoRepository,
                             TipoInscricaoRepository tipoInscricaoRepository,
-                            PasswordEncoder passwordEncoder) {
+                            PasswordEncoder passwordEncoder,
+                            ConfiguracaoInscricaoRepository configuracaoInscricaoRepository) {
         this.pessoaRepository = pessoaRepository;
         this.camisaPedidoRepository = camisaPedidoRepository;
         this.tipoInscricaoRepository = tipoInscricaoRepository;
         this.passwordEncoder = passwordEncoder;
+        this.configuracaoInscricaoRepository = configuracaoInscricaoRepository;
+    }
+
+    /* Interruptor "Inscreva-se" do /admin (Informações SEMAC). Fechadas, a
+       Home troca o botão por "Entrar" e a caixa de /inscricoes esconde a
+       aba de inscrição — e aqui o cadastro público é recusado, para quem
+       chamar a API direto. Ano sem configuração conta como aberto, mesmo
+       padrão do GET /api/configuracao-inscricao. O cadastro manual do
+       /admin (POST /api/pessoa) não passa por aqui e segue funcionando. */
+    private void validarInscricoesAbertas() {
+        boolean abertas = configuracaoInscricaoRepository.findByAno(LocalDate.now().getYear())
+                .map(ConfiguracaoInscricao::getInscricoesAbertas)
+                .orElse(Boolean.TRUE);
+        if (!abertas) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "As inscrições estão encerradas.");
+        }
     }
 
     @Transactional
     public PessoaResponseDTO cadastrar(InscricaoRequestDTO dto) {
+        validarInscricoesAbertas();
+
         // E-mail e CPF são únicos no banco — checa antes de salvar para
         // devolver um aviso claro (409) em vez de estourar erro de banco.
         if (pessoaRepository.findByEmail(dto.email()).isPresent()) {

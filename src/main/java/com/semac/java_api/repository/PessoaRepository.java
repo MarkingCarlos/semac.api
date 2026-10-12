@@ -55,6 +55,11 @@ public interface PessoaRepository extends JpaRepository<Pessoa, Integer> {
     long countByRoleAndXpGreaterThan(Role role, Integer xp);
     long countByRole(Role role);
 
+    /* Quem entra no sorteio dos times: participante com pagamento
+       confirmado (role = PARTICIPANTE) e não suspenso. */
+    List<Pessoa> findAllByRoleAndAtivoTrue(Role role);
+    long countByRoleAndAtivoTrue(Role role);
+
     /* Ranking completo (aba Ranking em /participantes): só quem já tem xp
        atribuído, do maior pro menor. Empate = posição sequencial (a posição
        final é calculada pelo índice na lista, não por essa query). */

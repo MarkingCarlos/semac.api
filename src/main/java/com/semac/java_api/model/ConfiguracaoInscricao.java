@@ -43,4 +43,9 @@ public class ConfiguracaoInscricao {
        recusa novas perguntas — as já enviadas continuam no /admin. */
     @Column(nullable = false)
     private Boolean perguntasDebateAbertas = Boolean.FALSE;
+
+    /* Libera a revelação do time em /time (/admin, aba Times). Desligado,
+       quem escaneia o QR code vai para o /participantes sem ver nada. */
+    @Column(nullable = false)
+    private Boolean timesAtivos = Boolean.FALSE;
 }
