@@ -17,11 +17,18 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/inscricao")
 public class InscricaoController {
+
+    /* O que o input aceita (accept="image/*,application/pdf" em
+       BoxInscricao.jsx). HEIC/HEIF entram por causa da câmera do iPhone. */
+    private static final Set<String> EXTENSOES_COMPROVANTE =
+            Set.of(".png", ".jpg", ".jpeg", ".webp", ".gif", ".pdf", ".heic", ".heif");
 
     private final InscricaoService inscricaoService;
     private final PessoaRepository pessoaRepository;
@@ -47,14 +54,26 @@ public class InscricaoController {
         Pessoa pessoa = pessoaRepository.findByUuid(uuid)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Inscrição não encontrada."));
 
+        /* Rota pública e o uuid é o mesmo do QR do crachá: depois da
+           confirmação (role definida) ninguém mais troca o comprovante. */
+        if (pessoa.getRole() != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Esta inscrição já foi confirmada; o comprovante não pode mais ser alterado.");
+        }
+
+        String original = arquivo.getOriginalFilename();
+        String ext = (original != null && original.contains("."))
+                ? original.substring(original.lastIndexOf('.')).toLowerCase(Locale.ROOT)
+                : "";
+        if (!EXTENSOES_COMPROVANTE.contains(ext)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Envie o comprovante em imagem (PNG, JPG, WEBP, HEIC) ou PDF.");
+        }
+
         try {
             Path dir = Paths.get(uploadDir);
             Files.createDirectories(dir);
 
-            String original = arquivo.getOriginalFilename();
-            String ext = (original != null && original.contains("."))
-                    ? original.substring(original.lastIndexOf('.'))
-                    : "";
             String nomeArquivo = uuid + "_" + System.currentTimeMillis() + ext;
 
             arquivo.transferTo(dir.resolve(nomeArquivo));

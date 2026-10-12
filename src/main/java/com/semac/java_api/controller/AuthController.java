@@ -23,13 +23,19 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
     private static final Duration VALIDADE_TOKEN = Duration.ofHours(8);
+    private static final int MAX_FALHAS_LOGIN = 5;
+    private static final Duration DURACAO_BLOQUEIO_LOGIN = Duration.ofMinutes(15);
+
+    private final ConcurrentHashMap<String, FalhasLogin> falhasPorEmail = new ConcurrentHashMap<>();
 
     private final PessoaRepository pessoaRepository;
     private final PasswordEncoder passwordEncoder;
@@ -56,13 +62,26 @@ public class AuthController {
        claim `role`, usada para autorizar as rotas protegidas. */
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequestDTO dto) {
+        String chaveEmail = dto.email().trim().toLowerCase(Locale.ROOT);
+        long agora = System.currentTimeMillis();
+
+        /* Bloqueado: responde antes de conferir a senha, senão o bloqueio
+           ainda serviria de oráculo para a senha certa. */
+        FalhasLogin falhas = falhasPorEmail.get(chaveEmail);
+        if (falhas != null && falhas.bloqueadaAte > agora) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(new ErroRespostaDTO("Muitas tentativas erradas. Tente de novo em alguns minutos ou recupere sua senha."));
+        }
+
         Optional<Pessoa> encontrada = pessoaRepository.findByEmail(dto.email());
 
         if (encontrada.isEmpty() || !passwordEncoder.matches(dto.senha(), encontrada.get().getSenha())) {
+            registrarFalha(chaveEmail, agora);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ErroRespostaDTO("E-mail ou senha inválidos."));
         }
 
+        falhasPorEmail.remove(chaveEmail);
         Pessoa pessoa = encontrada.get();
 
         /* Senha certa, mas a conta ainda não pode entrar. Os dois casos abaixo
@@ -115,6 +134,27 @@ public class AuthController {
     public ResponseEntity<Void> redefinirSenha(@Valid @RequestBody RedefinirSenhaRequestDTO dto) {
         recuperacaoSenhaService.redefinirSenha(dto.tokenTroca(), dto.novaSenha());
         return ResponseEntity.noContent().build();
+    }
+
+    /* Erros seguidos por e-mail (exista a conta ou não, para não revelar
+       quem tem cadastro). Ao chegar em MAX_FALHAS_LOGIN o e-mail fica
+       bloqueado por DURACAO_BLOQUEIO_LOGIN e a contagem recomeça. Em
+       memória: reiniciar a API zera os contadores, o que é aceitável aqui. */
+    private void registrarFalha(String chaveEmail, long agora) {
+        falhasPorEmail.compute(chaveEmail, (chave, atual) -> {
+            FalhasLogin falhas = atual == null ? new FalhasLogin() : atual;
+            falhas.quantidade++;
+            if (falhas.quantidade >= MAX_FALHAS_LOGIN) {
+                falhas.quantidade = 0;
+                falhas.bloqueadaAte = agora + DURACAO_BLOQUEIO_LOGIN.toMillis();
+            }
+            return falhas;
+        });
+    }
+
+    private static final class FalhasLogin {
+        private int quantidade = 0;
+        private long bloqueadaAte = 0;
     }
 
     private String gerarToken(Pessoa pessoa, String role) {

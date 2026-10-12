@@ -1,5 +1,6 @@
 package com.semac.java_api.controller;
 
+import com.semac.java_api.config.SecurityConfig;
 import com.semac.java_api.dto.AtualizarStatusPagamentoDTO;
 import com.semac.java_api.dto.CotaResponseDTO;
 import com.semac.java_api.dto.PatrocinadorRequestDTO;
@@ -17,6 +18,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -28,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -46,18 +50,29 @@ public class PatrocinadorController {
         this.cotaRepository = cotaRepository;
     }
 
+    /* GET aberto: alimenta a seção de patrocinadores do site. Fora do
+       financeiro a resposta sai sem a negociação (desconto, valor final,
+       pagamento, observação) — ver paraRespostaPublica. */
     @GetMapping
-    public List<PatrocinadorResponseDTO> listar() {
+    public List<PatrocinadorResponseDTO> listar(@AuthenticationPrincipal Jwt jwt) {
+        boolean financeiro = ehFinanceiro(jwt);
         return patrocinadorRepository.findAllByOrderByNomeAsc().stream()
-                .map(this::paraResposta)
+                .map(p -> financeiro ? paraResposta(p) : paraRespostaPublica(p))
                 .toList();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PatrocinadorResponseDTO> buscar(@PathVariable Integer id) {
+    public ResponseEntity<PatrocinadorResponseDTO> buscar(@PathVariable Integer id,
+                                                          @AuthenticationPrincipal Jwt jwt) {
+        boolean financeiro = ehFinanceiro(jwt);
         return patrocinadorRepository.findById(id)
-                .map(p -> ResponseEntity.ok(paraResposta(p)))
+                .map(p -> ResponseEntity.ok(financeiro ? paraResposta(p) : paraRespostaPublica(p)))
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    /* Sem token (visitante do site) o jwt chega null. */
+    private boolean ehFinanceiro(Jwt jwt) {
+        return jwt != null && Arrays.asList(SecurityConfig.PAPEIS_FINANCEIRO).contains(jwt.getClaimAsString("role"));
     }
 
     @PostMapping
@@ -220,6 +235,20 @@ public class PatrocinadorController {
                 p.getStatusPagamento(),
                 p.getDataRecebimento(),
                 p.getObservacao()
+        );
+    }
+
+    /* Só o que o site mostra: nome, descrição, logo e cota (cujo valor já é
+       público na página /cotas). Os campos da negociação saem nulos. */
+    private PatrocinadorResponseDTO paraRespostaPublica(Patrocinador p) {
+        PatrocinadorResponseDTO completa = paraResposta(p);
+        return new PatrocinadorResponseDTO(
+                completa.id(),
+                completa.nome(),
+                completa.descricao(),
+                completa.logoUrl(),
+                completa.cota(),
+                null, null, null, null, null, null
         );
     }
 }

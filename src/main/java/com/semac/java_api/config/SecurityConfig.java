@@ -157,13 +157,17 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/previsao", "/api/previsao/resumo", "/api/previsao-categoria", "/api/orcamento").hasAnyRole(PAPEIS_LEITURA_PREVISAO)
                         .requestMatchers("/api/previsao/**", "/api/previsao-categoria/**", "/api/orcamento/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/inscricoes").hasAnyRole(PAPEIS_FINANCEIRO)
-                        // Escrita de patrocínio/cota acontece só no financeiro (GET segue aberto)
+                        // Escrita de patrocínio/cota acontece só no financeiro. O GET segue
+                        // aberto: cota alimenta a página /cotas, e o PatrocinadorController
+                        // esconde os campos financeiros de quem não é do financeiro.
                         .requestMatchers(HttpMethod.POST, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.PUT, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.PATCH, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)
                         .requestMatchers(HttpMethod.DELETE, "/api/patrocinador/**", "/api/cota/**").hasAnyRole(PAPEIS_FINANCEIRO)
-                        // Escrita de doador — aba Doações do /financeiro, que o diretor de
-                        // patrocínio também usa (GET segue aberto)
+                        // Doador — aba Doações do /financeiro, que o diretor de patrocínio
+                        // também usa. A lista traz o valor de cada doação, então só
+                        // /resumo-publico (total + nomes) fica aberto para o site.
+                        .requestMatchers(HttpMethod.GET, "/api/doador").hasAnyRole(PAPEIS_DOACAO)
                         .requestMatchers(HttpMethod.POST, "/api/doador/**").hasAnyRole(PAPEIS_DOACAO)
                         .requestMatchers(HttpMethod.PUT, "/api/doador/**").hasAnyRole(PAPEIS_DOACAO)
                         .requestMatchers(HttpMethod.PATCH, "/api/doador/**").hasAnyRole(PAPEIS_DOACAO)
@@ -214,14 +218,17 @@ public class SecurityConfig {
                         // Crachás impressos — devolve o uuid de check-in de todo mundo, então
                         // fica com quem gerencia pessoas (mesmo público da aba Pessoas)
                         .requestMatchers(HttpMethod.GET, "/api/cracha").hasAnyRole(PAPEIS_FINANCEIRO)
-                        .requestMatchers(HttpMethod.PATCH, "/api/pessoa/*/role", "/api/pessoa/*/ativo", "/api/pessoa/*/desconfirmar").hasAnyRole(PAPEIS_ADMIN)
+                        // Papel, ativo/suspenso, desconfirmar e excluir — só quem vê a aba
+                        // Pessoas do /admin. Com PAPEIS_ADMIN um MEMBRO podia se dar
+                        // PRESIDENTE chamando a API direto.
+                        .requestMatchers(HttpMethod.PATCH, "/api/pessoa/*/role", "/api/pessoa/*/ativo", "/api/pessoa/*/desconfirmar").hasAnyRole(PAPEIS_GESTAO_PARTICIPANTES)
                         // Correção de cadastro e minicursos de outra pessoa — só diretoria de site e presidência
                         .requestMatchers(HttpMethod.PATCH, "/api/pessoa/*/dados").hasAnyRole(PAPEIS_GESTAO_PARTICIPANTES)
                         .requestMatchers("/api/pessoa/*/minicursos", "/api/pessoa/*/minicursos/*").hasAnyRole(PAPEIS_GESTAO_PARTICIPANTES)
-                        // Cadastro manual de participante (inscrição de balcão) — mesmo público
-                        // de quem confirma ou exclui inscrição
+                        // Cadastro manual de participante (inscrição de balcão) — só cria
+                        // participante (confirmado ou pendente), nunca comissão
                         .requestMatchers(HttpMethod.POST, "/api/pessoa").hasAnyRole(PAPEIS_ADMIN)
-                        .requestMatchers(HttpMethod.DELETE, "/api/pessoa/*").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.DELETE, "/api/pessoa/*").hasAnyRole(PAPEIS_GESTAO_PARTICIPANTES)
                         // Programação é da aba Conteúdo — MEMBRO não cria nem mexe em evento
                         .requestMatchers(HttpMethod.POST, "/api/evento").hasAnyRole(PAPEIS_CONTEUDO)
                         .requestMatchers(HttpMethod.PUT, "/api/evento/*").hasAnyRole(PAPEIS_CONTEUDO)

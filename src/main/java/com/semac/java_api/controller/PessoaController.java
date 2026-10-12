@@ -196,27 +196,43 @@ public class PessoaController {
     /* Confirma a inscrição atribuindo o papel (PARTICIPANTE ou comissão). */
     @PatchMapping("/{id}/role")
     public ParticipanteResponseDTO atribuirRole(@PathVariable Integer id,
-                                                @Valid @RequestBody AtribuirRoleDTO dto) {
+                                                @Valid @RequestBody AtribuirRoleDTO dto,
+                                                @AuthenticationPrincipal Jwt jwt) {
+        bloquearAlteracaoDaPropriaConta(id, jwt);
         return pessoaService.atribuirRole(id, dto.role(), dto.tipoInscricaoId());
     }
 
     /* Desfaz a confirmação: volta a pessoa para "aguardando confirmação". */
     @PatchMapping("/{id}/desconfirmar")
-    public ParticipanteResponseDTO desconfirmar(@PathVariable Integer id) {
+    public ParticipanteResponseDTO desconfirmar(@PathVariable Integer id, @AuthenticationPrincipal Jwt jwt) {
+        bloquearAlteracaoDaPropriaConta(id, jwt);
         return pessoaService.desconfirmar(id);
     }
 
     /* Ativa/desativa uma pessoa (ex.: suspender membro da comissão). */
     @PatchMapping("/{id}/ativo")
     public ParticipanteResponseDTO definirAtivo(@PathVariable Integer id,
-                                                @Valid @RequestBody AtivoRequestDTO dto) {
+                                                @Valid @RequestBody AtivoRequestDTO dto,
+                                                @AuthenticationPrincipal Jwt jwt) {
+        bloquearAlteracaoDaPropriaConta(id, jwt);
         return pessoaService.definirAtivo(id, dto.ativo());
     }
 
     /* Exclui definitivamente um participante ou membro da comissão. */
     @DeleteMapping("/{id}")
-    public void excluir(@PathVariable Integer id) {
+    public void excluir(@PathVariable Integer id, @AuthenticationPrincipal Jwt jwt) {
+        bloquearAlteracaoDaPropriaConta(id, jwt);
         pessoaService.excluir(id);
+    }
+
+    /* Ninguém muda o próprio papel, se desativa ou se exclui: evita que a
+       diretoria se tranque fora do sistema por engano e que uma conta
+       comprometida se promova. Outra pessoa da gestão faz a mudança. */
+    private void bloquearAlteracaoDaPropriaConta(Integer idAlvo, Jwt jwt) {
+        if (idAlvo.equals(idDoToken(jwt))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Você não pode alterar o papel, o acesso ou excluir a própria conta.");
+        }
     }
 
     /* Serve o comprovante de pagamento anexado no cadastro — quem confirma
