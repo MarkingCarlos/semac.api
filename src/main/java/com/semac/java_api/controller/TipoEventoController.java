@@ -66,6 +66,7 @@ public class TipoEventoController {
 
     private TipoEventoResponseDTO paraResposta(TipoEvento tipo) {
         return new TipoEventoResponseDTO(tipo.getId(), tipo.getNome(), tipo.getPontos(),
-                Boolean.TRUE.equals(tipo.getExigeInscricao()));
+                Boolean.TRUE.equals(tipo.getExigeInscricao()),
+                tipo.getCodigo() == null ? null : tipo.getCodigo().name());
     }
 }

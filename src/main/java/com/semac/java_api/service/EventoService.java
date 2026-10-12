@@ -203,7 +203,8 @@ public class EventoService {
         TipoEvento tipo = evento.getTipoEvento();
         TipoEventoResponseDTO tipoEvento = tipo == null ? null
                 : new TipoEventoResponseDTO(tipo.getId(), tipo.getNome(), tipo.getPontos(),
-                        Boolean.TRUE.equals(tipo.getExigeInscricao()));
+                        Boolean.TRUE.equals(tipo.getExigeInscricao()),
+                        tipo.getCodigo() == null ? null : tipo.getCodigo().name());
 
         Trilha trilha = evento.getTrilha();
         TrilhaResponseDTO trilhaDto = trilha == null ? null

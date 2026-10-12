@@ -4,6 +4,8 @@ import com.semac.java_api.dto.ConfiguracaoInscricaoRequestDTO;
 import com.semac.java_api.dto.ConfiguracaoInscricaoResponseDTO;
 import com.semac.java_api.dto.EscolhaMinicursosRequestDTO;
 import com.semac.java_api.dto.EscolhaMinicursosResponseDTO;
+import com.semac.java_api.dto.PerguntasDebateRequestDTO;
+import com.semac.java_api.dto.PerguntasDebateResponseDTO;
 import com.semac.java_api.model.ConfiguracaoInscricao;
 import com.semac.java_api.repository.ConfiguracaoInscricaoRepository;
 import jakarta.validation.Valid;
@@ -75,6 +77,33 @@ public class ConfiguracaoInscricaoController {
 
         ConfiguracaoInscricao salva = repository.save(config);
         return new EscolhaMinicursosResponseDTO(salva.getAno(), salva.getEscolhaMinicursosAberta());
+    }
+
+    /* Perguntas para os debates no /participantes — editado em Informações
+       SEMAC. GET de qualquer usuário logado (o /participantes decide se
+       mostra o glow e o botão); ano sem configuração volta fechado. */
+    @GetMapping("/perguntas-debate")
+    public PerguntasDebateResponseDTO buscarPerguntasDebate(@RequestParam Integer ano) {
+        boolean abertas = repository.findByAno(ano)
+                .map(ConfiguracaoInscricao::getPerguntasDebateAbertas)
+                .orElse(Boolean.FALSE);
+        return new PerguntasDebateResponseDTO(ano, abertas);
+    }
+
+    @PutMapping("/perguntas-debate")
+    public PerguntasDebateResponseDTO salvarPerguntasDebate(@Valid @RequestBody PerguntasDebateRequestDTO dto) {
+        ConfiguracaoInscricao config = repository.findByAno(dto.ano())
+                .orElseGet(() -> {
+                    ConfiguracaoInscricao nova = new ConfiguracaoInscricao();
+                    nova.setAno(dto.ano());
+                    nova.setInscricoesAbertas(Boolean.TRUE);
+                    return nova;
+                });
+
+        config.setPerguntasDebateAbertas(dto.perguntasDebateAbertas());
+
+        ConfiguracaoInscricao salva = repository.save(config);
+        return new PerguntasDebateResponseDTO(salva.getAno(), salva.getPerguntasDebateAbertas());
     }
 
     private ConfiguracaoInscricaoResponseDTO paraResposta(ConfiguracaoInscricao config) {

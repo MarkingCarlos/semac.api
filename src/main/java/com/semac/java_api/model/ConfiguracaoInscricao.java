@@ -37,4 +37,10 @@ public class ConfiguracaoInscricao {
        do botão "Inscreva-se" pode criar a linha do ano sem mexer nele. */
     @Column(nullable = false)
     private Boolean escolhaMinicursosAberta = Boolean.FALSE;
+
+    /* Libera o envio de perguntas para os debates no /participantes
+       (/admin, Informações SEMAC). Fechado, o botão some e o backend
+       recusa novas perguntas — as já enviadas continuam no /admin. */
+    @Column(nullable = false)
+    private Boolean perguntasDebateAbertas = Boolean.FALSE;
 }

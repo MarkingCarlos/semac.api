@@ -183,6 +183,15 @@ public class SecurityConfig {
                         // usuário logado: o /participantes mostra ou esconde o botão.
                         .requestMatchers(HttpMethod.GET, "/api/configuracao-inscricao/minicursos").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/configuracao-inscricao/minicursos").hasAnyRole(PAPEIS_CONTEUDO)
+                        // Liga/desliga as perguntas para os debates — editado em
+                        // Informações SEMAC. GET de qualquer logado: o /participantes
+                        // mostra ou esconde o glow e o botão "Mande sua pergunta".
+                        .requestMatchers(HttpMethod.GET, "/api/configuracao-inscricao/perguntas-debate").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/configuracao-inscricao/perguntas-debate").hasAnyRole(PAPEIS_CONTEUDO)
+                        // Perguntas dos debates: o participante envia, só diretoria e
+                        // presidência leem (MEMBRO fica de fora).
+                        .requestMatchers(HttpMethod.POST, "/api/evento/*/perguntas").hasRole(PAPEL_PARTICIPANTE)
+                        .requestMatchers(HttpMethod.GET, "/api/evento/*/perguntas").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         // Regras de xp (presença, Termo, cortes de atraso) — editadas em
                         // Informações SEMAC. O GET é do card "COMO GANHAR XP" do
                         // /participantes, então vale para qualquer autenticado.
