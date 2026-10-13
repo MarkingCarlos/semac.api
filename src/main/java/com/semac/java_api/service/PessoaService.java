@@ -21,6 +21,7 @@ import com.semac.java_api.model.CamisaPedido;
 import com.semac.java_api.model.CamisetaExtra;
 import com.semac.java_api.model.Nivel;
 import com.semac.java_api.model.Pessoa;
+import com.semac.java_api.model.PessoaDiaIngresso;
 import com.semac.java_api.model.TipoInscricao;
 import com.semac.java_api.model.enums.FormaPagamento;
 import com.semac.java_api.model.enums.Role;
@@ -30,6 +31,7 @@ import com.semac.java_api.repository.CamisetaExtraRepository;
 import com.semac.java_api.repository.GanhadoresSorteioRepository;
 import com.semac.java_api.repository.NivelRepository;
 import com.semac.java_api.repository.ParticipanteConquistaRepository;
+import com.semac.java_api.repository.PessoaDiaIngressoRepository;
 import com.semac.java_api.repository.PessoaRepository;
 import com.semac.java_api.repository.TipoInscricaoRepository;
 import org.springframework.context.ApplicationEventPublisher;
@@ -42,6 +44,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -71,6 +74,7 @@ public class PessoaService {
     private final CaixaRepository caixaRepository;
     private final ParticipanteConquistaRepository participanteConquistaRepository;
     private final GanhadoresSorteioRepository ganhadoresSorteioRepository;
+    private final PessoaDiaIngressoRepository pessoaDiaIngressoRepository;
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher publicadorEventos;
 
@@ -83,6 +87,7 @@ public class PessoaService {
                          CaixaRepository caixaRepository,
                          ParticipanteConquistaRepository participanteConquistaRepository,
                          GanhadoresSorteioRepository ganhadoresSorteioRepository,
+                         PessoaDiaIngressoRepository pessoaDiaIngressoRepository,
                          PasswordEncoder passwordEncoder,
                          ApplicationEventPublisher publicadorEventos) {
         this.pessoaRepository = pessoaRepository;
@@ -94,6 +99,7 @@ public class PessoaService {
         this.caixaRepository = caixaRepository;
         this.participanteConquistaRepository = participanteConquistaRepository;
         this.ganhadoresSorteioRepository = ganhadoresSorteioRepository;
+        this.pessoaDiaIngressoRepository = pessoaDiaIngressoRepository;
         this.passwordEncoder = passwordEncoder;
         this.publicadorEventos = publicadorEventos;
     }
@@ -611,6 +617,14 @@ public class PessoaService {
                         ingresso.getCodigo() != null && !ingresso.getCodigo().isBlank(),
                         ingresso.getRestritoUnesp());
 
+        /* Dias escolhidos pelo diarista; só consulta para ingresso por dia,
+           os demais valem em todos os dias e vêm com a lista vazia. */
+        List<LocalDate> diasIngresso = ingresso == null || !Boolean.TRUE.equals(ingresso.getPorDia())
+                ? List.of()
+                : pessoaDiaIngressoRepository.findByPessoaIdOrderByDiaAsc(pessoa.getId()).stream()
+                        .map(PessoaDiaIngresso::getDia)
+                        .toList();
+
         Nivel nivel = pessoa.getNivel();
         NivelResponseDTO nivelResponse = nivel == null ? null
                 : new NivelResponseDTO(nivel.getId(), nivel.getNome(), nivel.getXpMinimo());
@@ -633,6 +647,7 @@ public class PessoaService {
                 camisetas,
                 tipoInscricao,
                 pessoa.getDiasInscricao(),
+                diasIngresso,
                 nivelResponse,
                 pessoa.getXp(),
                 presencas,

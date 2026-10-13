@@ -1,5 +1,6 @@
 package com.semac.java_api.dto;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -10,7 +11,8 @@ import java.util.List;
    `camisetas` traz todas — quem escolhe um ingresso com mais de uma grátis,
    ou compra avulsas, tem vários pedidos.
    `tipoInscricao` é o ingresso escolhido no cadastro, podendo ser trocado
-   na confirmação; `dias` acompanha ingresso de diária.
+   na confirmação; `dias` acompanha ingresso de diária e `diasIngresso`
+   traz os dias que o diarista escolheu (vazio para os demais).
    `nivel`/`xp` são atribuídos na confirmação (null se pendente).
    `temComprovante` diz se a pessoa anexou comprovante de pagamento no
    cadastro (o arquivo em si vem de GET /api/pessoa/{id}/comprovante).
@@ -32,6 +34,7 @@ public record ParticipanteResponseDTO(
         List<CamisetaParticipanteDTO> camisetas,
         TipoInscricaoResponseDTO tipoInscricao,
         Integer dias,
+        List<LocalDate> diasIngresso,
         NivelResponseDTO nivel,
         Integer xp,
         List<PresencaParticipanteDTO> eventoParticipantes,

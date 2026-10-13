@@ -12,10 +12,12 @@ import com.semac.java_api.dto.DashboardRankingDTO;
 import com.semac.java_api.model.Evento;
 import com.semac.java_api.model.EventoParticipante;
 import com.semac.java_api.model.Pessoa;
+import com.semac.java_api.model.PessoaDiaIngresso;
 import com.semac.java_api.model.enums.Role;
 import com.semac.java_api.model.enums.StatusPresenca;
 import com.semac.java_api.repository.EventoParticipanteRepository;
 import com.semac.java_api.repository.EventoRepository;
+import com.semac.java_api.repository.PessoaDiaIngressoRepository;
 import com.semac.java_api.repository.PessoaRepository;
 import com.semac.java_api.repository.projection.InscritosEventoView;
 import org.springframework.http.HttpStatus;
@@ -23,10 +25,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,13 +60,19 @@ public class DashboardService {
     private final EventoRepository eventoRepository;
     private final EventoParticipanteRepository eventoParticipanteRepository;
     private final PessoaRepository pessoaRepository;
+    private final PessoaDiaIngressoRepository pessoaDiaIngressoRepository;
+    private final DiaIngressoService diaIngressoService;
 
     public DashboardService(EventoRepository eventoRepository,
                             EventoParticipanteRepository eventoParticipanteRepository,
-                            PessoaRepository pessoaRepository) {
+                            PessoaRepository pessoaRepository,
+                            PessoaDiaIngressoRepository pessoaDiaIngressoRepository,
+                            DiaIngressoService diaIngressoService) {
         this.eventoRepository = eventoRepository;
         this.eventoParticipanteRepository = eventoParticipanteRepository;
         this.pessoaRepository = pessoaRepository;
+        this.pessoaDiaIngressoRepository = pessoaDiaIngressoRepository;
+        this.diaIngressoService = diaIngressoService;
     }
 
     /* ── Vagas em minicursos ─────────────────────────────────────── */
@@ -86,7 +96,40 @@ public class DashboardService {
         int capacidadeTotal = minicursos.stream().mapToInt(DashboardMinicursoDTO::capacidade).sum();
         int inscritosTotal = minicursos.stream().mapToInt(DashboardMinicursoDTO::inscritos).sum();
         int vagasTotal = minicursos.stream().mapToInt(DashboardMinicursoDTO::vagasRestantes).sum();
-        return new DashboardMinicursosDTO(capacidadeTotal, inscritosTotal, vagasTotal, minicursos);
+
+        Set<LocalDate> diasComMinicurso = minicursos.stream()
+                .map(minicurso -> minicurso.dataHoraInicio().toLocalDate())
+                .collect(Collectors.toSet());
+        List<Pessoa> podemFazerMinicurso = participantesQuePodemFazerMinicurso(diasComMinicurso);
+        Set<Integer> idsComMinicurso = new HashSet<>(eventoParticipanteRepository
+                .buscarIdsParticipantesComMinicurso(InscricaoEventoService.STATUS_OCUPA_VAGA));
+        int semMinicurso = (int) podemFazerMinicurso.stream()
+                .filter(pessoa -> !idsComMinicurso.contains(pessoa.getId()))
+                .count();
+
+        return new DashboardMinicursosDTO(capacidadeTotal, inscritosTotal, vagasTotal,
+                podemFazerMinicurso.size(), semMinicurso, minicursos);
+    }
+
+    /* Participantes confirmados e ativos que podem entrar em algum
+       minicurso. O diarista só entra em minicurso nos dias do ingresso,
+       então fica de fora se nenhum dia escolhido tem minicurso; quem
+       ainda não escolheu os dias conta, porque ainda pode escolher um. */
+    private List<Pessoa> participantesQuePodemFazerMinicurso(Set<LocalDate> diasComMinicurso) {
+        if (diasComMinicurso.isEmpty()) {
+            return List.of();
+        }
+        Map<Integer, Set<LocalDate>> diasPorPessoa = pessoaDiaIngressoRepository.findAll().stream()
+                .collect(Collectors.groupingBy(PessoaDiaIngresso::getPessoaId,
+                        Collectors.mapping(PessoaDiaIngresso::getDia, Collectors.toSet())));
+
+        return pessoaRepository.findAllByRoleAndAtivoTrue(Role.PARTICIPANTE).stream()
+                .filter(pessoa -> {
+                    if (!diaIngressoService.ehDiarista(pessoa)) return true;
+                    Set<LocalDate> dias = diasPorPessoa.get(pessoa.getId());
+                    return dias == null || dias.stream().anyMatch(diasComMinicurso::contains);
+                })
+                .toList();
     }
 
     @Transactional(readOnly = true)

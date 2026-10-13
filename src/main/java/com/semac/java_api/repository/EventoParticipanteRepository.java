@@ -58,6 +58,15 @@ public interface EventoParticipanteRepository extends JpaRepository<EventoPartic
     List<EventoParticipante> buscarComParticipantePorEvento(@Param("eventoId") Integer eventoId,
                                                             @Param("status") Collection<StatusPresenca> status);
 
+    /* Participantes que ocupam vaga em ao menos um minicurso — base do
+       "ainda sem minicurso" da dashboard do /admin. */
+    @Query("""
+            SELECT DISTINCT ep.pk.participanteId FROM EventoParticipante ep
+            WHERE ep.evento.tipoEvento.exigeInscricao = true
+              AND ep.status IN :status
+            """)
+    List<Integer> buscarIdsParticipantesComMinicurso(@Param("status") Collection<StatusPresenca> status);
+
     /* Leituras de QR por membro da comissão, somando todos os eventos. */
     @Query("""
             SELECT ep.registradoPorId AS operadorId, ep.registradoPorNome AS operadorNome, COUNT(ep) AS total
