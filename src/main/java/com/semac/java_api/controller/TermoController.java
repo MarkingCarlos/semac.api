@@ -1,11 +1,16 @@
 package com.semac.java_api.controller;
 
+import com.semac.java_api.dto.TermoDiaAdminDTO;
 import com.semac.java_api.dto.TermoDiaDTO;
+import com.semac.java_api.dto.TermoDiaRequestDTO;
 import com.semac.java_api.dto.TermoEstadoDTO;
-import com.semac.java_api.dto.TermoPalavraAdminDTO;
 import com.semac.java_api.dto.TermoPalavraRequestDTO;
+import com.semac.java_api.dto.TermoPalavraValidaDTO;
 import com.semac.java_api.dto.TermoPalpiteDTO;
 import com.semac.java_api.dto.TermoPalpiteRespostaDTO;
+import com.semac.java_api.dto.TermoPalpiteTesteDTO;
+import com.semac.java_api.dto.TermoPalpiteTesteRespostaDTO;
+import com.semac.java_api.dto.TermoTesteDTO;
 import com.semac.java_api.service.TermoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -16,16 +21,20 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
-/* Jogo do Termo (/termo) e o cadastro das palavras em /admin -> Termo.
+/* Jogo do Termo (/termo) e o cadastro dos dias e palavras em /admin -> Termo.
 
    Nenhuma resposta daqui carrega a palavra secreta enquanto o jogo está em
    andamento — nem para o participante que está jogando, nem para a
    diretoria que a cadastrou (ver TermoPalavraAdminDTO). O palpite é
    conferido no servidor e volta só o padrão de cores.
 
+   Cada dia tem várias palavras, e cada participante recebe uma por
+   sorteio (ver TermoService.sortearJogo).
+
    Acessos (ver SecurityConfig): jogar é do participante, porque a vitória
-   credita xp e as tentativas são contadas por pessoa; cadastrar a palavra
-   é de DIRETOR_SITE/PRESIDENTE, mesmo público das cotas e dos níveis. */
+   credita xp e as tentativas são contadas por pessoa; cadastrar dias e
+   palavras é de DIRETOR_SITE/PRESIDENTE, mesmo público das cotas e dos
+   níveis. */
 @RestController
 @RequestMapping("/api/termo")
 public class TermoController {
@@ -60,17 +69,47 @@ public class TermoController {
         return termoService.palpitar(idDoToken(jwt), dto.palpite());
     }
 
+    /* Se a palavra está no dicionário — para o modo treino, que confere o
+       palpite no navegador mas não carrega a lista. */
+    @GetMapping("/validar")
+    public TermoPalavraValidaDTO validar(@RequestParam String palavra) {
+        return termoService.validarPalavra(palavra);
+    }
+
     /* ── Diretoria ───────────────────────────────────────────────── */
 
-    @GetMapping("/palavras")
-    public List<TermoPalavraAdminDTO> listarPalavras(@RequestParam Integer ano) {
+    @GetMapping("/dias")
+    public List<TermoDiaAdminDTO> listarDias(@RequestParam Integer ano) {
         return termoService.listarParaAdmin(ano);
     }
 
-    @PutMapping("/palavras/{dia}")
-    public TermoPalavraAdminDTO salvarPalavra(@PathVariable Integer dia,
+    @PutMapping("/dias/{dia}")
+    public TermoDiaAdminDTO salvarDia(@PathVariable Integer dia,
+                                      @Valid @RequestBody TermoDiaRequestDTO dto) {
+        return termoService.salvarDia(dia, dto);
+    }
+
+    @PostMapping("/dias/{dia}/palavras")
+    public TermoDiaAdminDTO adicionarPalavras(@PathVariable Integer dia,
                                               @Valid @RequestBody TermoPalavraRequestDTO dto) {
-        return termoService.salvar(dia, dto);
+        return termoService.adicionarPalavras(dia, dto);
+    }
+
+    @DeleteMapping("/palavras/{id}")
+    public TermoDiaAdminDTO removerPalavra(@PathVariable Integer id) {
+        return termoService.removerPalavra(id);
+    }
+
+    /* Modo teste: a diretoria joga contra uma palavra cadastrada, sem
+       gravar jogo nem creditar xp (ver TermoService.palpitarTeste). */
+    @GetMapping("/teste/{palavraId}")
+    public TermoTesteDTO abrirTeste(@PathVariable Integer palavraId) {
+        return termoService.abrirTeste(palavraId);
+    }
+
+    @PostMapping("/teste/palpite")
+    public TermoPalpiteTesteRespostaDTO palpitarTeste(@Valid @RequestBody TermoPalpiteTesteDTO dto) {
+        return termoService.palpitarTeste(dto.palavraId(), dto.palpite());
     }
 
     private Integer idDoToken(Jwt jwt) {

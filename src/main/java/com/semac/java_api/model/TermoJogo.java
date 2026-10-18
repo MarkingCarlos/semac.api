@@ -7,11 +7,12 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/* Partida de uma pessoa contra a palavra de um dia.
+/* Partida de uma pessoa num dia do Termo, contra a palavra que o sorteio
+   lhe deu entre as daquele dia (ver TermoService.sortearJogo).
 
-   Um jogo por pessoa por dia (unique pessoa+palavra): é o que garante que
-   a vitória credite os 5 xp uma vez só, e que as 6 tentativas não voltem
-   com um F5.
+   Um jogo por pessoa por dia (unique pessoa+dia): é o que garante que a
+   vitória credite os xp uma vez só, que as 6 tentativas não voltem com um
+   F5 e que a palavra sorteada não troque ao reabrir a página.
 
    `venceu` e `encerradoEm` ficam null enquanto a partida está em
    andamento. `xpCreditado` guarda quanto foi creditado de fato, mesma
@@ -21,8 +22,8 @@ import java.util.List;
 @Table(
         name = "termo_jogo",
         uniqueConstraints = @UniqueConstraint(
-                name = "termo_jogo_pessoa_palavra_key",
-                columnNames = { "pessoa_id", "palavra_id" }
+                name = "termo_jogo_pessoa_dia_key",
+                columnNames = { "pessoa_id", "dia_id" }
         )
 )
 @Getter
@@ -40,6 +41,11 @@ public class TermoJogo {
     @JoinColumn(name = "pessoa_id")
     private Pessoa pessoa;
 
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "dia_id")
+    private TermoDia dia;
+
+    /* A palavra sorteada para esta pessoa neste dia. */
     @ManyToOne(optional = false)
     @JoinColumn(name = "palavra_id")
     private TermoPalavra palavra;

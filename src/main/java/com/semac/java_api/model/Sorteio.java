@@ -6,7 +6,7 @@ import lombok.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/* Sorteio cadastrado no /admin (aba Brindes → Sorteios): nome + evento
+/* Sorteio cadastrado no /admin (painel de edição do evento): nome + evento
    onde acontece. Um evento pode ter vários sorteios; cada brinde
    pertence a um sorteio, e cada entrega fica em `ganhadores_sorteio`. */
 @Entity

@@ -17,10 +17,9 @@ import java.util.Comparator;
 import java.util.List;
 
 /* CRUD dos brindes sorteados (tabela `brinde`). Gerenciado na aba
-   "Brindes" do /admin — nome, quantidade em estoque e o sorteio ao qual
-   pertence. `quantidadeEntregue` é calculada contando as entregas
-   vinculadas (ver GanhadoresSorteioRepository.countByBrinde_Id), sem
-   coluna acumuladora. Excluir um brinde já entregue é barrado pela FK
+   "Brindes" do /admin — nome e o sorteio ao qual pertence. Cada brinde é
+   uma unidade; `entregue` vem de haver entrega vinculada (ver
+   GanhadoresSorteioRepository.countByBrinde_Id), sem coluna própria. Excluir um brinde já entregue é barrado pela FK
    (DataIntegrityViolationException → 409 no GlobalExceptionHandler). */
 @RestController
 @RequestMapping("/api/brinde")
@@ -53,7 +52,6 @@ public class BrindeController {
     public ResponseEntity<BrindeResponseDTO> criar(@Valid @RequestBody BrindeRequestDTO dto) {
         Brinde brinde = new Brinde();
         brinde.setNome(dto.nome());
-        brinde.setQuantidade(dto.quantidade());
         brinde.setSorteio(buscarSorteio(dto.sorteioId()));
         return ResponseEntity.status(HttpStatus.CREATED).body(paraResposta(brindeRepository.save(brinde)));
     }
@@ -64,10 +62,6 @@ public class BrindeController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Brinde não encontrado."));
 
         long entregue = ganhadoresSorteioRepository.countByBrinde_Id(id);
-        if (dto.quantidade() < entregue) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Já foram entregues " + entregue + " unidades — a quantidade não pode ser menor que isso.");
-        }
         // As entregas guardam o sorteio em que aconteceram; mover o brinde
         // depois disso deixaria as duas informações divergentes.
         boolean trocouSorteio = !brinde.getSorteio().getId().equals(dto.sorteioId());
@@ -77,7 +71,6 @@ public class BrindeController {
         }
 
         brinde.setNome(dto.nome());
-        brinde.setQuantidade(dto.quantidade());
         if (trocouSorteio) {
             brinde.setSorteio(buscarSorteio(dto.sorteioId()));
         }
@@ -103,8 +96,8 @@ public class BrindeController {
     }
 
     private BrindeResponseDTO paraResposta(Brinde brinde) {
-        long entregue = ganhadoresSorteioRepository.countByBrinde_Id(brinde.getId());
-        return new BrindeResponseDTO(brinde.getId(), brinde.getNome(), brinde.getQuantidade(), (int) entregue,
+        boolean entregue = ganhadoresSorteioRepository.countByBrinde_Id(brinde.getId()) > 0;
+        return new BrindeResponseDTO(brinde.getId(), brinde.getNome(), entregue,
                 brinde.getSorteio().getId(), brinde.getSorteio().getNome());
     }
 }

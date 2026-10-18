@@ -229,9 +229,11 @@ public class SecurityConfig {
                         // participante (confirmado ou pendente), nunca comissão
                         .requestMatchers(HttpMethod.POST, "/api/pessoa").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.DELETE, "/api/pessoa/*").hasAnyRole(PAPEIS_GESTAO_PARTICIPANTES)
-                        // Programação é da aba Conteúdo — MEMBRO não cria nem mexe em evento
+                        // Programação é da aba Conteúdo — MEMBRO não mexe em evento. Toda a
+                        // diretoria edita (e cadastra os sorteios do evento); criar e excluir
+                        // ficam com site, conteúdo e presidência.
                         .requestMatchers(HttpMethod.POST, "/api/evento").hasAnyRole(PAPEIS_CONTEUDO)
-                        .requestMatchers(HttpMethod.PUT, "/api/evento/*").hasAnyRole(PAPEIS_CONTEUDO)
+                        .requestMatchers(HttpMethod.PUT, "/api/evento/*").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers(HttpMethod.DELETE, "/api/evento/*").hasAnyRole(PAPEIS_CONTEUDO)
                         // Marcar presença segue com qualquer papel de comissão: quem opera o /checkin
                         .requestMatchers(HttpMethod.POST, "/api/evento/*/presenca").hasAnyRole(PAPEIS_ADMIN)
@@ -254,6 +256,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/sorteio/**").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.POST, "/api/sorteio/*/entrega").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.POST, "/api/sorteio").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
+                        .requestMatchers(HttpMethod.POST, "/api/sorteio/com-brinde").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers(HttpMethod.PUT, "/api/sorteio/*").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers(HttpMethod.DELETE, "/api/sorteio/*").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         // Verificação do código de acesso do ingresso — pública de propósito,
@@ -308,11 +311,18 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/termo/hoje").hasRole(PAPEL_PARTICIPANTE)
                         .requestMatchers(HttpMethod.GET, "/api/termo/meus").hasRole(PAPEL_PARTICIPANTE)
                         .requestMatchers(HttpMethod.POST, "/api/termo/palpite").hasRole(PAPEL_PARTICIPANTE)
-                        // Cadastro da palavra de cada dia — mesmo público que
+                        .requestMatchers(HttpMethod.GET, "/api/termo/validar").hasRole(PAPEL_PARTICIPANTE)
+                        // Cadastro dos dias e das palavras — mesmo público que
                         // edita níveis e cotas em Informações SEMAC. A palavra
                         // nunca volta na resposta, nem para quem a cadastrou.
-                        .requestMatchers(HttpMethod.GET, "/api/termo/palavras").hasAnyRole(PAPEIS_FINANCEIRO)
-                        .requestMatchers(HttpMethod.PUT, "/api/termo/palavras/*").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers(HttpMethod.GET, "/api/termo/dias").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers(HttpMethod.PUT, "/api/termo/dias/*").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers(HttpMethod.POST, "/api/termo/dias/*/palavras").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers(HttpMethod.DELETE, "/api/termo/palavras/*").hasAnyRole(PAPEIS_FINANCEIRO)
+                        // Modo teste do /admin -> Termo: joga contra uma palavra
+                        // cadastrada sem gravar nada. Mesmo público do cadastro.
+                        .requestMatchers(HttpMethod.GET, "/api/termo/teste/*").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers(HttpMethod.POST, "/api/termo/teste/palpite").hasAnyRole(PAPEIS_FINANCEIRO)
                         // Rede de segurança, mesmo motivo de /api/conquista/**:
                         // rota nova de termo não nasce pública.
                         .requestMatchers("/api/termo/**").hasAnyRole(PAPEIS_ADMIN)

@@ -2,6 +2,7 @@ package com.semac.java_api.service;
 
 import com.semac.java_api.dto.GanhadorSorteioDTO;
 import com.semac.java_api.dto.ParticipanteElegivelDTO;
+import com.semac.java_api.dto.SorteioComBrindeRequestDTO;
 import com.semac.java_api.dto.SorteioRequestDTO;
 import com.semac.java_api.dto.SorteioResponseDTO;
 import com.semac.java_api.model.Brinde;
@@ -84,6 +85,26 @@ public class SorteioService {
         return paraResposta(sorteioRepository.save(sorteio));
     }
 
+    /* Cadastro rápido do painel de evento: o sorteio leva o nome do que
+       vai ser sorteado, e o brinde (uma unidade) nasce junto, na mesma
+       transação — ou ficam os dois, ou nenhum. */
+    @Transactional
+    public SorteioResponseDTO criarComBrinde(SorteioComBrindeRequestDTO dto) {
+        String nome = dto.brinde().trim();
+
+        Sorteio sorteio = new Sorteio();
+        sorteio.setNome(nome);
+        sorteio.setEvento(buscarEvento(dto.eventoId()));
+        sorteio = sorteioRepository.save(sorteio);
+
+        Brinde brinde = new Brinde();
+        brinde.setNome(nome);
+        brinde.setSorteio(sorteio);
+        brindeRepository.save(brinde);
+
+        return paraResposta(sorteio);
+    }
+
     /* Trocar o evento depois de haver entregas mudaria, retroativamente,
        onde aqueles ganhadores estavam presentes — por isso é barrado. */
     @Transactional
@@ -101,15 +122,18 @@ public class SorteioService {
         return paraResposta(sorteioRepository.save(sorteio));
     }
 
-    /* Com brindes vinculados é barrado: o brinde exige um sorteio
-       (sorteio_id NOT NULL), então é preciso movê-los ou excluí-los antes. */
+    /* Os brindes do sorteio saem junto — o cadastro pelo evento cria os
+       dois de uma vez, e removê-lo tem de desfazer os dois. Com ganhador
+       já registrado é barrado: apagar levaria junto o histórico de quem
+       ganhou e de quem sorteou. */
     @Transactional
     public void excluir(Integer id) {
         Sorteio sorteio = buscarSorteio(id);
-        if (brindeRepository.existsBySorteio_Id(id)) {
+        if (ganhadoresSorteioRepository.countBySorteio_Id(id) > 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Esse sorteio tem brindes vinculados. Mova ou exclua os brindes antes.");
+                    "Esse sorteio já tem ganhadores e não pode ser excluído.");
         }
+        brindeRepository.deleteAll(brindeRepository.findBySorteio_Id(id));
         sorteioRepository.delete(sorteio);
     }
 
@@ -126,9 +150,9 @@ public class SorteioService {
                 .toList();
     }
 
-    /* Confirma o ganhador: valida vínculo do brinde, elegibilidade e
-       estoque de novo aqui (nunca confiar só na lista que o front já
-       buscou) e grava a entrega com o organizador. */
+    /* Confirma o ganhador: valida vínculo do brinde, elegibilidade e se
+       o brinde ainda não foi entregue de novo aqui (nunca confiar só na
+       lista que o front já buscou) e grava a entrega com o organizador. */
     @Transactional
     public GanhadorSorteioDTO registrarGanhador(Integer sorteioId, Integer brindeId, Integer participanteId,
                                                 Integer organizadorId) {
@@ -151,8 +175,8 @@ public class SorteioService {
         if (ganhadoresSorteioRepository.existsByParticipante_Id(participanteId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Esse participante já ganhou um brinde.");
         }
-        if (ganhadoresSorteioRepository.countByBrinde_Id(brindeId) >= brinde.getQuantidade()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Esse brinde está esgotado.");
+        if (ganhadoresSorteioRepository.countByBrinde_Id(brindeId) > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Esse brinde já foi entregue.");
         }
 
         GanhadoresSorteio entrega = new GanhadoresSorteio();
@@ -184,9 +208,8 @@ public class SorteioService {
                 : ganhadoresSorteioRepository.findBySorteio_IdOrderByGanhouEmAsc(sorteio.getId()).stream()
                         .map(this::paraGanhador)
                         .toList();
-        int quantidadeBrindes = brindeRepository.findBySorteio_Id(sorteio.getId()).stream()
-                .mapToInt(Brinde::getQuantidade)
-                .sum();
+        // Cada brinde é uma unidade: a quantidade do sorteio é quantos brindes ele tem.
+        int quantidadeBrindes = brindeRepository.findBySorteio_Id(sorteio.getId()).size();
         Evento evento = sorteio.getEvento();
         return new SorteioResponseDTO(
                 sorteio.getId(),

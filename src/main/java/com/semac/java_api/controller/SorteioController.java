@@ -3,6 +3,7 @@ package com.semac.java_api.controller;
 import com.semac.java_api.dto.EntregaSorteioRequestDTO;
 import com.semac.java_api.dto.GanhadorSorteioDTO;
 import com.semac.java_api.dto.ParticipanteElegivelDTO;
+import com.semac.java_api.dto.SorteioComBrindeRequestDTO;
 import com.semac.java_api.dto.SorteioRequestDTO;
 import com.semac.java_api.dto.SorteioResponseDTO;
 import com.semac.java_api.service.SorteioService;
@@ -16,8 +17,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
-/* Sorteios de brindes. O CRUD (nome + evento) é gerenciado no /admin,
-   aba Brindes → Sorteios; a realização (elegíveis + entrega) é usada
+/* Sorteios de brindes. O cadastro é feito no /admin, no painel de edição
+   do evento (Conteúdo → Eventos); a realização (elegíveis + entrega) é usada
    pela tela /sorteio. O organizador da entrega é sempre identificado
    pela claim `id` do Bearer token — nunca por parâmetro (mesmo padrão
    de InscricaoEventoController). */
@@ -39,6 +40,13 @@ public class SorteioController {
     @PostMapping
     public ResponseEntity<SorteioResponseDTO> criar(@Valid @RequestBody SorteioRequestDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(sorteioService.criar(dto));
+    }
+
+    /* Cadastro rápido pelo painel de edição do evento: sorteio + brinde
+       de uma vez. */
+    @PostMapping("/com-brinde")
+    public ResponseEntity<SorteioResponseDTO> criarComBrinde(@Valid @RequestBody SorteioComBrindeRequestDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(sorteioService.criarComBrinde(dto));
     }
 
     @PutMapping("/{id}")

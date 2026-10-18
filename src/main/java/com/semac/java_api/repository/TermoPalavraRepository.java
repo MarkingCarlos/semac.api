@@ -3,31 +3,20 @@ package com.semac.java_api.repository;
 import com.semac.java_api.model.TermoPalavra;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 
 public interface TermoPalavraRepository extends JpaRepository<TermoPalavra, Integer> {
 
-    /* A palavra que está valendo hoje — é a data que decide o dia ativo. */
-    Optional<TermoPalavra> findByData(LocalDate data);
+    /* As palavras de um dia, na ordem em que foram cadastradas — é o
+       conjunto de onde o sorteio tira a de cada participante. */
+    List<TermoPalavra> findByDiaIdOrderByIdAsc(Integer diaId);
 
-    Optional<TermoPalavra> findByAnoAndDia(Integer ano, Integer dia);
+    /* As palavras de vários dias numa consulta só, para o /admin montar os
+       quatro cards sem uma ida ao banco por dia. */
+    List<TermoPalavra> findByDiaIdInOrderByIdAsc(Collection<Integer> diaIds);
 
-    List<TermoPalavra> findByAnoOrderByDiaAsc(Integer ano);
-
-    /* Os dias que já aconteceram, para o histórico da aba "Desafios". O
-       corte por data é o que mantém os dias ainda por vir fora da
-       resposta: saber que existe palavra para amanhã não é informação do
-       participante. */
-    List<TermoPalavra> findByAnoAndDataLessThanEqualOrderByDiaAsc(Integer ano, LocalDate ate);
-
-    /* Usada para saber se o dia de hoje é o último cadastrado — o modal de
-       derrota muda de texto no último dia ("não foi dessa vez" em vez de
-       "volte amanhã"). */
-    Optional<TermoPalavra> findTopByAnoOrderByDiaDesc(Integer ano);
-
-    /* `data` é única: a checagem evita estourar a constraint com um 500
-       quando a diretoria repete a data em dois dias. */
-    Optional<TermoPalavra> findByDataAndIdNot(LocalDate data, Integer id);
+    /* Quais destas palavras já estão no dia — o cadastro recusa repetida,
+       senão dois participantes jogariam a mesma. */
+    List<TermoPalavra> findByDiaIdAndPalavraIn(Integer diaId, Collection<String> palavras);
 }

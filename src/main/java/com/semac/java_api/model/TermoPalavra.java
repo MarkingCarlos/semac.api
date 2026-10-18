@@ -3,24 +3,23 @@ package com.semac.java_api.model;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDate;
+/* Uma das palavras secretas de um dia do jogo do Termo (/termo).
 
-/* Palavra secreta de um dia do jogo do Termo (/termo).
+   Um dia tem quantas a diretoria cadastrar, de 5 a 10 letras cada, e cada
+   participante joga contra uma delas — a que o sorteio lhe deu (ver
+   TermoJogo e TermoService.sortearJogo).
 
    `palavra` nunca sai da API: não existe DTO de resposta que a carregue
    enquanto o jogo está em andamento, nem para a diretoria que a cadastrou
    (mesmo critério de TipoInscricao.codigo, que só expõe `codigoDefinido`).
-   Quem confere o palpite é o servidor — ver TermoService.
-
-   `data` é o que decide qual palavra está valendo: o servidor compara com
-   a data de hoje. */
+   Quem confere o palpite é o servidor — ver TermoService. */
 @Entity
 @Table(
         name = "termo_palavra",
-        uniqueConstraints = {
-                @UniqueConstraint(name = "termo_palavra_ano_dia_key", columnNames = { "ano", "dia" }),
-                @UniqueConstraint(name = "termo_palavra_data_key", columnNames = "data")
-        }
+        uniqueConstraints = @UniqueConstraint(
+                name = "termo_palavra_dia_palavra_key",
+                columnNames = { "dia_id", "palavra" }
+        )
 )
 @Getter
 @Setter
@@ -33,16 +32,10 @@ public class TermoPalavra {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(nullable = false)
-    private Integer ano;
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "dia_id")
+    private TermoDia dia;
 
-    /* 1 a 4 — os quatro dias do evento. */
-    @Column(nullable = false)
-    private Integer dia;
-
-    @Column(nullable = false)
-    private LocalDate data;
-
-    @Column(nullable = false, length = 5)
+    @Column(nullable = false, length = 10)
     private String palavra;
 }

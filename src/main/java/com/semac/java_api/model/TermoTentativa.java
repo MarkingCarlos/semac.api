@@ -37,10 +37,10 @@ public class TermoTentativa {
     @Column(nullable = false)
     private Integer ordem;
 
-    @Column(nullable = false, length = 5)
+    @Column(nullable = false, length = 10)
     private String palpite;
 
-    @Column(nullable = false, length = 5)
+    @Column(nullable = false, length = 10)
     private String resultado;
 
     @Column(name = "criado_em", nullable = false)

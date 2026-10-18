@@ -1,7 +1,6 @@
 # Palavras de 5 letras aceitas como palpite no /termo, uma por linha.
-# Mesma lista de web_site/src/data/palavrasValidasTermo.js -- o cliente valida
-# para dar resposta instantanea, o servidor revalida porque a checagem do
-# cliente e contornavel por curl.
+# As de 6 a 10 letras ficam em palavras-validas-6a10.txt.gz, gerado por
+# scripts/gerar_palavras_termo.py; esta aqui e editada a mao.
 # Gerada do dicionario Hunspell pt_BR do VERO/LibreOffice (LGPLv3/MPL), com
 # plurais e conjugacoes expandidos a partir das regras de afixo.
 AANAS
