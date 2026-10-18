@@ -85,8 +85,9 @@ public class SecurityConfig {
        PAPEIS_FINANCEIRO. */
     private static final String[] PAPEIS_DOACAO = { "DIRETOR_SITE", "PRESIDENTE", "DIRETOR_PATROCINIO" };
 
-    /* Quem configura a gamificação: regras de xp, níveis de participante e
-       o catálogo de conquistas (sub-aba Gamificação de Informações SEMAC).
+    /* Quem configura a gamificação: regras de xp, níveis de participante,
+       o catálogo de conquistas, os times e o Termo (sub-aba Gamificação de
+       Informações SEMAC).
        Espelha PAPEIS_GAMIFICACAO do frontend (auth/sessao.js). O diretor de
        conteúdo entra aqui, mas as configurações financeiras da mesma tela
        (cotas, meta, camiseta, inscrições) seguem só com PAPEIS_FINANCEIRO. */
@@ -301,10 +302,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/time/meu").hasRole(PAPEL_PARTICIPANTE)
                         // Mascote vai direto num <img src> em /time e no /admin
                         .requestMatchers(HttpMethod.GET, "/api/time/*/mascote").permitAll()
-                        // Aba Times do /admin: nomes, mascotes, sorteio e o
-                        // interruptor. Também é a rede de segurança das rotas
-                        // de time que venham a existir sem regra própria.
-                        .requestMatchers("/api/time", "/api/time/**").hasAnyRole(PAPEIS_GESTAO_PARTICIPANTES)
+                        // Bloco Times da sub-aba Gamificação: nomes, mascotes,
+                        // sorteio e o interruptor. Também é a rede de segurança
+                        // das rotas de time que venham a existir sem regra própria.
+                        .requestMatchers("/api/time", "/api/time/**").hasAnyRole(PAPEIS_GAMIFICACAO)
                         // ── Termo (/termo) ──────────────────────────────────────
                         // Jogar é do participante: a vitória credita xp e as
                         // tentativas são contadas por pessoa no banco.
@@ -313,16 +314,16 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/termo/palpite").hasRole(PAPEL_PARTICIPANTE)
                         .requestMatchers(HttpMethod.GET, "/api/termo/validar").hasRole(PAPEL_PARTICIPANTE)
                         // Cadastro dos dias e das palavras — mesmo público que
-                        // edita níveis e cotas em Informações SEMAC. A palavra
-                        // nunca volta na resposta, nem para quem a cadastrou.
-                        .requestMatchers(HttpMethod.GET, "/api/termo/dias").hasAnyRole(PAPEIS_FINANCEIRO)
-                        .requestMatchers(HttpMethod.PUT, "/api/termo/dias/*").hasAnyRole(PAPEIS_FINANCEIRO)
-                        .requestMatchers(HttpMethod.POST, "/api/termo/dias/*/palavras").hasAnyRole(PAPEIS_FINANCEIRO)
-                        .requestMatchers(HttpMethod.DELETE, "/api/termo/palavras/*").hasAnyRole(PAPEIS_FINANCEIRO)
+                        // edita níveis e regras de xp em Informações SEMAC. A
+                        // palavra nunca volta na resposta, nem para quem a cadastrou.
+                        .requestMatchers(HttpMethod.GET, "/api/termo/dias").hasAnyRole(PAPEIS_GAMIFICACAO)
+                        .requestMatchers(HttpMethod.PUT, "/api/termo/dias/*").hasAnyRole(PAPEIS_GAMIFICACAO)
+                        .requestMatchers(HttpMethod.POST, "/api/termo/dias/*/palavras").hasAnyRole(PAPEIS_GAMIFICACAO)
+                        .requestMatchers(HttpMethod.DELETE, "/api/termo/palavras/*").hasAnyRole(PAPEIS_GAMIFICACAO)
                         // Modo teste do /admin -> Termo: joga contra uma palavra
                         // cadastrada sem gravar nada. Mesmo público do cadastro.
-                        .requestMatchers(HttpMethod.GET, "/api/termo/teste/*").hasAnyRole(PAPEIS_FINANCEIRO)
-                        .requestMatchers(HttpMethod.POST, "/api/termo/teste/palpite").hasAnyRole(PAPEIS_FINANCEIRO)
+                        .requestMatchers(HttpMethod.GET, "/api/termo/teste/*").hasAnyRole(PAPEIS_GAMIFICACAO)
+                        .requestMatchers(HttpMethod.POST, "/api/termo/teste/palpite").hasAnyRole(PAPEIS_GAMIFICACAO)
                         // Rede de segurança, mesmo motivo de /api/conquista/**:
                         // rota nova de termo não nasce pública.
                         .requestMatchers("/api/termo/**").hasAnyRole(PAPEIS_ADMIN)
