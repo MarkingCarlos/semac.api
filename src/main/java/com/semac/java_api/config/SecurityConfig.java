@@ -99,6 +99,12 @@ public class SecurityConfig {
        do frontend (auth/sessao.js). */
     private static final String[] PAPEIS_DASHBOARD = { "PRESIDENTE", "DIRETOR_SITE" };
 
+    /* Card "Vagas restantes em minicursos" da dashboard (com a lista de
+       inscritos de cada minicurso): a dashboard mais a diretoria de
+       conteúdo, que cuida da programação. Espelha
+       PAPEIS_DASHBOARD_MINICURSOS do frontend (auth/sessao.js). */
+    private static final String[] PAPEIS_DASHBOARD_MINICURSOS = { "PRESIDENTE", "DIRETOR_SITE", "DIRETOR_CONTEUDO" };
+
     /* Quem corrige o cadastro de outra pessoa (nome, e-mail, RA, telefone)
        e coloca/tira participante de minicurso pelo /admin. Espelha
        PAPEIS_GESTAO_PARTICIPANTES do frontend (auth/sessao.js). Mesmos
@@ -215,10 +221,14 @@ public class SecurityConfig {
                         // Reconsulta de status do pagamento no cartão — mesmo público do comprovante acima
                         .requestMatchers(HttpMethod.GET, "/api/pagamento/cartao/*/status").hasAnyRole(PAPEIS_ADMIN)
                         .requestMatchers(HttpMethod.GET, "/api/relatorio/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
+                        // Card de minicursos — antes da regra geral da dashboard, que tranca o resto
+                        .requestMatchers(HttpMethod.GET, "/api/dashboard/minicursos", "/api/dashboard/minicursos/*/inscritos").hasAnyRole(PAPEIS_DASHBOARD_MINICURSOS)
                         .requestMatchers(HttpMethod.GET, "/api/dashboard/**").hasAnyRole(PAPEIS_DASHBOARD)
                         // Crachás impressos — devolve o uuid de check-in de todo mundo, então
                         // fica com quem gerencia pessoas (mesmo público da aba Pessoas)
                         .requestMatchers(HttpMethod.GET, "/api/cracha").hasAnyRole(PAPEIS_FINANCEIRO)
+                        // Certificados de palestrante — mesmo público dos crachás (aba Pessoas)
+                        .requestMatchers(HttpMethod.GET, "/api/certificado").hasAnyRole(PAPEIS_FINANCEIRO)
                         // Papel, ativo/suspenso, desconfirmar e excluir — só quem vê a aba
                         // Pessoas do /admin. Com PAPEIS_ADMIN um MEMBRO podia se dar
                         // PRESIDENTE chamando a API direto.
