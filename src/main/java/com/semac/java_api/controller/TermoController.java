@@ -23,10 +23,10 @@ import java.util.List;
 
 /* Jogo do Termo (/termo) e o cadastro dos dias e palavras em /admin -> Termo.
 
-   Nenhuma resposta daqui carrega a palavra secreta enquanto o jogo está em
-   andamento — nem para o participante que está jogando, nem para a
-   diretoria que a cadastrou (ver TermoPalavraAdminDTO). O palpite é
-   conferido no servidor e volta só o padrão de cores.
+   Nenhuma rota do participante carrega a palavra secreta enquanto o jogo
+   está em andamento. O palpite é conferido no servidor e volta só o padrão
+   de cores. A única que devolve as palavras é a listagem da diretoria
+   (GET /dias, ver TermoPalavraAdminDTO).
 
    Cada dia tem várias palavras, e cada participante recebe uma por
    sorteio (ver TermoService.sortearJogo).

@@ -337,6 +337,15 @@ public class SecurityConfig {
                         // Rede de segurança, mesmo motivo de /api/conquista/**:
                         // rota nova de termo não nasce pública.
                         .requestMatchers("/api/termo/**").hasAnyRole(PAPEIS_ADMIN)
+                        // ── Mostra Técnica (/mostra/<codigo>) ───────────────────
+                        // Ler o QR do stand e ver o próprio progresso é do
+                        // participante: as visitas valem a conquista MOSTRA_COMPLETA.
+                        .requestMatchers(HttpMethod.POST, "/api/mostra/visitar/*").hasRole(PAPEL_PARTICIPANTE)
+                        .requestMatchers(HttpMethod.GET, "/api/mostra/minhas").hasRole(PAPEL_PARTICIPANTE)
+                        // Cadastro dos trabalhos e geração dos QR codes — mesmo
+                        // público do Termo. Também é a rede de segurança das rotas
+                        // de mostra que venham a existir sem regra própria.
+                        .requestMatchers("/api/mostra/**").hasAnyRole(PAPEIS_GAMIFICACAO)
                         // Demais (site público) seguem abertos
                         .anyRequest().permitAll()
                 )

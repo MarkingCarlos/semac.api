@@ -23,6 +23,8 @@ import com.semac.java_api.repository.EventoRepository;
 import com.semac.java_api.repository.NivelRepository;
 import com.semac.java_api.repository.ParticipanteConquistaRepository;
 import com.semac.java_api.repository.PessoaRepository;
+import com.semac.java_api.repository.TrabalhoMostraRepository;
+import com.semac.java_api.repository.VisitaTrabalhoMostraRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -65,19 +67,25 @@ public class ConquistaService {
     private final NivelRepository nivelRepository;
     private final EventoParticipanteRepository eventoParticipanteRepository;
     private final EventoRepository eventoRepository;
+    private final TrabalhoMostraRepository trabalhoMostraRepository;
+    private final VisitaTrabalhoMostraRepository visitaTrabalhoMostraRepository;
 
     public ConquistaService(PessoaRepository pessoaRepository,
                             ConquistaRepository conquistaRepository,
                             ParticipanteConquistaRepository participanteConquistaRepository,
                             NivelRepository nivelRepository,
                             EventoParticipanteRepository eventoParticipanteRepository,
-                            EventoRepository eventoRepository) {
+                            EventoRepository eventoRepository,
+                            TrabalhoMostraRepository trabalhoMostraRepository,
+                            VisitaTrabalhoMostraRepository visitaTrabalhoMostraRepository) {
         this.pessoaRepository = pessoaRepository;
         this.conquistaRepository = conquistaRepository;
         this.participanteConquistaRepository = participanteConquistaRepository;
         this.nivelRepository = nivelRepository;
         this.eventoParticipanteRepository = eventoParticipanteRepository;
         this.eventoRepository = eventoRepository;
+        this.trabalhoMostraRepository = trabalhoMostraRepository;
+        this.visitaTrabalhoMostraRepository = visitaTrabalhoMostraRepository;
     }
 
     /* ── Catálogo (/admin -> Informações SEMAC) ──────────────────── */
@@ -260,6 +268,7 @@ public class ConquistaService {
         avaliarAbertura(participante, vinculos, catalogoQueConta);
         avaliarCoffeeBreaks(participante, vinculos, agora);
         avaliarDebates(participante, vinculos, catalogoQueConta, agora);
+        avaliarMostraCompleta(participante, agora.getYear());
     }
 
     /* Passa por todo participante confirmado. Usada no boot e pelo botão
@@ -424,6 +433,29 @@ public class ConquistaService {
         if (compareceuATodos(debates, presencas(vinculos))) {
             conceder(participante, CatalogoConquistas.CODIGO_DEBATES_COMPLETO);
         }
+    }
+
+    /* "Explorador da Mostra": leu o QR code do stand de todos os trabalhos
+       da Mostra Técnica da edição. Diferente das regras de presença, não
+       espera nada terminar — sai na hora da última leitura, chamada por
+       TrabalhoMostraService.visitar. Também roda em reavaliarAutomaticas,
+       para alcançar quem já tinha visitado tudo antes de a conquista ser
+       ativada.
+
+       Trabalho cadastrado depois de a pessoa ganhar não tira a conquista.
+       Nenhum trabalho cadastrado, ninguém leva. Devolve se foi concedida
+       agora, para a página do stand comemorar. */
+    @Transactional
+    public boolean avaliarMostraCompleta(Pessoa participante, int ano) {
+        if (participante == null || participante.getRole() != Role.PARTICIPANTE) {
+            return false;
+        }
+        long total = trabalhoMostraRepository.countByAno(ano);
+        if (total == 0) {
+            return false;
+        }
+        long visitados = visitaTrabalhoMostraRepository.countByPessoaIdAndTrabalhoAno(participante.getId(), ano);
+        return visitados >= total && conceder(participante, CatalogoConquistas.CODIGO_MOSTRA_COMPLETA);
     }
 
     private List<Evento> minicursosEscolhidos(List<EventoParticipante> vinculos) {

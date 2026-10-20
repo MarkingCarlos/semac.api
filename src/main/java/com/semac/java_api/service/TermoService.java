@@ -238,8 +238,8 @@ public class TermoService {
 
     /* ── Diretoria (/admin -> Termo) ─────────────────────────────── */
 
-    /* Os quatro dias do ano, cada um com suas palavras — sem o texto delas,
-       só tamanho e quantos participantes a receberam. Dia ainda não
+    /* Os quatro dias do ano, cada um com suas palavras, o tamanho delas e
+       quantos participantes as receberam. Dia ainda não
        cadastrado aparece com data null, para a tela sempre ter os quatro
        cards. */
     @Transactional(readOnly = true)
@@ -430,7 +430,7 @@ public class TermoService {
                 dia.getNumero(),
                 dia.getData(),
                 palavras.stream()
-                        .map(p -> new TermoPalavraAdminDTO(p.getId(), p.getPalavra().length(),
+                        .map(p -> new TermoPalavraAdminDTO(p.getId(), p.getPalavra(), p.getPalavra().length(),
                                 jogadores.getOrDefault(p.getId(), 0L)))
                         .toList());
     }
