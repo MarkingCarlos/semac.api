@@ -40,3 +40,6 @@ build/
 .vscode/
 /.run/Frontend Vite.run.xml
 /.run/SEMAC Completo.run.xml
+/.dockerignore
+/.mcp.json
+/Dockerfile.dev
