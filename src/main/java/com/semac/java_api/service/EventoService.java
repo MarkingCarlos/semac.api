@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -34,13 +35,16 @@ public class EventoService {
     private final PalestranteRepository palestranteRepository;
     private final EventoPalestranteRepository eventoPalestranteRepository;
     private final InscricaoEventoService inscricaoEventoService;
+    private final PalestranteFotoService palestranteFotoService;
 
     public EventoService(EventoRepository eventoRepository,
                          TipoEventoRepository tipoEventoRepository,
                          TrilhaRepository trilhaRepository,
                          PalestranteRepository palestranteRepository,
                          EventoPalestranteRepository eventoPalestranteRepository,
-                         InscricaoEventoService inscricaoEventoService) {
+                         InscricaoEventoService inscricaoEventoService,
+                         PalestranteFotoService palestranteFotoService) {
+        this.palestranteFotoService = palestranteFotoService;
         this.eventoRepository = eventoRepository;
         this.tipoEventoRepository = tipoEventoRepository;
         this.trilhaRepository = trilhaRepository;
@@ -147,6 +151,7 @@ public class EventoService {
         evento.setDataHoraInicio(dto.dataHoraInicio());
         evento.setDataHoraFim(dto.dataHoraFim());
         evento.setCapacidadeMaxima(dto.capacidadeMaxima());
+        aplicarTimerDebate(evento, dto);
     }
 
     /* Trilha é opcional (ex: coffee break não tem uma). Quando informada,
@@ -160,41 +165,80 @@ public class EventoService {
                         "Trilha inválida."));
     }
 
-    /* Palestrantes são "inline" do evento (sem reuso na interface): a cada
-       gravação removemos os vínculos/palestrantes antigos e recriamos a
-       partir do formulário. */
-    private void sincronizarPalestrantes(Evento evento, List<PalestranteDTO> palestrantes) {
-        removerPalestrantes(evento);
-        if (palestrantes == null) {
-            return;
+    /* Tempo de fala e alerta do telão do debate. Null mantém o que já
+       estava (ou o padrão da entidade, na criação). */
+    private void aplicarTimerDebate(Evento evento, EventoRequestDTO dto) {
+        if (dto.debateTempoFalaSeg() != null) {
+            evento.setDebateTempoFalaSeg(dto.debateTempoFalaSeg());
         }
-        for (PalestranteDTO dto : palestrantes) {
-            if (dto.nome() == null || dto.nome().isBlank()) {
-                continue;
-            }
-            Palestrante palestrante = new Palestrante();
-            palestrante.setNome(dto.nome());
-            palestrante.setDescricao(dto.descricao());
-            palestranteRepository.save(palestrante);
-
-            EventoPalestrante vinculo = new EventoPalestrante();
-            vinculo.setPk(new EventoPalestrantePK(evento.getId(), palestrante.getId()));
-            vinculo.setEvento(evento);
-            vinculo.setPalestrante(palestrante);
-            eventoPalestranteRepository.save(vinculo);
+        if (dto.debateAlertaSeg() != null) {
+            evento.setDebateAlertaSeg(dto.debateAlertaSeg());
+        }
+        if (evento.getDebateAlertaSeg() >= evento.getDebateTempoFalaSeg()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "O alerta do debate precisa ser menor que o tempo de fala.");
         }
     }
 
-    /* Remove os vínculos do evento e os palestrantes que ficarem órfãos
-       (sem nenhum outro evento ligado). */
+    /* Palestrantes são "inline" do evento (sem reuso na interface). Os que
+       chegam com `id` de um vínculo deste evento são atualizados no lugar —
+       recriar perderia a foto, que sobe à parte. Os sem `id` são criados e
+       os que sumiram do formulário são removidos. A posição no formulário
+       vira a `ordem` (no debate: 0 = participante A, 1 = B). */
+    private void sincronizarPalestrantes(Evento evento, List<PalestranteDTO> palestrantes) {
+        Map<Integer, EventoPalestrante> vinculosAtuais = new HashMap<>();
+        for (EventoPalestrante vinculo : eventoPalestranteRepository.findByPk_EventoId(evento.getId())) {
+            vinculosAtuais.put(vinculo.getPk().getPalestranteId(), vinculo);
+        }
+
+        int ordem = 0;
+        for (PalestranteDTO dto : palestrantes == null ? List.<PalestranteDTO>of() : palestrantes) {
+            if (dto.nome() == null || dto.nome().isBlank()) {
+                continue;
+            }
+            EventoPalestrante vinculo = dto.id() == null ? null : vinculosAtuais.remove(dto.id());
+            Palestrante palestrante = vinculo != null ? vinculo.getPalestrante() : new Palestrante();
+            palestrante.setNome(dto.nome());
+            palestrante.setDescricao(dto.descricao());
+            palestrante.setCargo(dto.cargo() == null || dto.cargo().isBlank() ? null : dto.cargo().trim());
+            if (dto.fotoPosX() != null) palestrante.setFotoPosX(dto.fotoPosX());
+            if (dto.fotoPosY() != null) palestrante.setFotoPosY(dto.fotoPosY());
+            if (dto.fotoZoom() != null) palestrante.setFotoZoom(dto.fotoZoom());
+            palestranteRepository.save(palestrante);
+
+            if (vinculo == null) {
+                vinculo = new EventoPalestrante();
+                vinculo.setPk(new EventoPalestrantePK(evento.getId(), palestrante.getId()));
+                vinculo.setEvento(evento);
+                vinculo.setPalestrante(palestrante);
+            }
+            vinculo.setOrdem(ordem++);
+            eventoPalestranteRepository.save(vinculo);
+        }
+
+        removerVinculos(List.copyOf(vinculosAtuais.values()));
+    }
+
+    /* Remove todos os vínculos do evento (exclusão do evento). */
     private void removerPalestrantes(Evento evento) {
-        List<EventoPalestrante> vinculos = eventoPalestranteRepository.findByPk_EventoId(evento.getId());
+        removerVinculos(eventoPalestranteRepository.findByPk_EventoId(evento.getId()));
+    }
+
+    /* Apaga os vínculos e os palestrantes que ficarem órfãos (sem nenhum
+       outro evento ligado), junto com o arquivo da foto. */
+    private void removerVinculos(List<EventoPalestrante> vinculos) {
+        if (vinculos.isEmpty()) {
+            return;
+        }
         eventoPalestranteRepository.deleteAll(vinculos);
         eventoPalestranteRepository.flush();
         for (EventoPalestrante vinculo : vinculos) {
             Integer palestranteId = vinculo.getPk().getPalestranteId();
             if (eventoPalestranteRepository.findByPk_PalestranteId(palestranteId).isEmpty()) {
-                palestranteRepository.deleteById(palestranteId);
+                palestranteRepository.findById(palestranteId).ifPresent(palestrante -> {
+                    palestranteFotoService.apagarArquivo(palestrante.getFotoArquivo());
+                    palestranteRepository.delete(palestrante);
+                });
             }
         }
     }
@@ -219,10 +263,13 @@ public class EventoService {
         // A partir do repositório (não da coleção em memória) para refletir
         // os vínculos recém-criados na mesma transação.
         List<PalestranteDTO> palestrantes = eventoPalestranteRepository.findByPk_EventoId(evento.getId()).stream()
+                .filter(vinculo -> vinculo.getPalestrante() != null)
+                .sorted(Comparator.comparing(EventoPalestrante::getOrdem)
+                        .thenComparing(vinculo -> vinculo.getPalestrante().getId()))
                 .map(EventoPalestrante::getPalestrante)
-                .filter(java.util.Objects::nonNull)
-                .sorted(Comparator.comparing(Palestrante::getId))
-                .map(p -> new PalestranteDTO(p.getId(), p.getNome(), p.getDescricao()))
+                .map(p -> new PalestranteDTO(p.getId(), p.getNome(), p.getDescricao(), p.getCargo(),
+                        p.getFotoArquivo() != null && !p.getFotoArquivo().isBlank(),
+                        p.getFotoPosX(), p.getFotoPosY(), p.getFotoZoom()))
                 .toList();
 
         return new EventoResponseDTO(
@@ -237,7 +284,9 @@ public class EventoService {
                 evento.getIniciadoEm(),
                 evento.getCapacidadeMaxima(),
                 vagasRestantes,
-                palestrantes
+                palestrantes,
+                evento.getDebateTempoFalaSeg(),
+                evento.getDebateAlertaSeg()
         );
     }
 }

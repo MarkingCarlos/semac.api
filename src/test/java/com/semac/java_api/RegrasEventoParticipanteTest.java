@@ -24,6 +24,7 @@ import com.semac.java_api.service.ConquistaService;
 import com.semac.java_api.service.DiaIngressoService;
 import com.semac.java_api.service.EventoService;
 import com.semac.java_api.service.InscricaoEventoService;
+import com.semac.java_api.service.PalestranteFotoService;
 import com.semac.java_api.repository.ConfiguracaoInscricaoRepository;
 import com.semac.java_api.service.RegraXpService;
 import com.semac.java_api.service.TentativaCheckinService;
@@ -150,7 +151,8 @@ class RegrasEventoParticipanteTest {
                         mock(PessoaDiaIngressoRepository.class)),
                 mock(ConfiguracaoInscricaoRepository.class));
         eventoService = new EventoService(eventoRepository, tipoEventoRepository, trilhaRepository,
-                palestranteRepository, eventoPalestranteRepository, inscricaoEventoService);
+                palestranteRepository, eventoPalestranteRepository, inscricaoEventoService,
+                mock(PalestranteFotoService.class));
     }
 
     /* Pergunta 1: palestra criada depois da confirmacao */
@@ -390,7 +392,7 @@ class RegrasEventoParticipanteTest {
 
     private EventoRequestDTO requisicaoDeEvento(Integer tipoEventoId, LocalDateTime inicio) {
         return new EventoRequestDTO("Palestra de abertura", tipoEventoId, "Auditorio", "Descricao",
-                null, inicio, inicio.plusHours(1), 500, List.of());
+                null, inicio, inicio.plusHours(1), 500, List.of(), null, null);
     }
 
     private Evento palestraComecandoEm(LocalDateTime inicio) {

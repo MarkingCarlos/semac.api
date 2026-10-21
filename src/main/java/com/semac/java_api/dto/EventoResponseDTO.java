@@ -8,7 +8,10 @@ import java.util.List;
    e em que todo participante confirmado já entra automaticamente.
 
    `iniciadoEm` é null até alguém apertar "iniciar" na lista de eventos do
-   /admin; é o que faz a linha trocar o botão pela hora de início real. */
+   /admin; é o que faz a linha trocar o botão pela hora de início real.
+
+   `palestrantes` vem na ordem do formulário (no debate: A, depois B), e
+   `debateTempoFalaSeg`/`debateAlertaSeg` configuram o timer do telão. */
 public record EventoResponseDTO(
         Integer id,
         String nome,
@@ -21,5 +24,7 @@ public record EventoResponseDTO(
         LocalDateTime iniciadoEm,
         Integer capacidadeMaxima,
         Integer vagasRestantes,
-        List<PalestranteDTO> palestrantes
+        List<PalestranteDTO> palestrantes,
+        Integer debateTempoFalaSeg,
+        Integer debateAlertaSeg
 ) {}

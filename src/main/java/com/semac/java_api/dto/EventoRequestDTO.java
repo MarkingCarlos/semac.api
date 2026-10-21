@@ -1,9 +1,11 @@
 package com.semac.java_api.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
@@ -11,7 +13,10 @@ import java.util.List;
 
 /* `local` é opcional; `palestrantes` pode vir vazio (ex: coffee break).
    dataHoraInicio/dataHoraFim chegam combinados (data + hora) pela borda
-   da API no frontend. */
+   da API no frontend.
+
+   `debateTempoFalaSeg`/`debateAlertaSeg` são o timer do telão do debate:
+   opcionais (null mantém o valor atual) e só usados em evento DEBATE. */
 public record EventoRequestDTO(
         @NotBlank String nome,
         @NotNull Integer tipoEventoId,
@@ -21,5 +26,7 @@ public record EventoRequestDTO(
         @NotNull LocalDateTime dataHoraInicio,
         @NotNull LocalDateTime dataHoraFim,
         @NotNull @Positive Integer capacidadeMaxima,
-        @Valid List<PalestranteDTO> palestrantes
+        @Valid List<PalestranteDTO> palestrantes,
+        @Positive @Max(3600) Integer debateTempoFalaSeg,
+        @PositiveOrZero @Max(3600) Integer debateAlertaSeg
 ) {}

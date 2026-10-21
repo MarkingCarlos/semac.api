@@ -252,6 +252,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/checkin/teste/*").hasAnyRole(PAPEIS_ADMIN)
                         // "INICIAR EVENTO" do /admin: move o marco do atraso pro início real
                         .requestMatchers(HttpMethod.POST, "/api/evento/*/iniciar").hasAnyRole(PAPEIS_CONTEUDO)
+                        // Foto do palestrante (telão do debate): envia quem edita evento;
+                        // a leitura é pública, vai direto num <img src>.
+                        .requestMatchers(HttpMethod.POST, "/api/palestrante/*/foto").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
+                        .requestMatchers(HttpMethod.GET, "/api/palestrante/*/foto").permitAll()
                         .requestMatchers("/api/tipo-evento/**").hasAnyRole(PAPEIS_ADMIN)
                         // GET /api/trilha segue aberto — alimenta o filtro da programação pública
                         .requestMatchers(HttpMethod.POST, "/api/trilha").hasAnyRole(PAPEIS_ADMIN)

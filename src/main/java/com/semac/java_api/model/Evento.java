@@ -44,6 +44,15 @@ public class Evento {
     @Column(length = 2000)
     private String descricao;
 
+    /* Timer do telão do debate (/debate/<id>/telao): duração de cada fala
+       e quantos segundos antes do fim ele entra em alerta. Só valem para
+       evento do tipo DEBATE. */
+    @Column(name = "debate_tempo_fala_seg", nullable = false)
+    private Integer debateTempoFalaSeg = 180;
+
+    @Column(name = "debate_alerta_seg", nullable = false)
+    private Integer debateAlertaSeg = 30;
+
     @ManyToOne
     @JoinColumn(name = "trilha_id")
     private Trilha trilha;

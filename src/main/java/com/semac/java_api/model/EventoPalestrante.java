@@ -25,4 +25,9 @@ public class EventoPalestrante {
     @MapsId("palestranteId")
     @JoinColumn(name = "palestrante_id")
     private Palestrante palestrante;
+
+    /* Posição no formulário do evento. No debate, 0 = participante A
+       (esquerda) e 1 = participante B. */
+    @Column(nullable = false)
+    private Integer ordem = 0;
 }
