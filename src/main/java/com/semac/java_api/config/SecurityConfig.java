@@ -274,6 +274,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/brinde/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers(HttpMethod.PUT, "/api/brinde/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers(HttpMethod.DELETE, "/api/brinde/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
+                        // Rede de segurança, mesmo motivo de /api/conquista/**: rota nova
+                        // de brinde não nasce pública.
+                        .requestMatchers("/api/brinde/**").hasAnyRole(PAPEIS_ADMIN)
                         // Sorteios seguem a mesma regra: MEMBRO lista e realiza (elegíveis +
                         // entrega), só a diretoria cria, edita ou exclui o cadastro.
                         .requestMatchers(HttpMethod.GET, "/api/sorteio/**").hasAnyRole(PAPEIS_ADMIN)
@@ -282,6 +285,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/sorteio/com-brinde").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers(HttpMethod.PUT, "/api/sorteio/*").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers(HttpMethod.DELETE, "/api/sorteio/*").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
+                        // Rede de segurança: rota nova de sorteio não nasce pública.
+                        .requestMatchers("/api/sorteio", "/api/sorteio/**").hasAnyRole(PAPEIS_ADMIN)
                         // Verificação do código de acesso do ingresso — pública de propósito,
                         // usada pelo cadastro em /inscricoes; nunca revela o código real.
                         .requestMatchers(HttpMethod.POST, "/api/tipo-inscricao/*/verificar-codigo").permitAll()
