@@ -105,11 +105,13 @@ public class SecurityConfig {
        PAPEIS_DASHBOARD_MINICURSOS do frontend (auth/sessao.js). */
     private static final String[] PAPEIS_DASHBOARD_MINICURSOS = { "PRESIDENTE", "DIRETOR_SITE", "DIRETOR_CONTEUDO" };
 
-    /* Quem corrige o cadastro de outra pessoa (nome, e-mail, RA, telefone)
-       e coloca/tira participante de minicurso pelo /admin. Espelha
-       PAPEIS_GESTAO_PARTICIPANTES do frontend (auth/sessao.js). Mesmos
-       papéis do financeiro, com nome próprio pelo mesmo motivo de
-       PAPEIS_MENSAGENS. */
+    /* Quem vê, cria e altera dados de participante e da comissão: listas,
+       comprovante, pagamento, cadastro de balcão, correção de cadastro e
+       minicursos de outra pessoa. É o público da aba Pessoas do /admin —
+       MEMBRO fica de fora e só vê o nome de quem lê no check-in ou no
+       sorteio. Espelha PAPEIS_GESTAO_PARTICIPANTES do frontend
+       (auth/sessao.js). Mesmos papéis do financeiro, com nome próprio pelo
+       mesmo motivo de PAPEIS_MENSAGENS. */
     private static final String[] PAPEIS_GESTAO_PARTICIPANTES = { "DIRETOR_SITE", "PRESIDENTE" };
 
     private static final String PAPEL_PARTICIPANTE = "PARTICIPANTE";
@@ -212,14 +214,16 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/nivel/**").hasAnyRole(PAPEIS_GAMIFICACAO)
                         .requestMatchers(HttpMethod.PUT, "/api/nivel/**").hasAnyRole(PAPEIS_GAMIFICACAO)
                         .requestMatchers(HttpMethod.DELETE, "/api/nivel/**").hasAnyRole(PAPEIS_GAMIFICACAO)
-                        // Exclusivos do /admin (qualquer papel de comissão). GET /api/evento e
-                        // GET /api/tipo-inscricao seguem abertos de propósito — alimentam a
-                        // programação pública e o cadastro em /inscricoes, respectivamente.
-                        .requestMatchers(HttpMethod.GET, "/api/pessoa/participantes", "/api/pessoa/comissao").hasAnyRole(PAPEIS_ADMIN)
-                        // Comprovante de pagamento — quem confirma inscrição precisa poder ver
-                        .requestMatchers(HttpMethod.GET, "/api/pessoa/*/comprovante").hasAnyRole(PAPEIS_ADMIN)
+                        // Listas de participantes e comissão (e-mail, RA, telefone, pagamento) —
+                        // só a aba Pessoas do /admin. Com PAPEIS_ADMIN um MEMBRO baixava a
+                        // lista inteira. GET /api/evento e GET /api/tipo-inscricao seguem
+                        // abertos de propósito — alimentam a programação pública e o
+                        // cadastro em /inscricoes, respectivamente.
+                        .requestMatchers(HttpMethod.GET, "/api/pessoa/participantes", "/api/pessoa/comissao").hasAnyRole(PAPEIS_GESTAO_PARTICIPANTES)
+                        // Comprovante de pagamento — quem confirma inscrição (aba Pessoas)
+                        .requestMatchers(HttpMethod.GET, "/api/pessoa/*/comprovante").hasAnyRole(PAPEIS_GESTAO_PARTICIPANTES)
                         // Reconsulta de status do pagamento no cartão — mesmo público do comprovante acima
-                        .requestMatchers(HttpMethod.GET, "/api/pagamento/cartao/*/status").hasAnyRole(PAPEIS_ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/api/pagamento/cartao/*/status").hasAnyRole(PAPEIS_GESTAO_PARTICIPANTES)
                         .requestMatchers(HttpMethod.GET, "/api/relatorio/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         // Card de minicursos — antes da regra geral da dashboard, que tranca o resto
                         .requestMatchers(HttpMethod.GET, "/api/dashboard/minicursos", "/api/dashboard/minicursos/*/inscritos").hasAnyRole(PAPEIS_DASHBOARD_MINICURSOS)
@@ -240,8 +244,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/pessoa/*/dados").hasAnyRole(PAPEIS_GESTAO_PARTICIPANTES)
                         .requestMatchers("/api/pessoa/*/minicursos", "/api/pessoa/*/minicursos/*").hasAnyRole(PAPEIS_GESTAO_PARTICIPANTES)
                         // Cadastro manual de participante (inscrição de balcão) — só cria
-                        // participante (confirmado ou pendente), nunca comissão
-                        .requestMatchers(HttpMethod.POST, "/api/pessoa").hasAnyRole(PAPEIS_ADMIN)
+                        // participante (confirmado ou pendente), nunca comissão. Fica na
+                        // aba Pessoas, então MEMBRO não cria participante.
+                        .requestMatchers(HttpMethod.POST, "/api/pessoa").hasAnyRole(PAPEIS_GESTAO_PARTICIPANTES)
                         .requestMatchers(HttpMethod.DELETE, "/api/pessoa/*").hasAnyRole(PAPEIS_GESTAO_PARTICIPANTES)
                         // Programação é da aba Conteúdo — MEMBRO não mexe em evento. Toda a
                         // diretoria edita (e cadastra os sorteios do evento); criar e excluir

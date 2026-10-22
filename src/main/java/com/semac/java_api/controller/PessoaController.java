@@ -236,8 +236,8 @@ public class PessoaController {
     }
 
     /* Serve o comprovante de pagamento anexado no cadastro — quem confirma
-       a inscrição (qualquer papel de comissão, ver SecurityConfig) precisa
-       poder ver o que a pessoa enviou antes de aprovar. */
+       a inscrição (aba Pessoas: diretoria de site e presidência, ver
+       SecurityConfig) precisa poder ver o que a pessoa enviou antes de aprovar. */
     @GetMapping("/{id}/comprovante")
     public ResponseEntity<Resource> buscarComprovante(@PathVariable Integer id) {
         String nomeArquivo = pessoaService.buscarNomeComprovante(id);
