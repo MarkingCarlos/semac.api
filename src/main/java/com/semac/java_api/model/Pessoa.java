@@ -129,4 +129,14 @@ public class Pessoa {
 
     @OneToMany(mappedBy = "pessoa")
     private List<CamisaPedido> camisaPedidos = new ArrayList<>();
+
+    /* Entrega do kit no credenciamento (ver PessoaService.marcarKit).
+       kitEntregueEm null = ainda não entregue; kitEntreguePor é quem da
+       comissão marcou, null também se essa pessoa foi excluída depois. */
+    @Column(name = "kit_entregue_em")
+    private LocalDateTime kitEntregueEm;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "kit_entregue_por_id")
+    private Pessoa kitEntreguePor;
 }

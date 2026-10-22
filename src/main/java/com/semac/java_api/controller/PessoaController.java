@@ -10,6 +10,8 @@ import com.semac.java_api.dto.AtualizarDadosPessoaDTO;
 import com.semac.java_api.dto.AtualizarPerfilDTO;
 import com.semac.java_api.dto.EventoResponseDTO;
 import com.semac.java_api.dto.InscricaoFinanceiraDTO;
+import com.semac.java_api.dto.KitEntregueRequestDTO;
+import com.semac.java_api.dto.KitPessoaDTO;
 import com.semac.java_api.dto.MeuEventoResponseDTO;
 import com.semac.java_api.dto.ParticipanteResponseDTO;
 import com.semac.java_api.dto.PerfilResponseDTO;
@@ -88,6 +90,22 @@ public class PessoaController {
     @GetMapping("/inscricoes")
     public List<InscricaoFinanceiraDTO> listarInscricoes() {
         return pessoaService.listarInscricoes();
+    }
+
+    /* Sub-aba Kits do /admin: quem recebe kit no credenciamento
+       (participantes confirmados + comissão) e se já recebeu. Aberta a
+       toda a comissão (ver SecurityConfig), por isso o DTO é enxuto. */
+    @GetMapping("/kits")
+    public List<KitPessoaDTO> listarKits() {
+        return pessoaService.listarKits();
+    }
+
+    /* Marca ou desfaz a entrega do kit. Quem entregou vem do token. */
+    @PatchMapping("/{id}/kit")
+    public KitPessoaDTO marcarKit(@PathVariable Integer id,
+                                  @Valid @RequestBody KitEntregueRequestDTO dto,
+                                  @AuthenticationPrincipal Jwt jwt) {
+        return pessoaService.marcarKit(id, dto.entregue(), idDoToken(jwt));
     }
 
     /* Perfil do próprio usuário logado (seção Início do /admin). O usuário é

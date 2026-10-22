@@ -20,6 +20,10 @@ public interface PessoaRepository extends JpaRepository<Pessoa, Integer> {
     List<Pessoa> findAllByRoleIsNull();
     List<Pessoa> findAllByRoleNot(Role role);
 
+    /* Quem pode receber kit: participantes confirmados e a comissão (role
+       definido). Pendentes ficam de fora. Ver PessoaService.listarKits. */
+    List<Pessoa> findAllByRoleIsNotNullOrderByNomeAsc();
+
     /* Participantes do /admin: confirmados (role = PARTICIPANTE) e os
        recém-inscritos aguardando confirmação (role = NULL). Exclui
        organizadores (demais roles). Ordenado por nome. */

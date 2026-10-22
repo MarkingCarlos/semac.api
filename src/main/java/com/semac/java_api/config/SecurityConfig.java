@@ -114,6 +114,12 @@ public class SecurityConfig {
        mesmo motivo de PAPEIS_MENSAGENS. */
     private static final String[] PAPEIS_GESTAO_PARTICIPANTES = { "DIRETOR_SITE", "PRESIDENTE" };
 
+    /* Quem entrega kit no credenciamento (sub-aba Kits de Pessoas do
+       /admin): toda a comissão, MEMBRO incluído. Hoje igual a
+       PAPEIS_ADMIN, com nome próprio pelo mesmo motivo de
+       PAPEIS_MENSAGENS. Espelha PAPEIS_ENTREGA_KIT do frontend. */
+    private static final String[] PAPEIS_ENTREGA_KIT = PAPEIS_ADMIN;
+
     private static final String PAPEL_PARTICIPANTE = "PARTICIPANTE";
 
     private final SecretKey chaveJwt;
@@ -224,6 +230,9 @@ public class SecurityConfig {
                         // abertos de propósito — alimentam a programação pública e o
                         // cadastro em /inscricoes, respectivamente.
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/participantes", "/api/pessoa/comissao").hasAnyRole(PAPEIS_GESTAO_PARTICIPANTES)
+                        // Entrega de kit — toda a comissão; a lista não traz contato, RA nem pagamento
+                        .requestMatchers(HttpMethod.GET, "/api/pessoa/kits").hasAnyRole(PAPEIS_ENTREGA_KIT)
+                        .requestMatchers(HttpMethod.PATCH, "/api/pessoa/*/kit").hasAnyRole(PAPEIS_ENTREGA_KIT)
                         // Comprovante de pagamento — quem confirma inscrição (aba Pessoas)
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/*/comprovante").hasAnyRole(PAPEIS_GESTAO_PARTICIPANTES)
                         // Reconsulta de status do pagamento no cartão — mesmo público do comprovante acima

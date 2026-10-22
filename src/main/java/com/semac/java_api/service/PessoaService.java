@@ -7,6 +7,7 @@ import com.semac.java_api.dto.CamisetaAdminDTO;
 import com.semac.java_api.dto.CamisetaParticipanteDTO;
 import com.semac.java_api.dto.CamisetaPerfilDTO;
 import com.semac.java_api.dto.InscricaoFinanceiraDTO;
+import com.semac.java_api.dto.KitPessoaDTO;
 import com.semac.java_api.dto.NivelResponseDTO;
 import com.semac.java_api.dto.PagamentoCartaoInfoDTO;
 import com.semac.java_api.dto.ParticipanteResponseDTO;
@@ -451,6 +452,66 @@ public class PessoaService {
         pessoa.setRa(dto.ra() == null || dto.ra().isBlank() ? null : dto.ra().trim());
         pessoa.setTelefone(dto.telefone());
         return paraResposta(pessoaRepository.save(pessoa));
+    }
+
+    /* ── Entrega do kit (sub-aba Kits de Pessoas do /admin) ───────── */
+
+    /* Quem recebe kit no credenciamento: participantes confirmados e toda
+       a comissão. Pendente fica de fora (ainda não pagou/foi confirmado),
+       e diarista também — ingresso por dia não inclui kit, mesma regra da
+       previsão de gastos (PessoaRepository.contarInscritosComKit). */
+    @Transactional(readOnly = true)
+    public List<KitPessoaDTO> listarKits() {
+        return pessoaRepository.findAllByRoleIsNotNullOrderByNomeAsc().stream()
+                .filter(this::recebeKit)
+                .map(this::paraKit)
+                .toList();
+    }
+
+    /* Marca (entregue=true) ou desfaz (false) a entrega do kit. Marcar de
+       novo quem já recebeu não sobrescreve a data nem quem entregou: o
+       registro que vale é o da primeira entrega. */
+    @Transactional
+    public KitPessoaDTO marcarKit(Integer id, boolean entregue, Integer idQuemEntregou) {
+        Pessoa pessoa = pessoaRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Pessoa não encontrada."));
+        if (pessoa.getRole() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Confirme a inscrição antes de entregar o kit.");
+        }
+        if (!recebeKit(pessoa)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Ingresso por dia não inclui kit.");
+        }
+
+        if (!entregue) {
+            pessoa.setKitEntregueEm(null);
+            pessoa.setKitEntreguePor(null);
+        } else if (pessoa.getKitEntregueEm() == null) {
+            pessoa.setKitEntregueEm(LocalDateTime.now());
+            pessoa.setKitEntreguePor(pessoaRepository.getReferenceById(idQuemEntregou));
+        }
+        return paraKit(pessoaRepository.save(pessoa));
+    }
+
+    private boolean recebeKit(Pessoa pessoa) {
+        TipoInscricao ingresso = pessoa.getTipoInscricao();
+        return pessoa.getRole() != Role.PARTICIPANTE
+                || ingresso == null
+                || !Boolean.TRUE.equals(ingresso.getPorDia());
+    }
+
+    private KitPessoaDTO paraKit(Pessoa pessoa) {
+        Pessoa quemEntregou = pessoa.getKitEntreguePor();
+        return new KitPessoaDTO(
+                pessoa.getId(),
+                pessoa.getNome(),
+                pessoa.getRole().name(),
+                pessoa.getTipoInscricao() == null ? null : pessoa.getTipoInscricao().getNome(),
+                pessoa.getCamisaPedidos().stream().map(this::paraCamiseta).toList(),
+                pessoa.getKitEntregueEm(),
+                quemEntregou == null ? null : quemEntregou.getNome());
     }
 
     /* Ativa/desativa uma pessoa (ex.: suspender membro da comissão). */
