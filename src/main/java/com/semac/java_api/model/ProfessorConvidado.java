@@ -18,8 +18,4 @@ public class ProfessorConvidado {
 
     @Column(nullable = false)
     private String nome;
-
-    /* 'M' ou 'F': o crachá sai como PROFESSOR ou PROFESSORA. */
-    @Column(nullable = false, length = 1)
-    private String genero;
 }

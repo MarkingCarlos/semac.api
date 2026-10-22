@@ -15,7 +15,7 @@ import java.util.List;
 
 /* CRUD dos professores convidados (tabela `professor_convidado`).
    Gerenciado na subaba Crachás da aba Pessoas do /admin, que imprime o
-   crachá deles com a arte da comissão e o rótulo PROFESSOR/PROFESSORA.
+   crachá deles com a arte própria de professor.
    Restrito no SecurityConfig ao mesmo público de /api/cracha. */
 @RestController
 @RequestMapping("/api/professor-convidado")
@@ -39,7 +39,6 @@ public class ProfessorConvidadoController {
     public ResponseEntity<ProfessorConvidadoResponseDTO> criar(@Valid @RequestBody ProfessorConvidadoRequestDTO dto) {
         ProfessorConvidado professor = new ProfessorConvidado();
         professor.setNome(dto.nome().trim());
-        professor.setGenero(dto.genero());
         return ResponseEntity.status(HttpStatus.CREATED).body(paraResposta(professorConvidadoRepository.save(professor)));
     }
 
@@ -49,7 +48,6 @@ public class ProfessorConvidadoController {
         ProfessorConvidado professor = professorConvidadoRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Professor não encontrado."));
         professor.setNome(dto.nome().trim());
-        professor.setGenero(dto.genero());
         return paraResposta(professorConvidadoRepository.save(professor));
     }
 
@@ -63,6 +61,6 @@ public class ProfessorConvidadoController {
     }
 
     private ProfessorConvidadoResponseDTO paraResposta(ProfessorConvidado professor) {
-        return new ProfessorConvidadoResponseDTO(professor.getId(), professor.getNome(), professor.getGenero());
+        return new ProfessorConvidadoResponseDTO(professor.getId(), professor.getNome());
     }
 }

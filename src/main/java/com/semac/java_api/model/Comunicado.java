@@ -6,6 +6,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /* Um disparo avulso já acontecido. Cada linha é histórico, não modelo:
    e-mail não tem desfazer, então este registro é o que permite saber
@@ -33,9 +35,13 @@ public class Comunicado {
     @Column(nullable = false, length = 40)
     private PublicoComunicado publico;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "evento_id")
-    private Evento evento;
+    /* Preenchido só quando publico = INSCRITOS_EM_EVENTO: um ou mais
+       eventos, cujos inscritos são somados no disparo (ver V60). */
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "comunicado_evento",
+            joinColumns = @JoinColumn(name = "comunicado_id"),
+            inverseJoinColumns = @JoinColumn(name = "evento_id"))
+    private Set<Evento> eventos = new LinkedHashSet<>();
 
     /* Congelado no disparo: o público muda com o tempo. */
     @Column(name = "total_destinatarios", nullable = false)

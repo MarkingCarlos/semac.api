@@ -227,7 +227,7 @@ public class SecurityConfig {
                         // Crachás impressos — devolve o uuid de check-in de todo mundo, então
                         // fica com quem gerencia pessoas (mesmo público da aba Pessoas)
                         .requestMatchers(HttpMethod.GET, "/api/cracha").hasAnyRole(PAPEIS_FINANCEIRO)
-                        // Professores convidados (crachá PROFESSOR/PROFESSORA) — cadastrados
+                        // Professores convidados (crachá de professor) — cadastrados
                         // na mesma subaba Crachás, então mesmo público
                         .requestMatchers("/api/professor-convidado", "/api/professor-convidado/*").hasAnyRole(PAPEIS_FINANCEIRO)
                         // Certificados de palestrante — mesmo público dos crachás (aba Pessoas)

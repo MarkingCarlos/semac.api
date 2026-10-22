@@ -46,8 +46,8 @@ public class ComunicadoController {
        confirmação, antes de disparar. */
     @GetMapping("/destinatarios")
     public DestinatariosResponseDTO destinatarios(@RequestParam String publico,
-                                                  @RequestParam(required = false) Integer eventoId) {
-        return comunicadoService.destinatarios(PublicoComunicado.deTexto(publico), eventoId);
+                                                  @RequestParam(required = false) List<Integer> eventoIds) {
+        return comunicadoService.destinatarios(PublicoComunicado.deTexto(publico), eventoIds);
     }
 
     @PostMapping("/previa")

@@ -21,9 +21,9 @@ public enum PublicoComunicado {
     /* Qualquer papel de comissão (MEMBRO, DIRETOR_*, PRESIDENTE). */
     COMISSAO("Comissão organizadora", false),
 
-    /* Quem está inscrito num evento específico — o caso do "a sala do
-       minicurso mudou". */
-    INSCRITOS_EM_EVENTO("Inscritos em um evento", true);
+    /* Quem está inscrito em um ou mais eventos escolhidos — o caso do "a
+       sala do minicurso mudou", ou da turma dos minicursos X e Y juntos. */
+    INSCRITOS_EM_EVENTO("Inscritos em eventos", true);
 
     private final String rotulo;
     private final boolean exigeEvento;

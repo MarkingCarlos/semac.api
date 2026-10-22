@@ -33,8 +33,10 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /* Comunicados avulsos: mensagem escrita na hora e disparada para um
@@ -111,8 +113,8 @@ public class ComunicadoService {
     /* Alimenta a tela de confirmação: quantos vão receber e alguns nomes.
        Ninguém dispara para "todos" sem ver o número antes. */
     @Transactional(readOnly = true)
-    public DestinatariosResponseDTO destinatarios(PublicoComunicado publico, Integer eventoId) {
-        List<Destinatario> lista = resolverDestinatarios(publico, eventoId);
+    public DestinatariosResponseDTO destinatarios(PublicoComunicado publico, List<Integer> eventoIds) {
+        List<Destinatario> lista = resolverDestinatarios(publico, eventoIds);
         return new DestinatariosResponseDTO(
                 lista.size(),
                 lista.stream().limit(TAMANHO_AMOSTRA).map(Destinatario::nome).toList());
@@ -141,9 +143,9 @@ public class ComunicadoService {
         validarVariaveis(dto.corpoMarkdown());
 
         PublicoComunicado publico = PublicoComunicado.deTexto(dto.publico());
-        Evento evento = resolverEvento(publico, dto.eventoId());
+        List<Evento> eventos = resolverEventos(publico, dto.eventoIds());
 
-        List<Destinatario> destinatarios = resolverDestinatarios(publico, dto.eventoId());
+        List<Destinatario> destinatarios = resolverDestinatarios(publico, dto.eventoIds());
         if (destinatarios.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Nenhum destinatário neste público — nada foi enviado.");
@@ -153,7 +155,7 @@ public class ComunicadoService {
         comunicado.setAssunto(dto.assunto().trim());
         comunicado.setCorpoMarkdown(dto.corpoMarkdown());
         comunicado.setPublico(publico);
-        comunicado.setEvento(evento);
+        comunicado.setEventos(new LinkedHashSet<>(eventos));
         comunicado.setTotalDestinatarios(destinatarios.size());
         comunicado.setStatus(StatusComunicado.EM_ANDAMENTO);
         comunicado.setCriadoEm(LocalDateTime.now());
@@ -234,13 +236,15 @@ public class ComunicadoService {
 
     /* Toda opção exclui pessoa desativada e sem e-mail: ninguém suspenso
        recebe comunicado, e endereço vazio só geraria falha no lote. */
-    private List<Destinatario> resolverDestinatarios(PublicoComunicado publico, Integer eventoId) {
+    private List<Destinatario> resolverDestinatarios(PublicoComunicado publico, List<Integer> eventoIds) {
         List<Pessoa> pessoas = switch (publico) {
             case PARTICIPANTES_CONFIRMADOS -> pessoaRepository.findAllByRole(Role.PARTICIPANTE);
             case INSCRICOES_PENDENTES -> pessoaRepository.findAllByRoleIsNull();
             case COMISSAO -> pessoaRepository.findAllByRoleNot(Role.PARTICIPANTE);
-            case INSCRITOS_EM_EVENTO -> eventoParticipanteRepository.findByPk_EventoId(exigirEventoId(eventoId))
-                    .stream()
+            /* Soma dos inscritos de cada evento; quem está em mais de um
+               cai no distinct por e-mail logo abaixo. */
+            case INSCRITOS_EM_EVENTO -> exigirEventoIds(eventoIds).stream()
+                    .flatMap(eventoId -> eventoParticipanteRepository.findByPk_EventoId(eventoId).stream())
                     .map(inscricao -> inscricao.getParticipante())
                     .toList();
         };
@@ -270,32 +274,44 @@ public class ComunicadoService {
                 .collect(Collectors.toSet()));
     }
 
-    private Evento resolverEvento(PublicoComunicado publico, Integer eventoId) {
+    private List<Evento> resolverEventos(PublicoComunicado publico, List<Integer> eventoIds) {
         if (!publico.isExigeEvento()) {
-            return null;
+            return List.of();
         }
-        return eventoRepository.findById(exigirEventoId(eventoId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Evento inválido."));
+        List<Integer> ids = exigirEventoIds(eventoIds);
+        List<Evento> eventos = eventoRepository.findAllById(ids);
+        if (eventos.size() != ids.size()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Evento inválido.");
+        }
+        return eventos;
     }
 
-    private Integer exigirEventoId(Integer eventoId) {
-        if (eventoId == null) {
+    /* Sem nulos e sem repetidos: a lista vem de checkboxes do front. */
+    private List<Integer> exigirEventoIds(List<Integer> eventoIds) {
+        List<Integer> ids = eventoIds == null ? List.of()
+                : eventoIds.stream().filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Escolha o evento para este público.");
+                    "Escolha ao menos um evento para este público.");
         }
-        return eventoId;
+        return ids;
     }
 
     private ComunicadoResponseDTO paraResposta(Comunicado comunicado) {
         Pessoa autor = comunicado.getEnviadoPor();
-        Evento evento = comunicado.getEvento();
+        /* Vários eventos viram um texto só ("Minicurso X, Minicurso Y"),
+           que é como o histórico já mostrava o nome do evento. */
+        String nomesEventos = comunicado.getEventos().stream()
+                .map(Evento::getNome)
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .collect(Collectors.joining(", "));
 
         return new ComunicadoResponseDTO(
                 comunicado.getId(),
                 comunicado.getAssunto(),
                 comunicado.getPublico().name(),
                 comunicado.getPublico().getRotulo(),
-                evento == null ? null : evento.getNome(),
+                nomesEventos.isEmpty() ? null : nomesEventos,
                 comunicado.getTotalDestinatarios(),
                 comunicado.getEnviados(),
                 comunicado.getFalhas(),
