@@ -22,6 +22,7 @@ import com.semac.java_api.repository.EventoParticipanteRepository;
 import com.semac.java_api.repository.EventoRepository;
 import com.semac.java_api.repository.NivelRepository;
 import com.semac.java_api.repository.ParticipanteConquistaRepository;
+import com.semac.java_api.repository.PerguntaDebateRepository;
 import com.semac.java_api.repository.PessoaRepository;
 import com.semac.java_api.repository.TrabalhoMostraRepository;
 import com.semac.java_api.repository.VisitaTrabalhoMostraRepository;
@@ -69,6 +70,7 @@ public class ConquistaService {
     private final EventoRepository eventoRepository;
     private final TrabalhoMostraRepository trabalhoMostraRepository;
     private final VisitaTrabalhoMostraRepository visitaTrabalhoMostraRepository;
+    private final PerguntaDebateRepository perguntaDebateRepository;
 
     public ConquistaService(PessoaRepository pessoaRepository,
                             ConquistaRepository conquistaRepository,
@@ -77,7 +79,8 @@ public class ConquistaService {
                             EventoParticipanteRepository eventoParticipanteRepository,
                             EventoRepository eventoRepository,
                             TrabalhoMostraRepository trabalhoMostraRepository,
-                            VisitaTrabalhoMostraRepository visitaTrabalhoMostraRepository) {
+                            VisitaTrabalhoMostraRepository visitaTrabalhoMostraRepository,
+                            PerguntaDebateRepository perguntaDebateRepository) {
         this.pessoaRepository = pessoaRepository;
         this.conquistaRepository = conquistaRepository;
         this.participanteConquistaRepository = participanteConquistaRepository;
@@ -86,6 +89,7 @@ public class ConquistaService {
         this.eventoRepository = eventoRepository;
         this.trabalhoMostraRepository = trabalhoMostraRepository;
         this.visitaTrabalhoMostraRepository = visitaTrabalhoMostraRepository;
+        this.perguntaDebateRepository = perguntaDebateRepository;
     }
 
     /* ── Catálogo (/admin -> Informações SEMAC) ──────────────────── */
@@ -269,6 +273,7 @@ public class ConquistaService {
         avaliarCoffeeBreaks(participante, vinculos, agora);
         avaliarDebates(participante, vinculos, catalogoQueConta, agora);
         avaliarMostraCompleta(participante, agora.getYear());
+        avaliarPerguntaDebate(participante);
     }
 
     /* Passa por todo participante confirmado. Usada no boot e pelo botão
@@ -456,6 +461,21 @@ public class ConquistaService {
         }
         long visitados = visitaTrabalhoMostraRepository.countByPessoaIdAndTrabalhoAno(participante.getId(), ano);
         return visitados >= total && conceder(participante, CatalogoConquistas.CODIGO_MOSTRA_COMPLETA);
+    }
+
+    /* "Pergunta de Ouro": enviou pelo menos uma pergunta para algum debate,
+       de qualquer edição. Como a Mostra, sai na hora — chamada por
+       PerguntaDebateService.enviar — e também roda em reavaliarAutomaticas,
+       que é o que alcança quem já tinha mandado pergunta antes de a
+       conquista ser ativada. Devolve se foi concedida agora, para o modal
+       da pergunta comemorar. */
+    @Transactional
+    public boolean avaliarPerguntaDebate(Pessoa participante) {
+        if (participante == null || participante.getRole() != Role.PARTICIPANTE) {
+            return false;
+        }
+        return perguntaDebateRepository.existsByPessoaId(participante.getId())
+                && conceder(participante, CatalogoConquistas.CODIGO_PERGUNTA_DEBATE);
     }
 
     private List<Evento> minicursosEscolhidos(List<EventoParticipante> vinculos) {

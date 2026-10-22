@@ -33,6 +33,7 @@ public final class CatalogoConquistas {
     public static final String CODIGO_COFFEE_BREAK_COMPLETO = "COFFEE_BREAK_COMPLETO";
     public static final String CODIGO_DEBATES_COMPLETO = "DEBATES_COMPLETO";
     public static final String CODIGO_MOSTRA_COMPLETA = "MOSTRA_COMPLETA";
+    public static final String CODIGO_PERGUNTA_DEBATE = "PERGUNTA_DEBATE";
 
     /* Pontos com que toda conquista nasce. É só um ponto de partida
        razoável para a presidência ajustar no /admin — o que segura a
@@ -98,7 +99,12 @@ public final class CatalogoConquistas {
                     CODIGO_MOSTRA_COMPLETA,
                     "Explorador da Mostra",
                     "Visite todos os trabalhos da Mostra Técnica lendo o QR code de cada stand.",
-                    AUTOMATICA, 3, 9)
+                    AUTOMATICA, 3, 9),
+            new ConquistaSemeada(
+                    CODIGO_PERGUNTA_DEBATE,
+                    "Pergunta de Ouro",
+                    "Envie uma pergunta para um dos debates da SEMAC.",
+                    AUTOMATICA, 1, 10)
     );
 
     private CatalogoConquistas() {

@@ -1,5 +1,6 @@
 package com.semac.java_api.service;
 
+import com.semac.java_api.dto.PerguntaDebateEnviadaDTO;
 import com.semac.java_api.dto.PerguntaDebateResponseDTO;
 import com.semac.java_api.model.ConfiguracaoInscricao;
 import com.semac.java_api.model.Evento;
@@ -21,7 +22,9 @@ import java.util.List;
 
 /* Perguntas enviadas previamente para os debates. O participante envia
    pelo /participantes (quantas quiser, até o limite abaixo); a diretoria
-   e a presidência leem no /admin, aba Conteúdo. */
+   e a presidência leem no /admin, aba Conteúdo. A primeira pergunta de
+   alguém dá a conquista PERGUNTA_DEBATE (ver
+   ConquistaService.avaliarPerguntaDebate). */
 @Service
 public class PerguntaDebateService {
 
@@ -33,19 +36,23 @@ public class PerguntaDebateService {
     private final EventoRepository eventoRepository;
     private final PessoaRepository pessoaRepository;
     private final ConfiguracaoInscricaoRepository configuracaoInscricaoRepository;
+    private final ConquistaService conquistaService;
 
     public PerguntaDebateService(PerguntaDebateRepository perguntaDebateRepository,
                                  EventoRepository eventoRepository,
                                  PessoaRepository pessoaRepository,
-                                 ConfiguracaoInscricaoRepository configuracaoInscricaoRepository) {
+                                 ConfiguracaoInscricaoRepository configuracaoInscricaoRepository,
+                                 ConquistaService conquistaService) {
         this.perguntaDebateRepository = perguntaDebateRepository;
         this.eventoRepository = eventoRepository;
         this.pessoaRepository = pessoaRepository;
         this.configuracaoInscricaoRepository = configuracaoInscricaoRepository;
+        this.conquistaService = conquistaService;
     }
 
+    /* Devolve se esta pergunta destravou a conquista PERGUNTA_DEBATE agora. */
     @Transactional
-    public void enviar(Integer participanteId, Integer eventoId, String texto) {
+    public PerguntaDebateEnviadaDTO enviar(Integer participanteId, Integer eventoId, String texto) {
         Pessoa pessoa = pessoaRepository.findById(participanteId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sessão inválida."));
         if (pessoa.getRole() != Role.PARTICIPANTE) {
@@ -69,6 +76,8 @@ public class PerguntaDebateService {
         pergunta.setTexto(texto.trim());
         pergunta.setEnviadaEm(LocalDateTime.now());
         perguntaDebateRepository.save(pergunta);
+
+        return new PerguntaDebateEnviadaDTO(conquistaService.avaliarPerguntaDebate(pessoa));
     }
 
     /* Mais antigas primeiro: é a ordem em que a mediação costuma ler. */

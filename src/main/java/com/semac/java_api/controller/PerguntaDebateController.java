@@ -1,5 +1,6 @@
 package com.semac.java_api.controller;
 
+import com.semac.java_api.dto.PerguntaDebateEnviadaDTO;
 import com.semac.java_api.dto.PerguntaDebateRequestDTO;
 import com.semac.java_api.dto.PerguntaDebateResponseDTO;
 import com.semac.java_api.service.PerguntaDebateService;
@@ -27,11 +28,11 @@ public class PerguntaDebateController {
     }
 
     @PostMapping
-    public ResponseEntity<Void> enviar(@AuthenticationPrincipal Jwt jwt,
+    public ResponseEntity<PerguntaDebateEnviadaDTO> enviar(@AuthenticationPrincipal Jwt jwt,
                                        @PathVariable Integer id,
                                        @Valid @RequestBody PerguntaDebateRequestDTO dto) {
-        perguntaDebateService.enviar(idDoToken(jwt), id, dto.texto());
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(perguntaDebateService.enviar(idDoToken(jwt), id, dto.texto()));
     }
 
     @GetMapping

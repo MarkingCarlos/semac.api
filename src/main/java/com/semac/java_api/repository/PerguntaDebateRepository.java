@@ -13,4 +13,8 @@ public interface PerguntaDebateRepository extends JpaRepository<PerguntaDebate, 
     List<PerguntaDebate> findByEventoIdOrderByEnviadaEmAsc(Integer eventoId);
 
     long countByEventoIdAndPessoaId(Integer eventoId, Integer pessoaId);
+
+    /* Conquista PERGUNTA_DEBATE: basta uma pergunta, de qualquer debate e
+       de qualquer edição. */
+    boolean existsByPessoaId(Integer pessoaId);
 }
