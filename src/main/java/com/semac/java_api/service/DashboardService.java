@@ -8,6 +8,8 @@ import com.semac.java_api.dto.DashboardLeituraQrDTO;
 import com.semac.java_api.dto.DashboardLeiturasMembroDTO;
 import com.semac.java_api.dto.DashboardMinicursoDTO;
 import com.semac.java_api.dto.DashboardMinicursosDTO;
+import com.semac.java_api.dto.DashboardParticipantesDiaDTO;
+import com.semac.java_api.dto.DashboardParticipantesPorDiaDTO;
 import com.semac.java_api.dto.DashboardRankingDTO;
 import com.semac.java_api.model.Evento;
 import com.semac.java_api.model.EventoParticipante;
@@ -30,6 +32,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -148,6 +151,46 @@ public class DashboardService {
                         linha.getStatus() == StatusPresenca.PRESENTE))
                 .sorted(Comparator.comparing(DashboardInscritoMinicursoDTO::nome, String.CASE_INSENSITIVE_ORDER))
                 .toList();
+    }
+
+    /* ── Participantes por dia ───────────────────────────────────── */
+
+    /* Participantes confirmados e ativos esperados em cada dia com
+       programação: o passe completo vale todos os dias; a diária, só nos
+       dias escolhidos. Dia escolhido fora da programação atual (evento
+       removido depois da escolha) não vira barra. */
+    @Transactional(readOnly = true)
+    public DashboardParticipantesPorDiaDTO participantesPorDia() {
+        Map<Integer, Set<LocalDate>> diasPorPessoa = pessoaDiaIngressoRepository.findAll().stream()
+                .collect(Collectors.groupingBy(PessoaDiaIngresso::getPessoaId,
+                        Collectors.mapping(PessoaDiaIngresso::getDia, Collectors.toSet())));
+
+        int passeCompleto = 0;
+        int diaristasSemEscolha = 0;
+        Map<LocalDate, Integer> diaristasPorDia = new HashMap<>();
+        for (Pessoa pessoa : pessoaRepository.findAllByRoleAndAtivoTrue(Role.PARTICIPANTE)) {
+            if (!diaIngressoService.ehDiarista(pessoa)) {
+                passeCompleto++;
+                continue;
+            }
+            Set<LocalDate> dias = diasPorPessoa.get(pessoa.getId());
+            if (dias == null || dias.isEmpty()) {
+                diaristasSemEscolha++;
+                continue;
+            }
+            dias.forEach(dia -> diaristasPorDia.merge(dia, 1, Integer::sum));
+        }
+
+        int totalPasseCompleto = passeCompleto;
+        List<DashboardParticipantesDiaDTO> dias = diaIngressoService.diasDisponiveis().stream()
+                .map(dia -> {
+                    int diaristas = diaristasPorDia.getOrDefault(dia, 0);
+                    return new DashboardParticipantesDiaDTO(dia, totalPasseCompleto, diaristas,
+                            totalPasseCompleto + diaristas);
+                })
+                .toList();
+
+        return new DashboardParticipantesPorDiaDTO(totalPasseCompleto, diaristasSemEscolha, dias);
     }
 
     /* ── Ranking ─────────────────────────────────────────────────── */

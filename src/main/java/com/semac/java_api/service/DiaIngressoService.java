@@ -158,15 +158,18 @@ public class DiaIngressoService {
         return ROTULOS_DIA_SEMANA[dia.getDayOfWeek().getValue() - 1] + " " + dia.format(DIA_MES);
     }
 
-    /* ── Auxiliares ─────────────────────────────────────────────── */
-
-    private Set<LocalDate> diasDisponiveis() {
+    /* Dias com algum evento na programação, em ordem: os que o diarista
+       pode escolher (e os dias do card "Participantes por dia"). */
+    @Transactional(readOnly = true)
+    public Set<LocalDate> diasDisponiveis() {
         return eventoRepository.findAll().stream()
                 .map(Evento::getDataHoraInicio)
                 .filter(inicio -> inicio != null)
                 .map(inicio -> inicio.toLocalDate())
                 .collect(Collectors.toCollection(TreeSet::new));
     }
+
+    /* ── Auxiliares ─────────────────────────────────────────────── */
 
     /* dias_inscricao vazio num ingresso por dia é cadastro antigo ou
        manual; vale como uma diária, o mínimo que alguém pode ter pago. */

@@ -4,6 +4,7 @@ import com.semac.java_api.dto.DashboardCheckinsDTO;
 import com.semac.java_api.dto.DashboardDetalheCheckinDTO;
 import com.semac.java_api.dto.DashboardInscritoMinicursoDTO;
 import com.semac.java_api.dto.DashboardMinicursosDTO;
+import com.semac.java_api.dto.DashboardParticipantesPorDiaDTO;
 import com.semac.java_api.dto.DashboardRankingDTO;
 import com.semac.java_api.service.DashboardService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,6 +36,13 @@ public class DashboardController {
     @GetMapping("/minicursos/{id}/inscritos")
     public List<DashboardInscritoMinicursoDTO> inscritosDoMinicurso(@PathVariable Integer id) {
         return dashboardService.inscritosDoMinicurso(id);
+    }
+
+    /* Participantes esperados em cada dia: passe completo em todos,
+       diaristas nos dias que escolheram. */
+    @GetMapping("/participantes-por-dia")
+    public DashboardParticipantesPorDiaDTO participantesPorDia() {
+        return dashboardService.participantesPorDia();
     }
 
     /* Ranking completo por xp (o card mostra o top 3). */
