@@ -14,7 +14,7 @@ public record KitPessoaDTO(
         String nome,
         String role,
         String ingresso,
-        List<CamisetaParticipanteDTO> camisetas,
+        List<CamisetaKitDTO> camisetas,
         LocalDateTime kitEntregueEm,
         String kitEntreguePorNome
 ) {}

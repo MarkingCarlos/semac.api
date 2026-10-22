@@ -4,6 +4,7 @@ import com.semac.java_api.dto.AtualizarDadosPessoaDTO;
 import com.semac.java_api.dto.AtualizarPerfilDTO;
 import com.semac.java_api.dto.CadastroManualRequestDTO;
 import com.semac.java_api.dto.CamisetaAdminDTO;
+import com.semac.java_api.dto.CamisetaKitDTO;
 import com.semac.java_api.dto.CamisetaParticipanteDTO;
 import com.semac.java_api.dto.CamisetaPerfilDTO;
 import com.semac.java_api.dto.InscricaoFinanceiraDTO;
@@ -509,9 +510,20 @@ public class PessoaService {
                 pessoa.getNome(),
                 pessoa.getRole().name(),
                 pessoa.getTipoInscricao() == null ? null : pessoa.getTipoInscricao().getNome(),
-                pessoa.getCamisaPedidos().stream().map(this::paraCamiseta).toList(),
+                pessoa.getCamisaPedidos().stream().map(this::paraCamisetaKit).toList(),
                 pessoa.getKitEntregueEm(),
                 quemEntregou == null ? null : quemEntregou.getNome());
+    }
+
+    /* Camiseta de comissão é só a inclusa no kit de quem é da comissão;
+       avulsa é sempre do modelo de participante, mesmo comprada por
+       diretor (mesma regra de CamisaPedidoRepository.consultarEstoqueComissao). */
+    private CamisetaKitDTO paraCamisetaKit(CamisaPedido pedido) {
+        Role role = pedido.getPessoa().getRole();
+        boolean daComissao = !Boolean.TRUE.equals(pedido.getAvulsa())
+                && role != null && role != Role.PARTICIPANTE;
+        return new CamisetaKitDTO(pedido.getModelo().name(), pedido.getTamanho().name(),
+                daComissao ? "COMISSAO" : "PARTICIPANTE", pedido.getAvulsa());
     }
 
     /* Ativa/desativa uma pessoa (ex.: suspender membro da comissão). */
