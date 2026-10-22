@@ -201,9 +201,13 @@ public class SecurityConfig {
                         // mostra ou esconde o glow e o botão "Mande sua pergunta".
                         .requestMatchers(HttpMethod.GET, "/api/configuracao-inscricao/perguntas-debate").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/configuracao-inscricao/perguntas-debate").hasAnyRole(PAPEIS_CONTEUDO)
-                        // Perguntas dos debates: o participante envia, só diretoria e
-                        // presidência leem (MEMBRO fica de fora).
-                        .requestMatchers(HttpMethod.POST, "/api/evento/*/perguntas").hasRole(PAPEL_PARTICIPANTE)
+                        // Perguntas dos debates: qualquer pessoa envia, com ou sem login
+                        // (professores e convidados não têm conta) — página /perguntas e
+                        // /participantes. Sem login, o abuso é freado por IP (RateLimitConfig).
+                        // Só diretoria e presidência leem (MEMBRO fica de fora).
+                        .requestMatchers(HttpMethod.GET, "/api/perguntas/debates").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/perguntas").permitAll()
+                        .requestMatchers("/api/perguntas/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers(HttpMethod.GET, "/api/evento/*/perguntas").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         // Regras de xp (presença, Termo, cortes de atraso) — editadas em
                         // Informações SEMAC. O GET é do card "COMO GANHAR XP" do

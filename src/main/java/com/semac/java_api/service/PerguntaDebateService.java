@@ -1,5 +1,6 @@
 package com.semac.java_api.service;
 
+import com.semac.java_api.dto.DebatePerguntasAbertasDTO;
 import com.semac.java_api.dto.PerguntaDebateEnviadaDTO;
 import com.semac.java_api.dto.PerguntaDebateResponseDTO;
 import com.semac.java_api.model.ConfiguracaoInscricao;
@@ -7,7 +8,6 @@ import com.semac.java_api.model.Evento;
 import com.semac.java_api.model.PerguntaDebate;
 import com.semac.java_api.model.Pessoa;
 import com.semac.java_api.model.enums.CodigoTipoEvento;
-import com.semac.java_api.model.enums.Role;
 import com.semac.java_api.repository.ConfiguracaoInscricaoRepository;
 import com.semac.java_api.repository.EventoRepository;
 import com.semac.java_api.repository.PerguntaDebateRepository;
@@ -18,17 +18,22 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 
-/* Perguntas enviadas previamente para os debates. O participante envia
-   pelo /participantes (quantas quiser, até o limite abaixo); a diretoria
-   e a presidência leem no /admin, aba Conteúdo. A primeira pergunta de
-   alguém dá a conquista PERGUNTA_DEBATE (ver
-   ConquistaService.avaliarPerguntaDebate). */
+/* Perguntas enviadas previamente para os debates, pela página pública
+   /perguntas ou pelo /participantes. Qualquer pessoa envia, com ou sem
+   login — professores e convidados não têm conta. A diretoria e a
+   presidência leem no /admin, aba Conteúdo.
+
+   Com login, a pergunta fica ligada à pessoa, vale o limite abaixo e a
+   primeira pergunta de um participante dá a conquista PERGUNTA_DEBATE (ver
+   ConquistaService.avaliarPerguntaDebate, que ignora a comissão). Sem
+   login, o abuso é freado por IP (ver RateLimitConfig). */
 @Service
 public class PerguntaDebateService {
 
-    /* Teto de perguntas por participante em um mesmo debate — folgado para
+    /* Teto de perguntas por pessoa logada em um mesmo debate — folgado para
        uso real, mas impede que alguém encha a lista do /admin. */
     static final int LIMITE_PERGUNTAS_POR_PARTICIPANTE = 20;
 
@@ -50,20 +55,18 @@ public class PerguntaDebateService {
         this.conquistaService = conquistaService;
     }
 
-    /* Devolve se esta pergunta destravou a conquista PERGUNTA_DEBATE agora. */
+    /* `pessoaId` vem do token e é null sem login; aí vale `nomeAutor`
+       (opcional). Devolve se esta pergunta destravou a conquista
+       PERGUNTA_DEBATE agora. */
     @Transactional
-    public PerguntaDebateEnviadaDTO enviar(Integer participanteId, Integer eventoId, String texto) {
-        Pessoa pessoa = pessoaRepository.findById(participanteId)
+    public PerguntaDebateEnviadaDTO enviar(Integer pessoaId, Integer eventoId, String texto, String nomeAutor) {
+        Pessoa pessoa = pessoaId == null ? null : pessoaRepository.findById(pessoaId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sessão inválida."));
-        if (pessoa.getRole() != Role.PARTICIPANTE) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Só participantes podem enviar perguntas.");
-        }
 
         Evento evento = buscarDebate(eventoId);
         exigirPerguntasAbertas(evento);
 
-        if (perguntaDebateRepository.countByEventoIdAndPessoaId(eventoId, participanteId)
+        if (pessoa != null && perguntaDebateRepository.countByEventoIdAndPessoaId(eventoId, pessoaId)
                 >= LIMITE_PERGUNTAS_POR_PARTICIPANTE) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Você já enviou o máximo de " + LIMITE_PERGUNTAS_POR_PARTICIPANTE
@@ -73,11 +76,27 @@ public class PerguntaDebateService {
         PerguntaDebate pergunta = new PerguntaDebate();
         pergunta.setEvento(evento);
         pergunta.setPessoa(pessoa);
+        pergunta.setNomeAutor(pessoa == null ? textoOuNulo(nomeAutor) : null);
         pergunta.setTexto(texto.trim());
         pergunta.setEnviadaEm(LocalDateTime.now());
         perguntaDebateRepository.save(pergunta);
 
         return new PerguntaDebateEnviadaDTO(conquistaService.avaliarPerguntaDebate(pessoa));
+    }
+
+    /* Debates que estão recebendo perguntas agora, para a página pública
+       escolher: o interruptor do ano ligado e o debate ainda não terminado.
+       Lista vazia quando nada está aberto. */
+    @Transactional(readOnly = true)
+    public List<DebatePerguntasAbertasDTO> listarDebatesAbertos() {
+        LocalDateTime agora = LocalDateTime.now();
+        return eventoRepository.buscarComTipoPorCodigos(List.of(CodigoTipoEvento.DEBATE)).stream()
+                .filter(evento -> evento.getDataHoraFim() == null || evento.getDataHoraFim().isAfter(agora))
+                .filter(this::perguntasAbertas)
+                .sorted(Comparator.comparing(Evento::getDataHoraInicio))
+                .map(evento -> new DebatePerguntasAbertasDTO(
+                        evento.getId(), evento.getNome(), evento.getDataHoraInicio()))
+                .toList();
     }
 
     /* Mais antigas primeiro: é a ordem em que a mediação costuma ler. */
@@ -88,9 +107,19 @@ public class PerguntaDebateService {
                 .map(pergunta -> new PerguntaDebateResponseDTO(
                         pergunta.getId(),
                         pergunta.getTexto(),
-                        pergunta.getPessoa().getNome(),
+                        nomeDoAutor(pergunta),
+                        pergunta.getPessoa() != null,
                         pergunta.getEnviadaEm()))
                 .toList();
+    }
+
+    private static String nomeDoAutor(PerguntaDebate pergunta) {
+        if (pergunta.getPessoa() != null) return pergunta.getPessoa().getNome();
+        return pergunta.getNomeAutor() != null ? pergunta.getNomeAutor() : "Anônimo";
+    }
+
+    private static String textoOuNulo(String texto) {
+        return texto == null || texto.isBlank() ? null : texto.trim();
     }
 
     private Evento buscarDebate(Integer eventoId) {
@@ -104,12 +133,15 @@ public class PerguntaDebateService {
     }
 
     /* Vale o ano do debate; ano sem configuração conta como fechado. */
-    private void exigirPerguntasAbertas(Evento evento) {
-        boolean abertas = configuracaoInscricaoRepository
+    private boolean perguntasAbertas(Evento evento) {
+        return configuracaoInscricaoRepository
                 .findByAno(evento.getDataHoraInicio().getYear())
                 .map(ConfiguracaoInscricao::getPerguntasDebateAbertas)
                 .orElse(Boolean.FALSE);
-        if (!abertas) {
+    }
+
+    private void exigirPerguntasAbertas(Evento evento) {
+        if (!perguntasAbertas(evento)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "O envio de perguntas para os debates está encerrado.");
         }

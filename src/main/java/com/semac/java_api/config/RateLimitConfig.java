@@ -1,8 +1,10 @@
 package com.semac.java_api.config;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
 
 import java.time.Duration;
 
@@ -52,6 +54,22 @@ public class RateLimitConfig {
         return registrar("rateLimitComprovante", "/api/inscricao/*",
                 new RateLimitPorIpFilter(10, Duration.ofMinutes(15),
                         "Muitos envios de comprovante. Aguarde alguns minutos e tente novamente."));
+    }
+
+    /* Perguntas do debate sem login (página pública /perguntas). Só conta
+       quem vem sem token: com token, o Spring Security já recusa o que não
+       for válido e o PerguntaDebateService limita por pessoa — e no debate
+       muitos participantes logados saem pelo mesmo IP da universidade. */
+    @Bean
+    public FilterRegistrationBean<RateLimitPorIpFilter> rateLimitPerguntasFilter() {
+        return registrar("rateLimitPerguntas", "/api/perguntas",
+                new RateLimitPorIpFilter(20, Duration.ofMinutes(10),
+                        "Muitas perguntas a partir desta rede. Aguarde alguns minutos e tente novamente.") {
+                    @Override
+                    protected boolean shouldNotFilter(HttpServletRequest request) {
+                        return super.shouldNotFilter(request) || request.getHeader(HttpHeaders.AUTHORIZATION) != null;
+                    }
+                });
     }
 
     private FilterRegistrationBean<RateLimitPorIpFilter> registrar(String nome, String padraoUrl,
