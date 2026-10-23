@@ -8,7 +8,8 @@ import java.time.LocalDateTime;
 /* Pergunta enviada previamente para um evento do tipo DEBATE (ver
    V52__pergunta_debate.sql e V62__pergunta_debate_sem_login.sql). Com
    login, `pessoa` aponta quem enviou; sem login, `pessoa` é nula e
-   `nomeAutor` guarda o nome digitado (opcional). As regras — só debate, só
+   `nomeAutor` guarda o nome digitado (opcional). Incluída pelo /admin,
+   `cadastradaPor` aponta o diretor/presidente que digitou. As regras — só debate, só
    com as perguntas liberadas, limite por pessoa — vivem no
    PerguntaDebateService; aqui só os dados. */
 @Entity
@@ -37,6 +38,12 @@ public class PerguntaDebate {
        quando a pessoa preferiu não se identificar. */
     @Column(name = "nome_autor", length = 120)
     private String nomeAutor;
+
+    /* Diretor/presidente que incluiu a pergunta pelo /admin; nulo quando
+       veio do público (ver V67__pergunta_debate_cadastrada_por.sql). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cadastrada_por_id")
+    private Pessoa cadastradaPor;
 
     @Column(nullable = false, length = 500)
     private String texto;

@@ -8,8 +8,9 @@ import java.util.List;
 
 public interface PerguntaDebateRepository extends JpaRepository<PerguntaDebate, Integer> {
 
-    /* Lista do /admin: já traz a pessoa para mostrar o nome sem N+1. */
-    @EntityGraph(attributePaths = "pessoa")
+    /* Lista do /admin: já traz a pessoa (e quem cadastrou) para mostrar os
+       nomes sem N+1. */
+    @EntityGraph(attributePaths = { "pessoa", "cadastradaPor" })
     List<PerguntaDebate> findByEventoIdOrderByEnviadaEmAsc(Integer eventoId);
 
     long countByEventoIdAndPessoaId(Integer eventoId, Integer pessoaId);

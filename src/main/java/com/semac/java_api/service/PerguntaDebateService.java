@@ -24,7 +24,8 @@ import java.util.List;
 /* Perguntas enviadas previamente para os debates, pela página pública
    /perguntas ou pelo /participantes. Qualquer pessoa envia, com ou sem
    login — professores e convidados não têm conta. A diretoria e a
-   presidência leem no /admin, aba Conteúdo.
+   presidência leem no /admin, aba Conteúdo, e lá também incluem perguntas
+   à mão (adicionarPelaComissao).
 
    Com login, a pergunta fica ligada à pessoa, vale o limite abaixo e a
    primeira pergunta de um participante dá a conquista PERGUNTA_DEBATE (ver
@@ -104,13 +105,27 @@ public class PerguntaDebateService {
     public List<PerguntaDebateResponseDTO> listar(Integer eventoId) {
         buscarDebate(eventoId);
         return perguntaDebateRepository.findByEventoIdOrderByEnviadaEmAsc(eventoId).stream()
-                .map(pergunta -> new PerguntaDebateResponseDTO(
-                        pergunta.getId(),
-                        pergunta.getTexto(),
-                        nomeDoAutor(pergunta),
-                        pergunta.getPessoa() != null,
-                        pergunta.getEnviadaEm()))
+                .map(PerguntaDebateService::paraResposta)
                 .toList();
+    }
+
+    /* Pergunta incluída à mão no /admin (ex.: entregue em papel no debate).
+       Diferente do envio público: vale com as perguntas fechadas, sem o
+       limite por pessoa e sem conquista — quem fez a pergunta é só o nome
+       digitado; `adminId` (do token) fica registrado como quem cadastrou. */
+    @Transactional
+    public PerguntaDebateResponseDTO adicionarPelaComissao(Integer adminId, Integer eventoId,
+                                                           String texto, String nomeAutor) {
+        Pessoa admin = adminId == null ? null : pessoaRepository.findById(adminId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sessão inválida."));
+
+        PerguntaDebate pergunta = new PerguntaDebate();
+        pergunta.setEvento(buscarDebate(eventoId));
+        pergunta.setNomeAutor(textoOuNulo(nomeAutor));
+        pergunta.setCadastradaPor(admin);
+        pergunta.setTexto(texto.trim());
+        pergunta.setEnviadaEm(LocalDateTime.now());
+        return paraResposta(perguntaDebateRepository.save(pergunta));
     }
 
     /* Exclusão definitiva, pelo /admin. A conquista PERGUNTA_DEBATE de quem
@@ -121,6 +136,16 @@ public class PerguntaDebateService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Pergunta não encontrada.");
         }
         perguntaDebateRepository.deleteById(perguntaId);
+    }
+
+    private static PerguntaDebateResponseDTO paraResposta(PerguntaDebate pergunta) {
+        return new PerguntaDebateResponseDTO(
+                pergunta.getId(),
+                pergunta.getTexto(),
+                nomeDoAutor(pergunta),
+                pergunta.getPessoa() != null,
+                pergunta.getCadastradaPor() != null ? pergunta.getCadastradaPor().getNome() : null,
+                pergunta.getEnviadaEm());
     }
 
     private static String nomeDoAutor(PerguntaDebate pergunta) {

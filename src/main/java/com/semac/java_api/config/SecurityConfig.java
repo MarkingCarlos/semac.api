@@ -217,6 +217,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/perguntas/*").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers("/api/perguntas/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers(HttpMethod.GET, "/api/evento/*/perguntas").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
+                        // Incluir pergunta à mão pelo /admin (ex.: entregue em papel):
+                        // mesmo público da leitura, e vale com as perguntas fechadas.
+                        .requestMatchers(HttpMethod.POST, "/api/evento/*/perguntas").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         // Regras de xp (presença, Termo, cortes de atraso) — editadas em
                         // Informações SEMAC. O GET é do card "COMO GANHAR XP" do
                         // /participantes, então vale para qualquer autenticado.
