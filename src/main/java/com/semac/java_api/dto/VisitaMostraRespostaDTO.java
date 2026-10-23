@@ -8,7 +8,6 @@ package com.semac.java_api.dto;
 public record VisitaMostraRespostaDTO(
         String titulo,
         String apresentadores,
-        String stand,
         boolean jaVisitado,
         int visitados,
         int total,

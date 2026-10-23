@@ -7,7 +7,6 @@ public record TrabalhoMostraAdminDTO(
         Integer id,
         String titulo,
         String apresentadores,
-        String stand,
         String codigoQr,
         long visitas
 ) {}

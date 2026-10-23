@@ -33,9 +33,6 @@ public class TrabalhoMostra {
     @Column(nullable = false, length = 300)
     private String apresentadores;
 
-    @Column(length = 50)
-    private String stand;
-
     @Column(name = "codigo_qr", nullable = false, unique = true, length = 32)
     private String codigoQr;
 

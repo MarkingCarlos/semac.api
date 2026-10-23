@@ -7,6 +7,5 @@ public record TrabalhoMostraParticipanteDTO(
         Integer id,
         String titulo,
         String apresentadores,
-        String stand,
         boolean visitado
 ) {}

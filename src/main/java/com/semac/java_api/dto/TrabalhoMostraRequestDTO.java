@@ -10,6 +10,5 @@ import jakarta.validation.constraints.Size;
 public record TrabalhoMostraRequestDTO(
         @NotNull Integer ano,
         @NotBlank @Size(max = 200) String titulo,
-        @NotBlank @Size(max = 300) String apresentadores,
-        @Size(max = 50) String stand
+        @NotBlank @Size(max = 300) String apresentadores
 ) {}

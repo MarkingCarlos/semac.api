@@ -87,7 +87,6 @@ public class TrabalhoMostraService {
         return new VisitaMostraRespostaDTO(
                 trabalho.getTitulo(),
                 trabalho.getApresentadores(),
-                trabalho.getStand(),
                 jaVisitado,
                 (int) visitaRepository.countByPessoaIdAndTrabalhoAno(pessoaId, trabalho.getAno()),
                 (int) trabalhoRepository.countByAno(trabalho.getAno()),
@@ -101,7 +100,7 @@ public class TrabalhoMostraService {
         Set<Integer> visitados = new HashSet<>(visitaRepository.idsTrabalhosVisitados(pessoaId, ano));
         List<TrabalhoMostraParticipanteDTO> trabalhos = trabalhoRepository.findByAnoOrderByIdAsc(ano).stream()
                 .map(t -> new TrabalhoMostraParticipanteDTO(
-                        t.getId(), t.getTitulo(), t.getApresentadores(), t.getStand(),
+                        t.getId(), t.getTitulo(), t.getApresentadores(),
                         visitados.contains(t.getId())))
                 .toList();
         int totalVisitados = (int) trabalhos.stream().filter(TrabalhoMostraParticipanteDTO::visitado).count();
@@ -157,7 +156,6 @@ public class TrabalhoMostraService {
     private void aplicar(TrabalhoMostra trabalho, TrabalhoMostraRequestDTO dto) {
         trabalho.setTitulo(dto.titulo().trim());
         trabalho.setApresentadores(dto.apresentadores().trim());
-        trabalho.setStand(dto.stand() == null || dto.stand().isBlank() ? null : dto.stand().trim());
     }
 
     private TrabalhoMostra buscarOuFalhar(Integer id) {
@@ -184,7 +182,6 @@ public class TrabalhoMostraService {
                 trabalho.getId(),
                 trabalho.getTitulo(),
                 trabalho.getApresentadores(),
-                trabalho.getStand(),
                 trabalho.getCodigoQr(),
                 visitas);
     }
