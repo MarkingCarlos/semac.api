@@ -113,6 +113,16 @@ public class PerguntaDebateService {
                 .toList();
     }
 
+    /* Exclusão definitiva, pelo /admin. A conquista PERGUNTA_DEBATE de quem
+       enviou fica: revogar seria uma surpresa para o participante. */
+    @Transactional
+    public void excluir(Integer perguntaId) {
+        if (!perguntaDebateRepository.existsById(perguntaId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Pergunta não encontrada.");
+        }
+        perguntaDebateRepository.deleteById(perguntaId);
+    }
+
     private static String nomeDoAutor(PerguntaDebate pergunta) {
         if (pergunta.getPessoa() != null) return pergunta.getPessoa().getNome();
         return pergunta.getNomeAutor() != null ? pergunta.getNomeAutor() : "Anônimo";

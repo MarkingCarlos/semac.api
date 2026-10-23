@@ -18,7 +18,8 @@ import java.util.List;
    (ver SecurityConfig): com token, a pergunta fica ligada à conta (claim
    `id`, nunca por parâmetro) e o participante pode ganhar a conquista; sem
    token, vale o nome digitado, se houver. A leitura segue no
-   PerguntaDebateController, restrita à diretoria. */
+   PerguntaDebateController e a exclusão fica aqui, as duas restritas à
+   diretoria e à presidência. */
 @RestController
 @RequestMapping("/api/perguntas")
 public class PerguntaController {
@@ -39,6 +40,13 @@ public class PerguntaController {
                                                            @Valid @RequestBody PerguntaRequestDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(perguntaDebateService.enviar(idDoTokenOuNulo(jwt), dto.eventoId(), dto.texto(), dto.nome()));
+    }
+
+    /* Exclusão definitiva pelo modal de perguntas do /admin. */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> excluir(@PathVariable Integer id) {
+        perguntaDebateService.excluir(id);
+        return ResponseEntity.noContent().build();
     }
 
     /* Sem token (visitante, professor) o jwt chega null. */

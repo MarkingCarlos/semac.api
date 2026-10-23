@@ -213,6 +213,8 @@ public class SecurityConfig {
                         // Só diretoria e presidência leem (MEMBRO fica de fora).
                         .requestMatchers(HttpMethod.GET, "/api/perguntas/debates").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/perguntas").permitAll()
+                        // Excluir pergunta: presidência e diretores, mesmo público da leitura
+                        .requestMatchers(HttpMethod.DELETE, "/api/perguntas/*").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers("/api/perguntas/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers(HttpMethod.GET, "/api/evento/*/perguntas").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         // Regras de xp (presença, Termo, cortes de atraso) — editadas em
