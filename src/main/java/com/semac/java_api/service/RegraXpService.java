@@ -29,7 +29,8 @@ import java.util.List;
      todo lugar (programação pública, formulário de evento).
 
    - `regra_xp` (chave simples) — o que antes era constante em código: o
-     acerto do Termo e os dois limites de atraso do check-in.
+     acerto do Termo, o da Cifra do Dia e os dois limites de atraso do
+     check-in.
 
    Nada é criado nem excluído por aqui: tipo de evento nasce e morre na
    aba Conteúdo, e cada chave de `regra_xp` tem código que a lê. */
@@ -38,6 +39,7 @@ public class RegraXpService {
 
     /* Chaves de `regra_xp` procuradas pelo código. */
     public static final String CHAVE_TERMO_ACERTO = "TERMO_ACERTO";
+    public static final String CHAVE_CIFRA_ACERTO = "CIFRA_ACERTO";
     public static final String CHAVE_ATRASO_METADE_MINUTOS = "ATRASO_METADE_MINUTOS";
     public static final String CHAVE_ATRASO_ZERO_MINUTOS = "ATRASO_ZERO_MINUTOS";
 
@@ -45,6 +47,8 @@ public class RegraXpService {
        check-in e o Termo não podem quebrar por causa de configuração
        faltando. */
     public static final int PADRAO_TERMO_ACERTO = 5;
+    /* Este nasceu na V64, já em banco; o padrão é o valor que ela grava. */
+    public static final int PADRAO_CIFRA_ACERTO = 25;
     public static final long PADRAO_ATRASO_METADE_MINUTOS = 20;
     public static final long PADRAO_ATRASO_ZERO_MINUTOS = 30;
 
@@ -82,6 +86,12 @@ public class RegraXpService {
     @Transactional(readOnly = true)
     public int pontosTermoAcerto() {
         return valorOuPadrao(CHAVE_TERMO_ACERTO, PADRAO_TERMO_ACERTO);
+    }
+
+    /* Xp de decifrar a Cifra do Dia (DesafioCifraService). */
+    @Transactional(readOnly = true)
+    public int pontosCifraAcerto() {
+        return valorOuPadrao(CHAVE_CIFRA_ACERTO, PADRAO_CIFRA_ACERTO);
     }
 
     /* A partir deste atraso o check-in credita metade do xp do tipo de

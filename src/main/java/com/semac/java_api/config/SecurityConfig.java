@@ -369,6 +369,22 @@ public class SecurityConfig {
                         // Rede de segurança, mesmo motivo de /api/conquista/**:
                         // rota nova de termo não nasce pública.
                         .requestMatchers("/api/termo/**").hasAnyRole(PAPEIS_ADMIN)
+                        // ── Cifra do Dia (/desafio-cifra) ───────────────────────
+                        // Jogar é do participante: o acerto credita xp e as
+                        // tentativas são contadas por pessoa no banco.
+                        .requestMatchers(HttpMethod.GET, "/api/desafio-cifra/hoje").hasRole(PAPEL_PARTICIPANTE)
+                        .requestMatchers(HttpMethod.GET, "/api/desafio-cifra/meus").hasRole(PAPEL_PARTICIPANTE)
+                        .requestMatchers(HttpMethod.POST, "/api/desafio-cifra/tentativa").hasRole(PAPEL_PARTICIPANTE)
+                        // Listagem dos desafios no /admin (só leitura: eles entram
+                        // por migration). Mesmo público do Termo. É a única rota
+                        // que devolve as respostas.
+                        .requestMatchers(HttpMethod.GET, "/api/desafio-cifra/admin").hasAnyRole(PAPEIS_GAMIFICACAO)
+                        // Modo teste do /admin -> Cifra do Dia: joga um desafio
+                        // cadastrado sem gravar nada. Mesmo público do cadastro.
+                        .requestMatchers(HttpMethod.GET, "/api/desafio-cifra/teste/*").hasAnyRole(PAPEIS_GAMIFICACAO)
+                        .requestMatchers(HttpMethod.POST, "/api/desafio-cifra/teste/tentativa").hasAnyRole(PAPEIS_GAMIFICACAO)
+                        // Rede de segurança: rota nova da cifra não nasce pública.
+                        .requestMatchers("/api/desafio-cifra/**").hasAnyRole(PAPEIS_ADMIN)
                         // ── Mostra Técnica (/mostra/<codigo>) ───────────────────
                         // Ler o QR do stand e ver o próprio progresso é do
                         // participante: as visitas valem a conquista MOSTRA_COMPLETA.
