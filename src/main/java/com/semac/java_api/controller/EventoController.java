@@ -60,6 +60,7 @@ public class EventoController {
                 participante ? evento.vagasRestantes() : null,
                 evento.palestrantes(),
                 null,
+                null,
                 null
         );
     }

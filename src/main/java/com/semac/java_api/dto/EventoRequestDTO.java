@@ -15,8 +15,9 @@ import java.util.List;
    dataHoraInicio/dataHoraFim chegam combinados (data + hora) pela borda
    da API no frontend.
 
-   `debateTempoFalaSeg`/`debateAlertaSeg` são o timer do telão do debate:
-   opcionais (null mantém o valor atual) e só usados em evento DEBATE. */
+   `debateTempoFalaSeg`/`debateAlertaSeg`/`debateTempoReplicaSeg` são o
+   timer do telão do debate: opcionais (null mantém o valor atual) e só
+   usados em evento DEBATE. */
 public record EventoRequestDTO(
         @NotBlank String nome,
         @NotNull Integer tipoEventoId,
@@ -28,5 +29,6 @@ public record EventoRequestDTO(
         @NotNull @Positive Integer capacidadeMaxima,
         @Valid List<PalestranteDTO> palestrantes,
         @Positive @Max(3600) Integer debateTempoFalaSeg,
-        @PositiveOrZero @Max(3600) Integer debateAlertaSeg
+        @PositiveOrZero @Max(3600) Integer debateAlertaSeg,
+        @Positive @Max(3600) Integer debateTempoReplicaSeg
 ) {}

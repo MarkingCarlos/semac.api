@@ -392,7 +392,7 @@ class RegrasEventoParticipanteTest {
 
     private EventoRequestDTO requisicaoDeEvento(Integer tipoEventoId, LocalDateTime inicio) {
         return new EventoRequestDTO("Palestra de abertura", tipoEventoId, "Auditorio", "Descricao",
-                null, inicio, inicio.plusHours(1), 500, List.of(), null, null);
+                null, inicio, inicio.plusHours(1), 500, List.of(), null, null, null);
     }
 
     private Evento palestraComecandoEm(LocalDateTime inicio) {

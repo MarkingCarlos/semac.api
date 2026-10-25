@@ -53,6 +53,10 @@ public class Evento {
     @Column(name = "debate_alerta_seg", nullable = false)
     private Integer debateAlertaSeg = 30;
 
+    /* Duração da réplica, que o participante pede depois da fala do outro. */
+    @Column(name = "debate_tempo_replica_seg", nullable = false)
+    private Integer debateTempoReplicaSeg = 30;
+
     @ManyToOne
     @JoinColumn(name = "trilha_id")
     private Trilha trilha;

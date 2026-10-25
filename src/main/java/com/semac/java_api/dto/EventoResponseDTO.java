@@ -11,7 +11,8 @@ import java.util.List;
    /admin; é o que faz a linha trocar o botão pela hora de início real.
 
    `palestrantes` vem na ordem do formulário (no debate: A, depois B), e
-   `debateTempoFalaSeg`/`debateAlertaSeg` configuram o timer do telão. */
+   `debateTempoFalaSeg`/`debateAlertaSeg`/`debateTempoReplicaSeg`
+   configuram o timer do telão. */
 public record EventoResponseDTO(
         Integer id,
         String nome,
@@ -26,5 +27,6 @@ public record EventoResponseDTO(
         Integer vagasRestantes,
         List<PalestranteDTO> palestrantes,
         Integer debateTempoFalaSeg,
-        Integer debateAlertaSeg
+        Integer debateAlertaSeg,
+        Integer debateTempoReplicaSeg
 ) {}

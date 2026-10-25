@@ -174,6 +174,11 @@ public class EventoService {
         if (dto.debateAlertaSeg() != null) {
             evento.setDebateAlertaSeg(dto.debateAlertaSeg());
         }
+        // Réplica não valida contra o alerta: o painel limita o alerta
+        // dela a um terço da duração (ver painelDebate.jsx).
+        if (dto.debateTempoReplicaSeg() != null) {
+            evento.setDebateTempoReplicaSeg(dto.debateTempoReplicaSeg());
+        }
         if (evento.getDebateAlertaSeg() >= evento.getDebateTempoFalaSeg()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "O alerta do debate precisa ser menor que o tempo de fala.");
@@ -286,7 +291,8 @@ public class EventoService {
                 vagasRestantes,
                 palestrantes,
                 evento.getDebateTempoFalaSeg(),
-                evento.getDebateAlertaSeg()
+                evento.getDebateAlertaSeg(),
+                evento.getDebateTempoReplicaSeg()
         );
     }
 }
