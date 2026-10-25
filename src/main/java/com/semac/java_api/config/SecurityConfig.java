@@ -220,6 +220,9 @@ public class SecurityConfig {
                         // Incluir pergunta à mão pelo /admin (ex.: entregue em papel):
                         // mesmo público da leitura, e vale com as perguntas fechadas.
                         .requestMatchers(HttpMethod.POST, "/api/evento/*/perguntas").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
+                        // Estado do telão do debate (painel no notebook ou no celular,
+                        // e a guia projetada): mesmo público do painel /debate/<id>.
+                        .requestMatchers("/api/evento/*/telao-debate").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         // Regras de xp (presença, Termo, cortes de atraso) — editadas em
                         // Informações SEMAC. O GET é do card "COMO GANHAR XP" do
                         // /participantes, então vale para qualquer autenticado.
