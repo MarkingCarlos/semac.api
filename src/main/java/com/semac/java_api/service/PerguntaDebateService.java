@@ -109,13 +109,15 @@ public class PerguntaDebateService {
                 .toList();
     }
 
-    /* Pergunta incluída à mão no /admin (ex.: entregue em papel no debate).
-       Diferente do envio público: vale com as perguntas fechadas, sem o
-       limite por pessoa e sem conquista — quem fez a pergunta é só o nome
-       digitado; `adminId` (do token) fica registrado como quem cadastrou. */
+    /* Pergunta incluída à mão no /admin (ex.: entregue em papel no debate)
+       ou escrita pela mediação no roteiro do painel (`daMediacao`, já no
+       `bloco`). Diferente do envio público: vale com as perguntas fechadas,
+       sem o limite por pessoa e sem conquista — quem fez a pergunta é só o
+       nome digitado; `adminId` (do token) fica registrado como quem cadastrou. */
     @Transactional
     public PerguntaDebateResponseDTO adicionarPelaComissao(Integer adminId, Integer eventoId,
-                                                           String texto, String nomeAutor) {
+                                                           String texto, String nomeAutor,
+                                                           Integer bloco, boolean daMediacao) {
         Pessoa admin = adminId == null ? null : pessoaRepository.findById(adminId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sessão inválida."));
 
@@ -125,7 +127,54 @@ public class PerguntaDebateService {
         pergunta.setCadastradaPor(admin);
         pergunta.setTexto(texto.trim());
         pergunta.setEnviadaEm(LocalDateTime.now());
+        pergunta.setDaMediacao(daMediacao);
+        if (daMediacao) {
+            pergunta.setBloco(bloco);
+        } else if (bloco != null) {
+            colocarPerguntaPublicoNoBloco(pergunta, bloco);
+        }
         return paraResposta(perguntaDebateRepository.save(pergunta));
+    }
+
+    /* Edição de uma pergunta da mediação no roteiro: texto e bloco. A do
+       público não é editável — o texto é de quem enviou. */
+    @Transactional
+    public PerguntaDebateResponseDTO editarDaMediacao(Integer perguntaId, String texto, Integer bloco) {
+        PerguntaDebate pergunta = buscarPergunta(perguntaId);
+        if (!Boolean.TRUE.equals(pergunta.getDaMediacao())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Só as perguntas da mediação podem ser editadas.");
+        }
+        pergunta.setTexto(texto.trim());
+        pergunta.setBloco(bloco);
+        return paraResposta(perguntaDebateRepository.save(pergunta));
+    }
+
+    /* Põe a pergunta num bloco do roteiro ou tira (bloco null). Do público
+       vai uma por bloco: escolher outra para o mesmo bloco tira a anterior. */
+    @Transactional
+    public PerguntaDebateResponseDTO definirBloco(Integer perguntaId, Integer bloco) {
+        PerguntaDebate pergunta = buscarPergunta(perguntaId);
+        if (Boolean.TRUE.equals(pergunta.getDaMediacao()) || bloco == null) {
+            pergunta.setBloco(bloco);
+        } else {
+            colocarPerguntaPublicoNoBloco(pergunta, bloco);
+        }
+        return paraResposta(perguntaDebateRepository.save(pergunta));
+    }
+
+    private void colocarPerguntaPublicoNoBloco(PerguntaDebate pergunta, Integer bloco) {
+        perguntaDebateRepository
+                .findByEventoIdAndBlocoAndDaMediacaoFalse(pergunta.getEvento().getId(), bloco)
+                .stream()
+                .filter(anterior -> !anterior.equals(pergunta))
+                .forEach(anterior -> anterior.setBloco(null));
+        pergunta.setBloco(bloco);
+    }
+
+    private PerguntaDebate buscarPergunta(Integer perguntaId) {
+        return perguntaDebateRepository.findById(perguntaId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pergunta não encontrada."));
     }
 
     /* Exclusão definitiva, pelo /admin. A conquista PERGUNTA_DEBATE de quem
@@ -145,10 +194,13 @@ public class PerguntaDebateService {
                 nomeDoAutor(pergunta),
                 pergunta.getPessoa() != null,
                 pergunta.getCadastradaPor() != null ? pergunta.getCadastradaPor().getNome() : null,
-                pergunta.getEnviadaEm());
+                pergunta.getEnviadaEm(),
+                pergunta.getBloco(),
+                Boolean.TRUE.equals(pergunta.getDaMediacao()));
     }
 
     private static String nomeDoAutor(PerguntaDebate pergunta) {
+        if (Boolean.TRUE.equals(pergunta.getDaMediacao()) && pergunta.getNomeAutor() == null) return "Mediação";
         if (pergunta.getPessoa() != null) return pergunta.getPessoa().getNome();
         return pergunta.getNomeAutor() != null ? pergunta.getNomeAutor() : "Anônimo";
     }

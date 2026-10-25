@@ -37,6 +37,7 @@ public class PerguntaDebateController {
                                                                @Valid @RequestBody PerguntaAdminRequestDTO dto) {
         Object adminId = jwt == null ? null : jwt.getClaim("id");
         return ResponseEntity.status(HttpStatus.CREATED).body(perguntaDebateService.adicionarPelaComissao(
-                adminId instanceof Number numero ? numero.intValue() : null, id, dto.texto(), dto.nomeAutor()));
+                adminId instanceof Number numero ? numero.intValue() : null, id, dto.texto(), dto.nomeAutor(),
+                dto.bloco(), Boolean.TRUE.equals(dto.daMediacao())));
     }
 }

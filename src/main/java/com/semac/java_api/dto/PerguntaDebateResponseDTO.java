@@ -9,12 +9,16 @@ import java.time.LocalDateTime;
    login) ou "Anônimo". `autorIdentificado` = veio de uma conta; false quer
    dizer que o nome, se houver, foi digitado e não é verificado.
    `nomeCadastradaPor` = diretor/presidente que incluiu a pergunta pelo
-   /admin; null quando veio do público. */
+   /admin; null quando veio do público.
+   `bloco` = bloco do roteiro do debate (null = fora dos blocos) e
+   `daMediacao` = escrita pela mediação no painel (editável). */
 public record PerguntaDebateResponseDTO(
         Integer id,
         String texto,
         String nomeParticipante,
         boolean autorIdentificado,
         String nomeCadastradaPor,
-        LocalDateTime enviadaEm
+        LocalDateTime enviadaEm,
+        Integer bloco,
+        boolean daMediacao
 ) {}

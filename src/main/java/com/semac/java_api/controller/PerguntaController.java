@@ -1,7 +1,10 @@
 package com.semac.java_api.controller;
 
 import com.semac.java_api.dto.DebatePerguntasAbertasDTO;
+import com.semac.java_api.dto.PerguntaBlocoRequestDTO;
 import com.semac.java_api.dto.PerguntaDebateEnviadaDTO;
+import com.semac.java_api.dto.PerguntaDebateResponseDTO;
+import com.semac.java_api.dto.PerguntaMediacaoRequestDTO;
 import com.semac.java_api.dto.PerguntaRequestDTO;
 import com.semac.java_api.service.PerguntaDebateService;
 import jakarta.validation.Valid;
@@ -47,6 +50,20 @@ public class PerguntaController {
     public ResponseEntity<Void> excluir(@PathVariable Integer id) {
         perguntaDebateService.excluir(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /* Roteiro do painel do debate: edita a pergunta da mediação (texto e
+       bloco) e põe/tira qualquer pergunta de um bloco. */
+    @PutMapping("/{id}")
+    public PerguntaDebateResponseDTO editarDaMediacao(@PathVariable Integer id,
+                                                      @Valid @RequestBody PerguntaMediacaoRequestDTO dto) {
+        return perguntaDebateService.editarDaMediacao(id, dto.texto(), dto.bloco());
+    }
+
+    @PatchMapping("/{id}/bloco")
+    public PerguntaDebateResponseDTO definirBloco(@PathVariable Integer id,
+                                                  @Valid @RequestBody PerguntaBlocoRequestDTO dto) {
+        return perguntaDebateService.definirBloco(id, dto.bloco());
     }
 
     /* Sem token (visitante, professor) o jwt chega null. */

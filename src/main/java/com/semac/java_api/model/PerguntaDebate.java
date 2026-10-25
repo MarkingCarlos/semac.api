@@ -1,5 +1,7 @@
 package com.semac.java_api.model;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -50,4 +52,15 @@ public class PerguntaDebate {
 
     @Column(name = "enviada_em", nullable = false)
     private LocalDateTime enviadaEm;
+
+    /* Bloco do roteiro do debate em que a pergunta vai; nulo = fora dos
+       blocos (ver V72__pergunta_debate_bloco.sql). */
+    @Column(name = "bloco")
+    @JdbcTypeCode(SqlTypes.SMALLINT)
+    private Integer bloco;
+
+    /* Escrita pela mediação no painel do debate (editável), e não enviada
+       pelo público. */
+    @Column(name = "da_mediacao", nullable = false)
+    private Boolean daMediacao = false;
 }

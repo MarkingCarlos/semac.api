@@ -15,6 +15,9 @@ public interface PerguntaDebateRepository extends JpaRepository<PerguntaDebate, 
 
     long countByEventoIdAndPessoaId(Integer eventoId, Integer pessoaId);
 
+    /* Pergunta do público que já ocupa um bloco do roteiro (uma por bloco). */
+    List<PerguntaDebate> findByEventoIdAndBlocoAndDaMediacaoFalse(Integer eventoId, Integer bloco);
+
     /* Conquista PERGUNTA_DEBATE: basta uma pergunta, de qualquer debate e
        de qualquer edição. */
     boolean existsByPessoaId(Integer pessoaId);
