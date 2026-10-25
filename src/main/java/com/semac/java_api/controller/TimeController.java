@@ -2,6 +2,7 @@ package com.semac.java_api.controller;
 
 import com.semac.java_api.dto.AtivoRequestDTO;
 import com.semac.java_api.dto.MeuTimeDTO;
+import com.semac.java_api.dto.MeuTimeResumoDTO;
 import com.semac.java_api.dto.TimeNomeRequestDTO;
 import com.semac.java_api.dto.TimesPainelDTO;
 import com.semac.java_api.model.Time;
@@ -68,6 +69,13 @@ public class TimeController {
     @GetMapping("/meu")
     public MeuTimeDTO meu(@AuthenticationPrincipal Jwt jwt) {
         return timeService.meuTime(idDoToken(jwt));
+    }
+
+    /* Bloco "Seu time" do /participantes. Só leitura: não revela o time
+       (isso só acontece em /meu, pela página /time). */
+    @GetMapping("/meu/resumo")
+    public MeuTimeResumoDTO meuResumo(@AuthenticationPrincipal Jwt jwt) {
+        return timeService.resumoMeuTime(idDoToken(jwt));
     }
 
     /* ── /admin ──────────────────────────────────────────────────── */

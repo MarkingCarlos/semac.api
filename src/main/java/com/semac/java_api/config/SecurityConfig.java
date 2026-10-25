@@ -356,6 +356,9 @@ public class SecurityConfig {
                         // Revelação do próprio time (id vem do token). Único lugar
                         // em que o participante descobre o time.
                         .requestMatchers(HttpMethod.GET, "/api/time/meu").hasRole(PAPEL_PARTICIPANTE)
+                        // Bloco "Seu time" do /participantes: só leitura, e só
+                        // mostra o time de quem já o revelou em /time.
+                        .requestMatchers(HttpMethod.GET, "/api/time/meu/resumo").hasRole(PAPEL_PARTICIPANTE)
                         // Mascote vai direto num <img src> em /time e no /admin
                         .requestMatchers(HttpMethod.GET, "/api/time/*/mascote").permitAll()
                         // Bloco Times da sub-aba Gamificação: nomes, mascotes,

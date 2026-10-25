@@ -1,6 +1,7 @@
 package com.semac.java_api.service;
 
 import com.semac.java_api.dto.MeuTimeDTO;
+import com.semac.java_api.dto.MeuTimeResumoDTO;
 import com.semac.java_api.dto.TimeAdminDTO;
 import com.semac.java_api.dto.TimesPainelDTO;
 import com.semac.java_api.model.ConfiguracaoInscricao;
@@ -31,9 +32,10 @@ import java.util.Optional;
 /* Times da SEMAC: sorteio, revelação em /time e o cadastro editável
    (nome e mascote) do /admin, aba Times.
 
-   O time só é exposto ao participante por GET /api/time/meu, chamado
-   pela página /time (link do QR code do cartão). O /participantes não
-   mostra o time de propósito. */
+   O time é revelado ao participante por GET /api/time/meu, chamado pela
+   página /time (link do QR code do cartão). O /participantes só mostra o
+   time depois disso, por GET /api/time/meu/resumo (resumoMeuTime), que é
+   só leitura e não revela nada sozinho. */
 @Service
 public class TimeService {
 
@@ -84,7 +86,7 @@ public class TimeService {
         }
 
         Time time = integrante.getTime();
-        Map<Integer, Long> xpPorTime = xpPorTime();
+        Map<Integer, Double> xpMedioPorTime = xpMedioPorTime();
         return new MeuTimeDTO(
                 true,
                 true,
@@ -94,8 +96,8 @@ public class TimeService {
                 time.getCor(),
                 time.getMascoteArquivo(),
                 timeIntegranteRepository.countByTime_Id(time.getId()),
-                posicaoDoTime(time.getId(), xpPorTime),
-                xpPorTime.getOrDefault(time.getId(), 0L)
+                posicaoDoTime(time.getId(), xpMedioPorTime),
+                xpMedioArredondado(time.getId(), xpMedioPorTime)
         );
     }
 
@@ -103,11 +105,16 @@ public class TimeService {
 
     @Transactional(readOnly = true)
     public TimesPainelDTO painel() {
-        Map<Integer, Long> xpPorTime = xpPorTime();
+        Map<Integer, Double> xpMedioPorTime = xpMedioPorTime();
         List<TimeAdminDTO> times = timeRepository.findAllByOrderByIdAsc().stream()
-                .map(t -> paraAdmin(t, xpPorTime))
+                .map(t -> paraAdmin(t, xpMedioPorTime))
                 .toList();
+        LocalDateTime revelacaoProgramadaEm = configuracaoDoAno()
+                .map(ConfiguracaoInscricao::getTimesRevelacaoEm)
+                .orElse(null);
         return new TimesPainelDTO(
+                configuracaoDoAno().map(ConfiguracaoInscricao::getTimesAtivos).orElse(Boolean.FALSE),
+                revelacaoProgramadaEm,
                 timesAtivos(),
                 pessoaRepository.countByRoleAndAtivoTrue(Role.PARTICIPANTE),
                 timeIntegranteRepository.count(),
@@ -181,6 +188,34 @@ public class TimeService {
         return painel();
     }
 
+    /* Bloco "Seu time" do /participantes: só para quem já abriu /time.
+       Nada é gravado — quem ainda não foi revelado (ou nem tem time) recebe
+       `revelado` false, e a revelação continua sendo só a do /time. */
+    @Transactional(readOnly = true)
+    public MeuTimeResumoDTO resumoMeuTime(Integer pessoaId) {
+        if (!timesAtivos()) {
+            return MeuTimeResumoDTO.naoRevelado();
+        }
+        Optional<TimeIntegrante> integrante = timeIntegranteRepository.findById(pessoaId)
+                .filter(i -> i.getReveladoEm() != null);
+        if (integrante.isEmpty()) {
+            return MeuTimeResumoDTO.naoRevelado();
+        }
+
+        Time time = integrante.get().getTime();
+        Map<Integer, Double> xpMedioPorTime = xpMedioPorTime();
+        return new MeuTimeResumoDTO(
+                true,
+                time.getId(),
+                time.getNome(),
+                time.getCor(),
+                time.getMascoteArquivo(),
+                posicaoDoTime(time.getId(), xpMedioPorTime),
+                (int) timeRepository.count(),
+                xpMedioArredondado(time.getId(), xpMedioPorTime)
+        );
+    }
+
     public Time buscarOuFalhar(Integer id) {
         return timeRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Time não encontrado."));
@@ -188,10 +223,22 @@ public class TimeService {
 
     /* ── Auxiliares ──────────────────────────────────────────────── */
 
+    /* Liberados pelo interruptor do /admin ou, sem ele, a partir do
+       horário da revelação programada (hora do servidor). Sem tarefa
+       agendada: a primeira requisição depois do horário já vê liberado. */
     private boolean timesAtivos() {
-        return configuracaoInscricaoRepository.findByAno(LocalDate.now().getYear())
-                .map(ConfiguracaoInscricao::getTimesAtivos)
+        return configuracaoDoAno()
+                .map(config -> Boolean.TRUE.equals(config.getTimesAtivos())
+                        || revelacaoProgramadaJaPassou(config.getTimesRevelacaoEm()))
                 .orElse(Boolean.FALSE);
+    }
+
+    private static boolean revelacaoProgramadaJaPassou(LocalDateTime revelacaoEm) {
+        return revelacaoEm != null && !LocalDateTime.now().isBefore(revelacaoEm);
+    }
+
+    private Optional<ConfiguracaoInscricao> configuracaoDoAno() {
+        return configuracaoInscricaoRepository.findByAno(LocalDate.now().getYear());
     }
 
     /* Empate entre os menores é decidido no sorteio. */
@@ -203,25 +250,36 @@ public class TimeService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Nenhum time cadastrado."));
     }
 
-    private Map<Integer, Long> xpPorTime() {
-        Map<Integer, Long> xp = new HashMap<>();
-        for (Object[] linha : timeIntegranteRepository.somarXpPorTime()) {
-            xp.put((Integer) linha[0], ((Number) linha[1]).longValue());
+    /* XP do time = soma do xp dos integrantes ÷ quantidade de integrantes.
+       Média, e não soma, para o time com mais gente não sair na frente só
+       por ser maior (quem chega depois do sorteio entra no time menor). */
+    private Map<Integer, Double> xpMedioPorTime() {
+        Map<Integer, Double> xpMedio = new HashMap<>();
+        for (Object[] linha : timeIntegranteRepository.somarXpEContarIntegrantesPorTime()) {
+            long soma = ((Number) linha[1]).longValue();
+            long integrantes = ((Number) linha[2]).longValue();
+            xpMedio.put((Integer) linha[0], integrantes == 0 ? 0.0 : (double) soma / integrantes);
         }
-        return xp;
+        return xpMedio;
     }
 
-    /* Posição pela soma de xp: 1 + quantos times têm soma maior. Times
+    /* A tela mostra a média arredondada; a posição usa a média exata, para
+       não empatar times que só ficam iguais depois de arredondar. */
+    private long xpMedioArredondado(Integer timeId, Map<Integer, Double> xpMedioPorTime) {
+        return Math.round(xpMedioPorTime.getOrDefault(timeId, 0.0));
+    }
+
+    /* Posição pela média de xp: 1 + quantos times têm média maior. Times
        empatados dividem a posição. */
-    private int posicaoDoTime(Integer timeId, Map<Integer, Long> xpPorTime) {
-        long xpDoTime = xpPorTime.getOrDefault(timeId, 0L);
+    private int posicaoDoTime(Integer timeId, Map<Integer, Double> xpMedioPorTime) {
+        double xpDoTime = xpMedioPorTime.getOrDefault(timeId, 0.0);
         long acima = timeRepository.findAllByOrderByIdAsc().stream()
-                .filter(t -> xpPorTime.getOrDefault(t.getId(), 0L) > xpDoTime)
+                .filter(t -> xpMedioPorTime.getOrDefault(t.getId(), 0.0) > xpDoTime)
                 .count();
         return (int) acima + 1;
     }
 
-    private TimeAdminDTO paraAdmin(Time time, Map<Integer, Long> xpPorTime) {
+    private TimeAdminDTO paraAdmin(Time time, Map<Integer, Double> xpMedioPorTime) {
         return new TimeAdminDTO(
                 time.getId(),
                 time.getNome(),
@@ -229,7 +287,7 @@ public class TimeService {
                 time.getMascoteArquivo(),
                 timeIntegranteRepository.countByTime_Id(time.getId()),
                 timeIntegranteRepository.countByTime_IdAndReveladoEmIsNotNull(time.getId()),
-                xpPorTime.getOrDefault(time.getId(), 0L)
+                xpMedioArredondado(time.getId(), xpMedioPorTime)
         );
     }
 }

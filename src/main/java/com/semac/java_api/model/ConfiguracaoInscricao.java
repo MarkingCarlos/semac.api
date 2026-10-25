@@ -3,6 +3,8 @@ package com.semac.java_api.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 /* Liga/desliga o botão "Inscreva-se" da Home — uma linha por ano. Editada
    no /admin (seção "Informações SEMAC"). Puramente visual: não bloqueia
    o cadastro em si, só a chamada pública de entrada nele. */
@@ -48,4 +50,10 @@ public class ConfiguracaoInscricao {
        quem escaneia o QR code vai para o /participantes sem ver nada. */
     @Column(nullable = false)
     private Boolean timesAtivos = Boolean.FALSE;
+
+    /* Revelação programada: a partir deste horário os times valem como
+       liberados mesmo com `timesAtivos` desligado. Nulo = só o interruptor
+       decide (ver V73__times_revelacao_programada.sql). */
+    @Column(name = "times_revelacao_em")
+    private LocalDateTime timesRevelacaoEm;
 }
