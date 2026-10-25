@@ -106,6 +106,11 @@ public class SecurityConfig {
        PAPEIS_DASHBOARD_MINICURSOS do frontend (auth/sessao.js). */
     private static final String[] PAPEIS_DASHBOARD_MINICURSOS = { "PRESIDENTE", "DIRETOR_SITE", "DIRETOR_CONTEUDO" };
 
+    /* Card "Top 3 do ranking" da dashboard (com o ranking completo, e-mail
+       incluído): toda a diretoria e a presidência. MEMBRO fica de fora.
+       Espelha PAPEIS_DASHBOARD_RANKING do frontend (auth/sessao.js). */
+    private static final String[] PAPEIS_DASHBOARD_RANKING = PAPEIS_ADMIN_SEM_MEMBRO;
+
     /* Quem vê, cria e altera dados de participante e da comissão: listas,
        comprovante, pagamento, cadastro de balcão, correção de cadastro e
        minicursos de outra pessoa. É o público da aba Pessoas do /admin —
@@ -249,6 +254,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/relatorio/**").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         // Card de minicursos — antes da regra geral da dashboard, que tranca o resto
                         .requestMatchers(HttpMethod.GET, "/api/dashboard/minicursos", "/api/dashboard/minicursos/*/inscritos").hasAnyRole(PAPEIS_DASHBOARD_MINICURSOS)
+                        // Card de ranking — idem
+                        .requestMatchers(HttpMethod.GET, "/api/dashboard/ranking").hasAnyRole(PAPEIS_DASHBOARD_RANKING)
                         .requestMatchers(HttpMethod.GET, "/api/dashboard/**").hasAnyRole(PAPEIS_DASHBOARD)
                         // Crachás impressos — devolve o uuid de check-in de todo mundo, então
                         // fica com quem gerencia pessoas (mesmo público da aba Pessoas)
