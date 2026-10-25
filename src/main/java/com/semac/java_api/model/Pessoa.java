@@ -139,4 +139,15 @@ public class Pessoa {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "kit_entregue_por_id")
     private Pessoa kitEntreguePor;
+
+    /* true = entrega confirmada pela leitura do QR do crachá; false =
+       marcada sem leitura. null enquanto não entregue (e nas entregas
+       anteriores a V68). */
+    @Column(name = "kit_verificado_qr")
+    private Boolean kitVerificadoQr;
+
+    /* Por que o QR não foi lido, quando o celular entregou sem leitura.
+       null nos demais casos (QR lido, desktop, comissão). */
+    @Column(name = "kit_justificativa_sem_qr")
+    private String kitJustificativaSemQr;
 }

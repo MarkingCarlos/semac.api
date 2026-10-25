@@ -100,12 +100,13 @@ public class PessoaController {
         return pessoaService.listarKits();
     }
 
-    /* Marca ou desfaz a entrega do kit. Quem entregou vem do token. */
+    /* Marca ou desfaz a entrega do kit. Quem entregou vem do token; o
+       uuid do QR lido no celular, quando vem, é conferido no service. */
     @PatchMapping("/{id}/kit")
     public KitPessoaDTO marcarKit(@PathVariable Integer id,
                                   @Valid @RequestBody KitEntregueRequestDTO dto,
                                   @AuthenticationPrincipal Jwt jwt) {
-        return pessoaService.marcarKit(id, dto.entregue(), idDoToken(jwt));
+        return pessoaService.marcarKit(id, dto.entregue(), dto.uuid(), dto.justificativaSemQr(), idDoToken(jwt));
     }
 
     /* Perfil do próprio usuário logado (seção Início do /admin). O usuário é

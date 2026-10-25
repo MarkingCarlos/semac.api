@@ -473,7 +473,14 @@ public class PessoaService {
        novo quem já recebeu não sobrescreve a data nem quem entregou: o
        registro que vale é o da primeira entrega. */
     @Transactional
-    public KitPessoaDTO marcarKit(Integer id, boolean entregue, Integer idQuemEntregou) {
+    /* `uuid` é o QR do crachá lido no celular. Opcional: no desktop e
+       para a comissão a entrega é marcada sem leitura. Quando vem, tem
+       que ser da própria pessoa — a tela só conhece o id, então é aqui
+       que se confere que o crachá lido é dela. Grava se a entrega foi
+       verificada por QR ou não, para dar para auditar depois — e, quando
+       o celular não conseguiu ler, o motivo digitado. */
+    public KitPessoaDTO marcarKit(Integer id, boolean entregue, String uuid,
+                                  String justificativaSemQr, Integer idQuemEntregou) {
         Pessoa pessoa = pessoaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Pessoa não encontrada."));
@@ -486,12 +493,28 @@ public class PessoaService {
                     "Ingresso por dia não inclui kit.");
         }
 
+        boolean lidoPorQr = entregue && uuid != null && !uuid.isBlank();
+        if (lidoPorQr) {
+            Pessoa donoDoQr = pessoaRepository.findByUuid(uuid.trim())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "QR code não reconhecido."));
+            if (!donoDoQr.getId().equals(pessoa.getId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Este QR code é de " + donoDoQr.getNome() + ", não de " + pessoa.getNome() + ".");
+            }
+        }
+
         if (!entregue) {
             pessoa.setKitEntregueEm(null);
             pessoa.setKitEntreguePor(null);
+            pessoa.setKitVerificadoQr(null);
+            pessoa.setKitJustificativaSemQr(null);
         } else if (pessoa.getKitEntregueEm() == null) {
             pessoa.setKitEntregueEm(LocalDateTime.now());
             pessoa.setKitEntreguePor(pessoaRepository.getReferenceById(idQuemEntregou));
+            pessoa.setKitVerificadoQr(lidoPorQr);
+            boolean temJustificativa = !lidoPorQr && justificativaSemQr != null && !justificativaSemQr.isBlank();
+            pessoa.setKitJustificativaSemQr(temJustificativa ? justificativaSemQr.trim() : null);
         }
         return paraKit(pessoaRepository.save(pessoa));
     }
@@ -512,7 +535,9 @@ public class PessoaService {
                 pessoa.getTipoInscricao() == null ? null : pessoa.getTipoInscricao().getNome(),
                 pessoa.getCamisaPedidos().stream().map(this::paraCamisetaKit).toList(),
                 pessoa.getKitEntregueEm(),
-                quemEntregou == null ? null : quemEntregou.getNome());
+                quemEntregou == null ? null : quemEntregou.getNome(),
+                pessoa.getKitVerificadoQr(),
+                pessoa.getKitJustificativaSemQr());
     }
 
     /* Camiseta de comissão é só a inclusa no kit de quem é da comissão;

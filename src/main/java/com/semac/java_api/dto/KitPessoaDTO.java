@@ -8,7 +8,11 @@ import java.util.List;
    de pagamento — só o que ajuda a achar a pessoa e montar o kit.
    `role` é PARTICIPANTE ou o papel na comissão; `ingresso` vem null para
    a comissão. `kitEntregueEm` null = kit ainda não entregue;
-   `kitEntreguePorNome` é null também quando quem entregou foi excluído. */
+   `kitEntreguePorNome` é null também quando quem entregou foi excluído.
+   `kitVerificadoQr`: true se a entrega foi confirmada lendo o QR do
+   crachá, false se marcada sem leitura, null se não entregue (ou entregue
+   antes de isso ser registrado). `kitJustificativaSemQr` é o motivo
+   quando o celular entregou sem conseguir ler o QR. */
 public record KitPessoaDTO(
         Integer id,
         String nome,
@@ -16,5 +20,7 @@ public record KitPessoaDTO(
         String ingresso,
         List<CamisetaKitDTO> camisetas,
         LocalDateTime kitEntregueEm,
-        String kitEntreguePorNome
+        String kitEntreguePorNome,
+        Boolean kitVerificadoQr,
+        String kitJustificativaSemQr
 ) {}
