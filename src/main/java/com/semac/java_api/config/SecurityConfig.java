@@ -53,10 +53,11 @@ public class SecurityConfig {
             "DIRETOR_SITE", "PRESIDENTE", "DIRETOR_CONTEUDO", "DIRETOR_PATROCINIO", "DIRETOR_APOIO", "DIRETOR_MARKETING"
     };
 
-    /* Mesmos papéis do financeiro, com nome próprio: quem pode editar e
-       disparar e-mail em nome da SEMAC. Separado para que afrouxar um não
-       afrouxe o outro sem querer. */
-    private static final String[] PAPEIS_MENSAGENS = { "DIRETOR_SITE", "PRESIDENTE" };
+    /* Quem pode editar e disparar e-mail em nome da SEMAC (aba Mensagens
+       do /admin): os papéis do financeiro mais a diretoria de conteúdo.
+       Separado do financeiro para que afrouxar um não afrouxe o outro sem
+       querer. Espelha os papéis da aba Mensagens em Admin.jsx. */
+    private static final String[] PAPEIS_MENSAGENS = { "DIRETOR_SITE", "PRESIDENTE", "DIRETOR_CONTEUDO" };
 
     /* Qualquer papel de comissão — espelha PAPEIS_ADMIN do frontend
        (auth/sessao.js). Financeiro (acima) é um subconjunto: quem tem
@@ -157,7 +158,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/evento/*/inscricao").hasRole(PAPEL_PARTICIPANTE)
                         .requestMatchers(HttpMethod.DELETE, "/api/evento/*/inscricao").hasRole(PAPEL_PARTICIPANTE)
                         // Textos dos e-mails automáticos (/admin -> Mensagens).
-                        // Mesmo público do financeiro: mudar o texto de uma mensagem
+                        // Público restrito (financeiro + conteúdo): mudar o texto de uma mensagem
                         // que sai para todos os inscritos não é ação de rotina, e o
                         // envio de teste consome cota diária do Gmail.
                         .requestMatchers("/api/admin/modelos-email/**").hasAnyRole(PAPEIS_MENSAGENS)
