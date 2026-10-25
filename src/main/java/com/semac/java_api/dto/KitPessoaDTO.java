@@ -12,7 +12,9 @@ import java.util.List;
    `kitVerificadoQr`: true se a entrega foi confirmada lendo o QR do
    crachá, false se marcada sem leitura, null se não entregue (ou entregue
    antes de isso ser registrado). `kitJustificativaSemQr` é o motivo
-   quando o celular entregou sem conseguir ler o QR. */
+   quando o celular entregou sem conseguir ler o QR. `kitReduzido` é
+   true para o diarista: o ingresso por dia não inclui o kit completo,
+   só folder e crachá. */
 public record KitPessoaDTO(
         Integer id,
         String nome,
@@ -22,5 +24,6 @@ public record KitPessoaDTO(
         LocalDateTime kitEntregueEm,
         String kitEntreguePorNome,
         Boolean kitVerificadoQr,
-        String kitJustificativaSemQr
+        String kitJustificativaSemQr,
+        boolean kitReduzido
 ) {}

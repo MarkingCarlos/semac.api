@@ -458,13 +458,13 @@ public class PessoaService {
     /* ── Entrega do kit (sub-aba Kits de Pessoas do /admin) ───────── */
 
     /* Quem recebe kit no credenciamento: participantes confirmados e toda
-       a comissão. Pendente fica de fora (ainda não pagou/foi confirmado),
-       e diarista também — ingresso por dia não inclui kit, mesma regra da
-       previsão de gastos (PessoaRepository.contarInscritosComKit). */
+       a comissão. Pendente fica de fora (ainda não pagou/foi confirmado).
+       Diarista entra, mas o ingresso por dia não inclui o kit completo:
+       recebe só folder e crachá (kitReduzido no DTO). A previsão de gastos
+       segue contando só o kit completo (PessoaRepository.contarInscritosComKit). */
     @Transactional(readOnly = true)
     public List<KitPessoaDTO> listarKits() {
         return pessoaRepository.findAllByRoleIsNotNullOrderByNomeAsc().stream()
-                .filter(this::recebeKit)
                 .map(this::paraKit)
                 .toList();
     }
@@ -488,11 +488,6 @@ public class PessoaService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Confirme a inscrição antes de entregar o kit.");
         }
-        if (!recebeKit(pessoa)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Ingresso por dia não inclui kit.");
-        }
-
         boolean lidoPorQr = entregue && uuid != null && !uuid.isBlank();
         if (lidoPorQr) {
             Pessoa donoDoQr = pessoaRepository.findByUuid(uuid.trim())
@@ -519,7 +514,9 @@ public class PessoaService {
         return paraKit(pessoaRepository.save(pessoa));
     }
 
-    private boolean recebeKit(Pessoa pessoa) {
+    /* Kit completo: comissão e participante com ingresso que não é por
+       dia. Diarista leva só folder e crachá. */
+    private boolean recebeKitCompleto(Pessoa pessoa) {
         TipoInscricao ingresso = pessoa.getTipoInscricao();
         return pessoa.getRole() != Role.PARTICIPANTE
                 || ingresso == null
@@ -537,7 +534,8 @@ public class PessoaService {
                 pessoa.getKitEntregueEm(),
                 quemEntregou == null ? null : quemEntregou.getNome(),
                 pessoa.getKitVerificadoQr(),
-                pessoa.getKitJustificativaSemQr());
+                pessoa.getKitJustificativaSemQr(),
+                !recebeKitCompleto(pessoa));
     }
 
     /* Camiseta de comissão é só a inclusa no kit de quem é da comissão;
