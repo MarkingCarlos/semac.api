@@ -352,6 +352,10 @@ public class SecurityConfig {
                         // rota de conquista que venha a existir e não esteja listada
                         // acima nasceria pública. Aqui ela exige ao menos comissão.
                         .requestMatchers("/api/conquista/**").hasAnyRole(PAPEIS_ADMIN)
+                        // ── Brinde da comissão (26/10) ──────────────────────────
+                        // Toda a comissão: cada um vê o próprio QR no /admin e
+                        // qualquer um entrega lendo no /checkin.
+                        .requestMatchers("/api/brinde-comissao/**").hasAnyRole(PAPEIS_ADMIN)
                         // ── Times (/time) ───────────────────────────────────────
                         // Revelação do próprio time (id vem do token). Único lugar
                         // em que o participante descobre o time.
