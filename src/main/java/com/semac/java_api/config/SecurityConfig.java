@@ -340,8 +340,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/conquista").hasAnyRole(PAPEIS_ADMIN)
                         // Conceder conquista manual (/checkin) — credita pontos que
                         // mexem no ranking, então fica com diretores e presidência.
-                        // MEMBRO segue podendo marcar presença, mas não conceder.
-                        .requestMatchers(HttpMethod.POST, "/api/conquista/*/conceder").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
+                        // MEMBRO entra na rota só para as conquistas de
+                        // CatalogoConquistas.CONQUISTAS_CONCEDIDAS_POR_MEMBRO; as
+                        // demais o ConquistaService recusa com 403.
+                        .requestMatchers(HttpMethod.POST, "/api/conquista/*/conceder").hasAnyRole(PAPEIS_ADMIN)
                         // Reavaliação em massa das regras automáticas (botão do /admin)
                         .requestMatchers(HttpMethod.POST, "/api/conquista/reavaliar").hasAnyRole(PAPEIS_GAMIFICACAO)
                         // Conquistas de um participante e revogação — mesmo público

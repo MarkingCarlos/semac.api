@@ -5,6 +5,7 @@ import com.semac.java_api.model.enums.TipoValidacaoConquista;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static com.semac.java_api.model.enums.TipoValidacaoConquista.AUTOMATICA;
 import static com.semac.java_api.model.enums.TipoValidacaoConquista.MANUAL;
@@ -39,6 +40,15 @@ public final class CatalogoConquistas {
     public static final String CODIGO_AVALIACAO_COMPLETA = "AVALIACAO_COMPLETA";
     public static final String CODIGO_PERGUNTA_ESCOLHIDA = "PERGUNTA_ESCOLHIDA";
     public static final String CODIGO_LIGEIRINHO = "LIGEIRINHO";
+    public static final String CODIGO_ALQUIMIA_COMPLETA = "ALQUIMIA_COMPLETA";
+
+    /* Vagas no pódio da tarefa de cada minicurso (ALQUIMIA_COMPLETA). */
+    public static final int VAGAS_PODIO_TAREFA_MINICURSO = 3;
+
+    /* Conquistas manuais que MEMBRO também concede — o pódio do minicurso
+       é validado por quem está na sala. As outras seguem só com diretoria
+       e presidência (ver ConquistaService.exigirPapelDeConcessao). */
+    public static final Set<String> CONQUISTAS_CONCEDIDAS_POR_MEMBRO = Set.of(CODIGO_ALQUIMIA_COMPLETA);
 
     /* Último dia (inclusive) em que a comissão pode conceder uma conquista
        MANUAL. Conquista fora do mapa não tem prazo. Diretoria de site e
@@ -133,7 +143,12 @@ public final class CatalogoConquistas {
                     "Ligeirinho",
                     "Seja o primeiro participante do dia a vencer um desafio da SEMAC — "
                             + "o Termo ou a Cifra do Dia, o que sair primeiro.",
-                    AUTOMATICA, 4, 13)
+                    AUTOMATICA, 4, 13),
+            new ConquistaSemeada(
+                    CODIGO_ALQUIMIA_COMPLETA,
+                    "Alquimia Completa",
+                    "Esteja entre os 3 primeiros a concluir a tarefa de um minicurso.",
+                    MANUAL, 3, 14)
     );
 
     private CatalogoConquistas() {

@@ -13,6 +13,7 @@ import com.semac.java_api.model.Evento;
 import com.semac.java_api.model.EventoParticipante;
 import com.semac.java_api.model.ParticipanteConquista;
 import com.semac.java_api.model.Pessoa;
+import com.semac.java_api.model.VitoriaTarefaMinicurso;
 import com.semac.java_api.model.enums.CodigoTipoEvento;
 import com.semac.java_api.model.enums.Role;
 import com.semac.java_api.model.enums.TipoValidacaoConquista;
@@ -30,6 +31,7 @@ import com.semac.java_api.repository.PerguntaDebateRepository;
 import com.semac.java_api.repository.PessoaRepository;
 import com.semac.java_api.repository.TrabalhoMostraRepository;
 import com.semac.java_api.repository.VisitaTrabalhoMostraRepository;
+import com.semac.java_api.repository.VitoriaTarefaMinicursoRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -80,6 +82,7 @@ public class ConquistaService {
     private final AvaliacaoEventoRepository avaliacaoEventoRepository;
     private final TermoJogoRepository termoJogoRepository;
     private final DesafioCifraJogoRepository desafioCifraJogoRepository;
+    private final VitoriaTarefaMinicursoRepository vitoriaTarefaMinicursoRepository;
 
     public ConquistaService(PessoaRepository pessoaRepository,
                             ConquistaRepository conquistaRepository,
@@ -92,7 +95,8 @@ public class ConquistaService {
                             PerguntaDebateRepository perguntaDebateRepository,
                             AvaliacaoEventoRepository avaliacaoEventoRepository,
                             TermoJogoRepository termoJogoRepository,
-                            DesafioCifraJogoRepository desafioCifraJogoRepository) {
+                            DesafioCifraJogoRepository desafioCifraJogoRepository,
+                            VitoriaTarefaMinicursoRepository vitoriaTarefaMinicursoRepository) {
         this.pessoaRepository = pessoaRepository;
         this.conquistaRepository = conquistaRepository;
         this.participanteConquistaRepository = participanteConquistaRepository;
@@ -105,6 +109,7 @@ public class ConquistaService {
         this.avaliacaoEventoRepository = avaliacaoEventoRepository;
         this.termoJogoRepository = termoJogoRepository;
         this.desafioCifraJogoRepository = desafioCifraJogoRepository;
+        this.vitoriaTarefaMinicursoRepository = vitoriaTarefaMinicursoRepository;
     }
 
     /* ── Catálogo (/admin -> Informações SEMAC) ──────────────────── */
@@ -737,7 +742,12 @@ public class ConquistaService {
 
         Pessoa concedidaPor = pessoaRepository.findById(idDeQuemConcede)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sessão inválida."));
+        exigirPapelDeConcessao(conquista, concedidaPor);
         exigirPrazoDeConcessao(conquista, concedidaPor);
+
+        if (CatalogoConquistas.CODIGO_ALQUIMIA_COMPLETA.equals(conquista.getCodigo())) {
+            return concederVitoriaTarefaMinicurso(participante, conquista, concedidaPor);
+        }
 
         if (!conceder(participante, conquista, concedidaPor)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -749,7 +759,83 @@ public class ConquistaService {
                 conquista.getNome(),
                 conquista.getPontosBase(),
                 participante.getNivel() == null ? null : participante.getNivel().getNome(),
-                participante.getXp());
+                participante.getXp(),
+                null,
+                false);
+    }
+
+    /* ALQUIMIA_COMPLETA: os 3 primeiros a concluir a tarefa de cada
+       minicurso. O minicurso é o de hoje em que a pessoa fez check-in —
+       há um por pessoa por dia, então quem opera o /checkin não precisa
+       escolher. A mesma pessoa pode voltar ao pódio no outro dia de
+       minicurso: entra no pódio de novo, mas a conquista (e os pontos)
+       só vêm na primeira vez. */
+    private ConquistaConcedidaDTO concederVitoriaTarefaMinicurso(Pessoa participante,
+                                                                 Conquista conquista,
+                                                                 Pessoa concedidaPor) {
+        LocalDate hoje = LocalDate.now();
+        List<Evento> minicursosDeHoje = eventoParticipanteRepository
+                .buscarComEventoPorParticipante(participante.getId()).stream()
+                .filter(ep -> ep.getStatus() == StatusPresenca.PRESENTE)
+                .map(EventoParticipante::getEvento)
+                .filter(e -> e.getTipoEvento().getCodigo() == CodigoTipoEvento.MINICURSO)
+                .filter(e -> e.getDataHoraInicio().toLocalDate().equals(hoje))
+                .toList();
+        if (minicursosDeHoje.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    participante.getNome() + " não fez check-in em nenhum minicurso hoje.");
+        }
+        if (minicursosDeHoje.size() > 1) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    participante.getNome() + " está presente em mais de um minicurso hoje.");
+        }
+
+        // Trava o minicurso: duas leituras ao mesmo tempo não passam juntas pela contagem de vagas
+        Evento minicurso = eventoRepository.buscarParaInscricao(minicursosDeHoje.get(0).getId())
+                .orElseThrow();
+
+        if (vitoriaTarefaMinicursoRepository.existsByEventoIdAndPessoaId(minicurso.getId(), participante.getId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    participante.getNome() + " já está no pódio de " + minicurso.getNome() + ".");
+        }
+        long ocupadas = vitoriaTarefaMinicursoRepository.countByEventoId(minicurso.getId());
+        if (ocupadas >= CatalogoConquistas.VAGAS_PODIO_TAREFA_MINICURSO) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "O pódio de " + minicurso.getNome() + " já tem os "
+                            + CatalogoConquistas.VAGAS_PODIO_TAREFA_MINICURSO + " vencedores.");
+        }
+
+        boolean concedidaAgora = conceder(participante, conquista, concedidaPor);
+        int pontos = concedidaAgora && conquista.getPontosBase() != null ? conquista.getPontosBase() : 0;
+
+        VitoriaTarefaMinicurso vitoria = new VitoriaTarefaMinicurso();
+        vitoria.setEvento(minicurso);
+        vitoria.setPessoa(participante);
+        vitoria.setConcedidaEm(LocalDateTime.now());
+        vitoria.setConcedidaPor(concedidaPor);
+        vitoria.setXpCreditado(pontos);
+        vitoriaTarefaMinicursoRepository.save(vitoria);
+
+        return new ConquistaConcedidaDTO(
+                participante.getNome(),
+                conquista.getNome(),
+                pontos,
+                participante.getNivel() == null ? null : participante.getNivel().getNome(),
+                participante.getXp(),
+                String.format("%s · %dº de %d", minicurso.getNome(), ocupadas + 1,
+                        CatalogoConquistas.VAGAS_PODIO_TAREFA_MINICURSO),
+                !concedidaAgora);
+    }
+
+    /* MEMBRO passa pelo SecurityConfig na rota de concessão, mas só leva
+       as conquistas de CatalogoConquistas.CONQUISTAS_CONCEDIDAS_POR_MEMBRO. */
+    private void exigirPapelDeConcessao(Conquista conquista, Pessoa concedidaPor) {
+        if (concedidaPor.getRole() != Role.MEMBRO
+                || CatalogoConquistas.CONQUISTAS_CONCEDIDAS_POR_MEMBRO.contains(conquista.getCodigo())) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "Só a diretoria e a presidência concedem esta conquista.");
     }
 
     /* Papéis que concedem conquista manual mesmo depois do prazo do
