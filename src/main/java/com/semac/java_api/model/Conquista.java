@@ -4,6 +4,7 @@ import com.semac.java_api.model.enums.TipoValidacaoConquista;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,6 +42,21 @@ public class Conquista {
 
     @Column(name = "imagem_url")
     private String imagemUrl;
+
+    /* Enquadramento da imagem na moldura dos cards: ponto da imagem que
+       fica em evidência (em %) e zoom (1 a 3), ver V76. A imagem original
+       não é recortada. Trocar a imagem volta para o padrão — ver
+       ConquistaService.definirImagem. */
+    @Column(name = "imagem_pos_x", nullable = false, precision = 5, scale = 2)
+    private BigDecimal imagemPosX = ENQUADRAMENTO_CENTRO;
+
+    @Column(name = "imagem_pos_y", nullable = false, precision = 5, scale = 2)
+    private BigDecimal imagemPosY = ENQUADRAMENTO_CENTRO;
+
+    @Column(name = "imagem_zoom", nullable = false, precision = 4, scale = 2)
+    private BigDecimal imagemZoom = BigDecimal.ONE;
+
+    public static final BigDecimal ENQUADRAMENTO_CENTRO = BigDecimal.valueOf(50);
 
     @Column(name = "pontos_base", nullable = false)
     private Integer pontosBase;

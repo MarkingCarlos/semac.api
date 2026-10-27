@@ -1,5 +1,6 @@
 package com.semac.java_api.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /* Uma conquista como o participante a vê, em /participantes.
@@ -16,7 +17,8 @@ import java.time.LocalDateTime;
    abrir. Vira false assim que o front confirma a exibição
    (POST /api/conquista/{id}/vista).
    `imagemVersao` é o nome do arquivo (null se não houver) e serve de
-   cache-buster na URL da imagem — ver ConquistaResponseDTO. */
+   cache-buster na URL da imagem, e `imagemPosX`/`imagemPosY`/`imagemZoom`
+   são o enquadramento dela no card — ver ConquistaResponseDTO. */
 public record ConquistaParticipanteDTO(
         Integer id,
         String nome,
@@ -27,5 +29,8 @@ public record ConquistaParticipanteDTO(
         String imagemVersao,
         Boolean desbloqueada,
         LocalDateTime obtidaEm,
-        Boolean celebrar
+        Boolean celebrar,
+        BigDecimal imagemPosX,
+        BigDecimal imagemPosY,
+        BigDecimal imagemZoom
 ) {}

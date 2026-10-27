@@ -5,6 +5,7 @@ import com.semac.java_api.dto.ConcederConquistaRequestDTO;
 import com.semac.java_api.dto.ConquistaConcedidaDTO;
 import com.semac.java_api.dto.ConquistaParticipanteDTO;
 import com.semac.java_api.dto.ConquistaRequestDTO;
+import com.semac.java_api.dto.EnquadramentoImagemConquistaRequestDTO;
 import com.semac.java_api.dto.ConquistaResponseDTO;
 import com.semac.java_api.model.Conquista;
 import com.semac.java_api.service.ConquistaService;
@@ -177,6 +178,14 @@ public class ConquistaController {
         } catch (IOException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erro ao salvar a imagem.");
         }
+    }
+
+    /* Enquadramento da imagem na moldura dos cards (botão "Ajustar imagem"
+       do /admin). 409 se a conquista ainda não tem imagem. */
+    @PutMapping("/{id}/enquadramento")
+    public ConquistaResponseDTO definirEnquadramento(@PathVariable Integer id,
+                                                     @Valid @RequestBody EnquadramentoImagemConquistaRequestDTO dto) {
+        return conquistaService.definirEnquadramento(id, dto);
     }
 
     /* Pública: usada direto num <img src> na área do participante e no

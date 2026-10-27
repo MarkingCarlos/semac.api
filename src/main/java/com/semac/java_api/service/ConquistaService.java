@@ -6,6 +6,7 @@ import com.semac.java_api.dto.ConquistaDoParticipanteDTO;
 import com.semac.java_api.dto.ConquistaParticipanteDTO;
 import com.semac.java_api.dto.ConquistaRequestDTO;
 import com.semac.java_api.dto.ConquistaResponseDTO;
+import com.semac.java_api.dto.EnquadramentoImagemConquistaRequestDTO;
 import com.semac.java_api.config.CatalogoConquistas;
 import com.semac.java_api.model.Conquista;
 import com.semac.java_api.model.Evento;
@@ -36,6 +37,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -159,10 +161,29 @@ public class ConquistaService {
         return paraResposta(conquistaRepository.save(conquista));
     }
 
+    /* Imagem nova volta ao enquadramento padrão: o ajuste da anterior não
+       diz nada sobre esta (mesmo critério da foto do palestrante). */
     @Transactional
     public ConquistaResponseDTO definirImagem(Integer id, String nomeArquivo) {
         Conquista conquista = buscarOuFalhar(id);
         conquista.setImagemUrl(nomeArquivo);
+        conquista.setImagemPosX(Conquista.ENQUADRAMENTO_CENTRO);
+        conquista.setImagemPosY(Conquista.ENQUADRAMENTO_CENTRO);
+        conquista.setImagemZoom(BigDecimal.ONE);
+        return paraResposta(conquistaRepository.save(conquista));
+    }
+
+    /* Botão "Ajustar imagem" do /admin: grava na hora, sem passar pelo
+       formulário de edição. */
+    @Transactional
+    public ConquistaResponseDTO definirEnquadramento(Integer id, EnquadramentoImagemConquistaRequestDTO dto) {
+        Conquista conquista = buscarOuFalhar(id);
+        if (conquista.getImagemUrl() == null || conquista.getImagemUrl().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Envie uma imagem antes de ajustá-la.");
+        }
+        conquista.setImagemPosX(dto.imagemPosX());
+        conquista.setImagemPosY(dto.imagemPosY());
+        conquista.setImagemZoom(dto.imagemZoom());
         return paraResposta(conquistaRepository.save(conquista));
     }
 
@@ -210,7 +231,10 @@ public class ConquistaService {
                             conquista.getImagemUrl(),
                             vinculo != null,
                             vinculo == null ? null : vinculo.getObtidaEm(),
-                            vinculo != null && vinculo.getVistaEm() == null);
+                            vinculo != null && vinculo.getVistaEm() == null,
+                            conquista.getImagemPosX(),
+                            conquista.getImagemPosY(),
+                            conquista.getImagemZoom());
                 })
                 .toList();
     }
@@ -818,7 +842,10 @@ public class ConquistaService {
                 conquista.getTipoValidacao() == null ? null : conquista.getTipoValidacao().name(),
                 conquista.getImagemUrl(),
                 participanteConquistaRepository.countByPk_ConquistaId(conquista.getId()),
-                CatalogoConquistas.PRAZOS_CONCESSAO_MANUAL.get(conquista.getCodigo()));
+                CatalogoConquistas.PRAZOS_CONCESSAO_MANUAL.get(conquista.getCodigo()),
+                conquista.getImagemPosX(),
+                conquista.getImagemPosY(),
+                conquista.getImagemZoom());
     }
 
     /* Mesmo critério de InscricaoEventoService.creditarXp, aceitando

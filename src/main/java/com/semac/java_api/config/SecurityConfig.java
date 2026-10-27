@@ -353,6 +353,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/conquista/*").hasAnyRole(PAPEIS_GAMIFICACAO)
                         .requestMatchers(HttpMethod.PATCH, "/api/conquista/*/ativa").hasAnyRole(PAPEIS_GAMIFICACAO)
                         .requestMatchers(HttpMethod.POST, "/api/conquista/*/imagem").hasAnyRole(PAPEIS_GAMIFICACAO)
+                        .requestMatchers(HttpMethod.PUT, "/api/conquista/*/enquadramento").hasAnyRole(PAPEIS_GAMIFICACAO)
                         // Rede de segurança: como a regra final é permitAll, qualquer
                         // rota de conquista que venha a existir e não esteja listada
                         // acima nasceria pública. Aqui ela exige ao menos comissão.

@@ -1,5 +1,6 @@
 package com.semac.java_api.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /* Uma conquista do catálogo, como o /admin a vê.
@@ -16,7 +17,10 @@ import java.time.LocalDate;
 
    `concessaoAte` é o último dia em que a comissão concede esta conquista
    manual (null = sem prazo; ver CatalogoConquistas.PRAZOS_CONCESSAO_MANUAL).
-   Diretoria de site e presidência concedem mesmo depois dele. */
+   Diretoria de site e presidência concedem mesmo depois dele.
+
+   `imagemPosX`/`imagemPosY`/`imagemZoom` são o enquadramento da imagem na
+   moldura dos cards (ver Conquista e V76). */
 public record ConquistaResponseDTO(
         Integer id,
         String codigo,
@@ -29,5 +33,8 @@ public record ConquistaResponseDTO(
         String tipoValidacao,
         String imagemVersao,
         long totalConquistado,
-        LocalDate concessaoAte
+        LocalDate concessaoAte,
+        BigDecimal imagemPosX,
+        BigDecimal imagemPosY,
+        BigDecimal imagemZoom
 ) {}
