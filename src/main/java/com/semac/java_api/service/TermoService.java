@@ -72,6 +72,9 @@ public class TermoService {
        termo_jogo.xp_creditado o valor que valia na hora. */
     private final RegraXpService regraXpService;
 
+    /* Vitória pode render a conquista LIGEIRINHO (primeiro do dia). */
+    private final ConquistaService conquistaService;
+
     /* Dicionário de palpites aceitos. É só no servidor: com as palavras de
        6 a 10 letras ele ficou grande demais para ir no bundle. */
     private final DicionarioTermo dicionario;
@@ -82,7 +85,8 @@ public class TermoService {
                         PessoaRepository pessoaRepository,
                         NivelRepository nivelRepository,
                         RegraXpService regraXpService,
-                        DicionarioTermo dicionario) {
+                        DicionarioTermo dicionario,
+                        ConquistaService conquistaService) {
         this.diaRepository = diaRepository;
         this.palavraRepository = palavraRepository;
         this.jogoRepository = jogoRepository;
@@ -90,6 +94,7 @@ public class TermoService {
         this.nivelRepository = nivelRepository;
         this.regraXpService = regraXpService;
         this.dicionario = dicionario;
+        this.conquistaService = conquistaService;
     }
 
     /* ── Jogador ─────────────────────────────────────────────────── */
@@ -218,6 +223,9 @@ public class TermoService {
             }
         }
         jogoRepository.save(jogo);
+        if (encerrado && venceu) {
+            conquistaService.avaliarLigeirinho(pessoa);
+        }
 
         return new TermoPalpiteRespostaDTO(
                 resultado,

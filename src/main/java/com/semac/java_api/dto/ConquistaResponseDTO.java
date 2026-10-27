@@ -1,5 +1,7 @@
 package com.semac.java_api.dto;
 
+import java.time.LocalDate;
+
 /* Uma conquista do catálogo, como o /admin a vê.
 
    `totalConquistado` é quantos participantes já a possuem: é o que explica
@@ -10,7 +12,11 @@ package com.semac.java_api.dto;
    imagem — é assim que o front sabe se existe uma. Serve também de
    cache-buster: a URL da imagem (GET /api/conquista/{id}/imagem) é fixa e
    tem max-age de um dia, então sem um `?v=` que mude a cada upload o
-   /admin continuaria mostrando a imagem antiga depois de trocá-la. */
+   /admin continuaria mostrando a imagem antiga depois de trocá-la.
+
+   `concessaoAte` é o último dia em que a comissão concede esta conquista
+   manual (null = sem prazo; ver CatalogoConquistas.PRAZOS_CONCESSAO_MANUAL).
+   Diretoria de site e presidência concedem mesmo depois dele. */
 public record ConquistaResponseDTO(
         Integer id,
         String codigo,
@@ -22,5 +28,6 @@ public record ConquistaResponseDTO(
         Boolean ativa,
         String tipoValidacao,
         String imagemVersao,
-        long totalConquistado
+        long totalConquistado,
+        LocalDate concessaoAte
 ) {}

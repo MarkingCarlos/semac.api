@@ -53,16 +53,21 @@ public class DesafioCifraService {
     private final NivelRepository nivelRepository;
     private final RegraXpService regraXpService;
 
+    /* Vitória pode render a conquista LIGEIRINHO (primeiro do dia). */
+    private final ConquistaService conquistaService;
+
     public DesafioCifraService(DesafioCifraRepository desafioRepository,
                                DesafioCifraJogoRepository jogoRepository,
                                PessoaRepository pessoaRepository,
                                NivelRepository nivelRepository,
-                               RegraXpService regraXpService) {
+                               RegraXpService regraXpService,
+                               ConquistaService conquistaService) {
         this.desafioRepository = desafioRepository;
         this.jogoRepository = jogoRepository;
         this.pessoaRepository = pessoaRepository;
         this.nivelRepository = nivelRepository;
         this.regraXpService = regraXpService;
+        this.conquistaService = conquistaService;
     }
 
     /* ── Jogador ─────────────────────────────────────────────────── */
@@ -157,6 +162,9 @@ public class DesafioCifraService {
             jogo.setXpCreditado(0);
         }
         jogoRepository.save(jogo);
+        if (venceu) {
+            conquistaService.avaliarLigeirinho(pessoa);
+        }
 
         return new DesafioCifraTentativaRespostaDTO(acertou, montarEstado(desafio, jogo));
     }

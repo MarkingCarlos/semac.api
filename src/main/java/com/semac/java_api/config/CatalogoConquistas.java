@@ -2,7 +2,9 @@ package com.semac.java_api.config;
 
 import com.semac.java_api.model.enums.TipoValidacaoConquista;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static com.semac.java_api.model.enums.TipoValidacaoConquista.AUTOMATICA;
 import static com.semac.java_api.model.enums.TipoValidacaoConquista.MANUAL;
@@ -34,6 +36,16 @@ public final class CatalogoConquistas {
     public static final String CODIGO_DEBATES_COMPLETO = "DEBATES_COMPLETO";
     public static final String CODIGO_MOSTRA_COMPLETA = "MOSTRA_COMPLETA";
     public static final String CODIGO_PERGUNTA_DEBATE = "PERGUNTA_DEBATE";
+    public static final String CODIGO_AVALIACAO_COMPLETA = "AVALIACAO_COMPLETA";
+    public static final String CODIGO_PERGUNTA_ESCOLHIDA = "PERGUNTA_ESCOLHIDA";
+    public static final String CODIGO_LIGEIRINHO = "LIGEIRINHO";
+
+    /* Último dia (inclusive) em que a comissão pode conceder uma conquista
+       MANUAL. Conquista fora do mapa não tem prazo. Diretoria de site e
+       presidência concedem a qualquer momento (ver
+       ConquistaService.exigirPrazoDeConcessao). */
+    public static final Map<String, LocalDate> PRAZOS_CONCESSAO_MANUAL = Map.of(
+            CODIGO_PERGUNTA_ESCOLHIDA, LocalDate.of(2026, 10, 26));
 
     /* Pontos com que toda conquista nasce. É só um ponto de partida
        razoável para a presidência ajustar no /admin — o que segura a
@@ -104,7 +116,24 @@ public final class CatalogoConquistas {
                     CODIGO_PERGUNTA_DEBATE,
                     "Pergunta de Ouro",
                     "Envie uma pergunta para um dos debates da SEMAC.",
-                    AUTOMATICA, 1, 10)
+                    AUTOMATICA, 1, 10),
+            new ConquistaSemeada(
+                    CODIGO_AVALIACAO_COMPLETA,
+                    "Voz da Galera",
+                    "Quando a semana acabar, deixe sua nota em todas as atividades em que você "
+                            + "esteve presente.",
+                    AUTOMATICA, 2, 11),
+            new ConquistaSemeada(
+                    CODIGO_PERGUNTA_ESCOLHIDA,
+                    "O Escolhido",
+                    "Tenha sua pergunta escolhida pela mediação de um dos debates da SEMAC.",
+                    MANUAL, 3, 12),
+            new ConquistaSemeada(
+                    CODIGO_LIGEIRINHO,
+                    "Ligeirinho",
+                    "Seja o primeiro participante do dia a vencer um desafio da SEMAC — "
+                            + "o Termo ou a Cifra do Dia, o que sair primeiro.",
+                    AUTOMATICA, 4, 13)
     );
 
     private CatalogoConquistas() {

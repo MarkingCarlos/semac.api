@@ -162,6 +162,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/pessoa/me/dias-ingresso").hasRole(PAPEL_PARTICIPANTE)
                         .requestMatchers(HttpMethod.POST, "/api/evento/*/inscricao").hasRole(PAPEL_PARTICIPANTE)
                         .requestMatchers(HttpMethod.DELETE, "/api/evento/*/inscricao").hasRole(PAPEL_PARTICIPANTE)
+                        // Pesquisa de satisfação: o participante dá e lê as próprias notas;
+                        // o resumo (média por evento) é da diretoria, na aba Conteúdo.
+                        .requestMatchers(HttpMethod.PUT, "/api/evento/*/avaliacao").hasRole(PAPEL_PARTICIPANTE)
+                        .requestMatchers(HttpMethod.GET, "/api/evento/avaliacoes/minhas").hasRole(PAPEL_PARTICIPANTE)
+                        .requestMatchers(HttpMethod.GET, "/api/evento/avaliacoes").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         // Textos dos e-mails automáticos (/admin -> Mensagens).
                         // Público restrito (financeiro + conteúdo): mudar o texto de uma mensagem
                         // que sai para todos os inscritos não é ação de rotina, e o

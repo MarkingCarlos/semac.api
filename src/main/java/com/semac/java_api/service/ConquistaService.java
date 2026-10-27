@@ -17,7 +17,10 @@ import com.semac.java_api.model.enums.Role;
 import com.semac.java_api.model.enums.TipoValidacaoConquista;
 import com.semac.java_api.model.enums.StatusPresenca;
 import com.semac.java_api.model.pk.ParticipanteConquistaPK;
+import com.semac.java_api.repository.AvaliacaoEventoRepository;
 import com.semac.java_api.repository.ConquistaRepository;
+import com.semac.java_api.repository.DesafioCifraJogoRepository;
+import com.semac.java_api.repository.TermoJogoRepository;
 import com.semac.java_api.repository.EventoParticipanteRepository;
 import com.semac.java_api.repository.EventoRepository;
 import com.semac.java_api.repository.NivelRepository;
@@ -38,6 +41,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +75,9 @@ public class ConquistaService {
     private final TrabalhoMostraRepository trabalhoMostraRepository;
     private final VisitaTrabalhoMostraRepository visitaTrabalhoMostraRepository;
     private final PerguntaDebateRepository perguntaDebateRepository;
+    private final AvaliacaoEventoRepository avaliacaoEventoRepository;
+    private final TermoJogoRepository termoJogoRepository;
+    private final DesafioCifraJogoRepository desafioCifraJogoRepository;
 
     public ConquistaService(PessoaRepository pessoaRepository,
                             ConquistaRepository conquistaRepository,
@@ -80,7 +87,10 @@ public class ConquistaService {
                             EventoRepository eventoRepository,
                             TrabalhoMostraRepository trabalhoMostraRepository,
                             VisitaTrabalhoMostraRepository visitaTrabalhoMostraRepository,
-                            PerguntaDebateRepository perguntaDebateRepository) {
+                            PerguntaDebateRepository perguntaDebateRepository,
+                            AvaliacaoEventoRepository avaliacaoEventoRepository,
+                            TermoJogoRepository termoJogoRepository,
+                            DesafioCifraJogoRepository desafioCifraJogoRepository) {
         this.pessoaRepository = pessoaRepository;
         this.conquistaRepository = conquistaRepository;
         this.participanteConquistaRepository = participanteConquistaRepository;
@@ -90,6 +100,9 @@ public class ConquistaService {
         this.trabalhoMostraRepository = trabalhoMostraRepository;
         this.visitaTrabalhoMostraRepository = visitaTrabalhoMostraRepository;
         this.perguntaDebateRepository = perguntaDebateRepository;
+        this.avaliacaoEventoRepository = avaliacaoEventoRepository;
+        this.termoJogoRepository = termoJogoRepository;
+        this.desafioCifraJogoRepository = desafioCifraJogoRepository;
     }
 
     /* ── Catálogo (/admin -> Informações SEMAC) ──────────────────── */
@@ -274,6 +287,8 @@ public class ConquistaService {
         avaliarDebates(participante, vinculos, catalogoQueConta, agora);
         avaliarMostraCompleta(participante, agora.getYear());
         avaliarPerguntaDebate(participante);
+        avaliarAvaliacaoCompleta(participante);
+        avaliarLigeirinho(participante);
     }
 
     /* Passa por todo participante confirmado. Usada no boot e pelo botão
@@ -478,6 +493,86 @@ public class ConquistaService {
                 && conceder(participante, CatalogoConquistas.CODIGO_PERGUNTA_DEBATE);
     }
 
+    /* "Voz da Galera": deu nota a todo evento avaliável (ver
+       AvaliacaoEventoService.TIPOS_AVALIAVEIS) em que esteve presente.
+       Como a Presença Total, só vale com a semana encerrada: antes disso
+       "todos" ainda não aconteceu, e quem avaliou a primeira palestra não
+       pode levar com 1 de 1.
+
+       Sai na hora da última nota (chamada por AvaliacaoEventoService.avaliar)
+       e também em reavaliarAutomaticas, que alcança quem avaliou tudo
+       antes de o último evento terminar. Sem presença em nada avaliável,
+       ninguém leva. Devolve se foi concedida agora, para o modal da nota
+       comemorar. */
+    @Transactional
+    public boolean avaliarAvaliacaoCompleta(Pessoa participante) {
+        if (participante == null || participante.getRole() != Role.PARTICIPANTE) {
+            return false;
+        }
+        List<Evento> avaliaveis = eventoRepository.buscarComTipoPorCodigos(AvaliacaoEventoService.TIPOS_AVALIAVEIS);
+        if (avaliaveis.isEmpty() || !todosEncerrados(avaliaveis, LocalDateTime.now())) {
+            return false;
+        }
+
+        Set<Integer> idsAvaliaveis = avaliaveis.stream().map(Evento::getId).collect(Collectors.toSet());
+        Set<Integer> assistidos = presencas(eventoParticipanteRepository.buscarComEventoPorParticipante(participante.getId()));
+        assistidos.retainAll(idsAvaliaveis);
+        if (assistidos.isEmpty()) {
+            return false;
+        }
+
+        Set<Integer> avaliados = avaliacaoEventoRepository.findByPessoaId(participante.getId()).stream()
+                .map(avaliacao -> avaliacao.getEvento().getId())
+                .collect(Collectors.toSet());
+        return avaliados.containsAll(assistidos)
+                && conceder(participante, CatalogoConquistas.CODIGO_AVALIACAO_COMPLETA);
+    }
+
+    /* "Ligeirinho": em algum dia, foi o primeiro participante a vencer um
+       desafio — o Termo ou a Cifra do Dia, o que saiu primeiro. Um só por
+       dia: se o primeiro da Cifra terminou depois do primeiro do Termo, só
+       o do Termo leva, e vice-versa. A comissão não conta, nem para levar
+       nem para tirar a vez de alguém.
+
+       Sai na hora da vitória (chamada por TermoService.palpitar e
+       DesafioCifraService.tentar) e também em reavaliarAutomaticas, que
+       alcança quem já tinha sido o primeiro antes de a conquista ser
+       ativada. Devolve se foi concedida agora. */
+    @Transactional
+    public boolean avaliarLigeirinho(Pessoa participante) {
+        if (participante == null || participante.getRole() != Role.PARTICIPANTE) {
+            return false;
+        }
+        Set<LocalDate> diasComVitoria = new HashSet<>();
+        termoJogoRepository.findByPessoaIdAndVenceuTrue(participante.getId())
+                .forEach(jogo -> diasComVitoria.add(jogo.getDia().getData()));
+        desafioCifraJogoRepository.findByPessoaIdAndVenceuTrue(participante.getId())
+                .forEach(jogo -> diasComVitoria.add(jogo.getDesafio().getData()));
+
+        boolean foiPrimeiro = diasComVitoria.stream()
+                .anyMatch(dia -> participante.getId().equals(primeiroVencedorDoDia(dia)));
+        return foiPrimeiro && conceder(participante, CatalogoConquistas.CODIGO_LIGEIRINHO);
+    }
+
+    /* Id do participante que venceu primeiro um desafio naquele dia, entre
+       o primeiro do Termo e o primeiro da Cifra. No empate exato de
+       horário, vale o Termo. Null se ninguém venceu nada. */
+    private Integer primeiroVencedorDoDia(LocalDate dia) {
+        var termo = termoJogoRepository
+                .findFirstByDiaDataAndVenceuTrueAndPessoaRoleOrderByEncerradoEmAscIdAsc(dia, Role.PARTICIPANTE)
+                .orElse(null);
+        var cifra = desafioCifraJogoRepository
+                .findFirstByDesafioDataAndVenceuTrueAndPessoaRoleOrderByEncerradoEmAscIdAsc(dia, Role.PARTICIPANTE)
+                .orElse(null);
+        if (termo == null && cifra == null) {
+            return null;
+        }
+        if (cifra == null || (termo != null && !cifra.getEncerradoEm().isBefore(termo.getEncerradoEm()))) {
+            return termo.getPessoa().getId();
+        }
+        return cifra.getPessoa().getId();
+    }
+
     private List<Evento> minicursosEscolhidos(List<EventoParticipante> vinculos) {
         return vinculos.stream()
                 .map(EventoParticipante::getEvento)
@@ -618,6 +713,7 @@ public class ConquistaService {
 
         Pessoa concedidaPor = pessoaRepository.findById(idDeQuemConcede)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sessão inválida."));
+        exigirPrazoDeConcessao(conquista, concedidaPor);
 
         if (!conceder(participante, conquista, concedidaPor)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -630,6 +726,25 @@ public class ConquistaService {
                 conquista.getPontosBase(),
                 participante.getNivel() == null ? null : participante.getNivel().getNome(),
                 participante.getXp());
+    }
+
+    /* Papéis que concedem conquista manual mesmo depois do prazo do
+       catálogo (CatalogoConquistas.PRAZOS_CONCESSAO_MANUAL). */
+    private static final Set<Role> PAPEIS_CONCESSAO_FORA_DO_PRAZO = EnumSet.of(Role.DIRETOR_SITE, Role.PRESIDENTE);
+
+    /* Conquista com prazo só é concedida até o fim do dia do prazo —
+       exceto por diretoria de site e presidência, que corrigem casos
+       atrasados a qualquer momento. */
+    private void exigirPrazoDeConcessao(Conquista conquista, Pessoa concedidaPor) {
+        LocalDate prazo = CatalogoConquistas.PRAZOS_CONCESSAO_MANUAL.get(conquista.getCodigo());
+        if (prazo == null || !LocalDate.now().isAfter(prazo)
+                || PAPEIS_CONCESSAO_FORA_DO_PRAZO.contains(concedidaPor.getRole())) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.CONFLICT,
+                String.format("O prazo para conceder esta conquista terminou em %02d/%02d. "
+                                + "Agora só a diretoria de site ou a presidência podem concedê-la.",
+                        prazo.getDayOfMonth(), prazo.getMonthValue()));
     }
 
     /* "Não cadastrado" cobre uuid inexistente e id inexistente com a mesma
@@ -702,7 +817,8 @@ public class ConquistaService {
                 conquista.getAtiva(),
                 conquista.getTipoValidacao() == null ? null : conquista.getTipoValidacao().name(),
                 conquista.getImagemUrl(),
-                participanteConquistaRepository.countByPk_ConquistaId(conquista.getId()));
+                participanteConquistaRepository.countByPk_ConquistaId(conquista.getId()),
+                CatalogoConquistas.PRAZOS_CONCESSAO_MANUAL.get(conquista.getCodigo()));
     }
 
     /* Mesmo critério de InscricaoEventoService.creditarXp, aceitando
