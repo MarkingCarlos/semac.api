@@ -11,9 +11,10 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-/* Brinde da comissão (26/10). As duas rotas são de qualquer papel de
-   comissão (ver SecurityConfig): cada um vê o próprio QR e qualquer um
-   entrega. Os ids vêm sempre do token. */
+/* Brinde (Monster) da comissão e dos participantes (26/10 e 29/10). As
+   duas rotas são de qualquer papel de comissão (ver SecurityConfig): cada
+   um vê o próprio QR e qualquer um entrega — inclusive lendo o crachá de
+   participante. Os ids vêm sempre do token. */
 @RestController
 @RequestMapping("/api/brinde-comissao")
 public class BrindeComissaoController {

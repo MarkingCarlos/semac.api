@@ -3,29 +3,40 @@ package com.semac.java_api.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/* QR do brinde da comissão (ver V74__brinde_comissao.sql). Uma linha por
-   pessoa (a chave é o próprio pessoa_id). `retiradoEm` nulo = ainda não
-   retirou; preenchido, o código não vale mais. */
+/* Retirada do brinde (Monster) em um dia (ver V74__brinde_comissao.sql e
+   V78__brinde_por_dia.sql). Uma linha por pessoa por dia.
+
+   Comissão: a linha nasce quando a pessoa abre o próprio QR no /admin,
+   com `codigo` preenchido e `retiradoEm` nulo; preenchido, o código não
+   vale mais. Participante: não tem QR próprio (retira pelo crachá), então
+   a linha já nasce retirada e sem `codigo`. */
 @Entity
 @Table(name = "brinde_comissao")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(of = "pessoaId")
+@EqualsAndHashCode(of = "id")
 public class BrindeComissao {
 
     @Id
-    @Column(name = "pessoa_id")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @Column(name = "pessoa_id", nullable = false)
     private Integer pessoaId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pessoa_id", insertable = false, updatable = false)
     private Pessoa pessoa;
 
-    @Column(nullable = false, unique = true, length = 64)
+    @Column(nullable = false)
+    private LocalDate dia;
+
+    @Column(unique = true, length = 64)
     private String codigo;
 
     @Column(name = "retirado_em")
