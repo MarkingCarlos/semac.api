@@ -41,6 +41,7 @@ public final class CatalogoConquistas {
     public static final String CODIGO_PERGUNTA_ESCOLHIDA = "PERGUNTA_ESCOLHIDA";
     public static final String CODIGO_LIGEIRINHO = "LIGEIRINHO";
     public static final String CODIGO_ALQUIMIA_COMPLETA = "ALQUIMIA_COMPLETA";
+    public static final String CODIGO_REI_CAMALEAO = "REI_CAMALEAO";
 
     /* Vagas no pódio da tarefa de cada minicurso (ALQUIMIA_COMPLETA). */
     public static final int VAGAS_PODIO_TAREFA_MINICURSO = 3;
@@ -148,7 +149,12 @@ public final class CatalogoConquistas {
                     CODIGO_ALQUIMIA_COMPLETA,
                     "Alquimia Completa",
                     "Esteja entre os 3 primeiros a concluir a tarefa de um minicurso.",
-                    MANUAL, 3, 14)
+                    MANUAL, 3, 14),
+            new ConquistaSemeada(
+                    CODIGO_REI_CAMALEAO,
+                    "Rei Camaleão",
+                    "Não teve seu boneco encontrado na Oficina de Impressão 3D.",
+                    MANUAL, 3, 15)
     );
 
     private CatalogoConquistas() {

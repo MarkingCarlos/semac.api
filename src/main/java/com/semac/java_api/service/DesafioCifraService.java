@@ -47,6 +47,12 @@ public class DesafioCifraService {
 
     private static final Pattern SOBRESCRITO = Pattern.compile("[⁰¹²³⁴⁵⁶⁷⁸⁹]");
 
+    /* Cifras que seguem valendo depois da meia-noite: dia do desafio ->
+       até quando ele fica no ar. Enquanto não chega a hora, o desafio do
+       dia seguinte ainda não aparece (nem para jogar, nem no histórico). */
+    private static final Map<LocalDate, LocalDateTime> PRORROGACOES = Map.of(
+            LocalDate.of(2026, 10, 27), LocalDateTime.of(2026, 10, 28, 8, 0));
+
     private final DesafioCifraRepository desafioRepository;
     private final DesafioCifraJogoRepository jogoRepository;
     private final PessoaRepository pessoaRepository;
@@ -91,7 +97,7 @@ public class DesafioCifraService {
        dia que passou aparece mesmo sem jogo, dia por vir fica de fora. */
     @Transactional(readOnly = true)
     public List<DesafioCifraDiaDTO> listarDiasDoParticipante(Integer pessoaId) {
-        LocalDate hoje = LocalDate.now();
+        LocalDate hoje = diaDoDesafio();
         List<DesafioCifra> ocorridos =
                 desafioRepository.findByAnoAndDataLessThanEqualOrderByDataAsc(hoje.getYear(), hoje);
         if (ocorridos.isEmpty()) {
@@ -241,7 +247,16 @@ public class DesafioCifraService {
     /* ── Auxiliares ──────────────────────────────────────────────── */
 
     private DesafioCifra desafioDeHoje() {
-        return desafioRepository.findByData(LocalDate.now()).orElse(null);
+        return desafioRepository.findByData(diaDoDesafio()).orElse(null);
+    }
+
+    /* "Hoje" para a Cifra: o dia do calendário, salvo quando a cifra de
+       ontem foi prorrogada (ver PRORROGACOES) e ainda está no ar. */
+    private LocalDate diaDoDesafio() {
+        LocalDateTime agora = LocalDateTime.now();
+        LocalDate ontem = agora.toLocalDate().minusDays(1);
+        LocalDateTime prorrogadaAte = PRORROGACOES.get(ontem);
+        return prorrogadaAte != null && agora.isBefore(prorrogadaAte) ? ontem : agora.toLocalDate();
     }
 
     /* Outra requisição da mesma pessoa pode ter criado o jogo enquanto
