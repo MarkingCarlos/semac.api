@@ -423,6 +423,15 @@ public class SecurityConfig {
                         // público do Termo. Também é a rede de segurança das rotas
                         // de mostra que venham a existir sem regra própria.
                         .requestMatchers("/api/mostra/**").hasAnyRole(PAPEIS_GAMIFICACAO)
+                        // ── Quiz dos Laboratórios (/laboratorio/<codigo>) ───────
+                        // Abrir e responder o quiz é do participante: gabaritar
+                        // vale XP no ranking.
+                        .requestMatchers(HttpMethod.GET, "/api/laboratorio/quiz/*").hasRole(PAPEL_PARTICIPANTE)
+                        .requestMatchers(HttpMethod.POST, "/api/laboratorio/quiz/*/resposta").hasRole(PAPEL_PARTICIPANTE)
+                        // Cadastro dos laboratórios, das perguntas e dos QR
+                        // codes — mesmo público da Mostra. Também é a rede de
+                        // segurança de rotas novas de laboratório.
+                        .requestMatchers("/api/laboratorio/**").hasAnyRole(PAPEIS_GAMIFICACAO)
                         // Demais (site público) seguem abertos
                         .anyRequest().permitAll()
                 )
