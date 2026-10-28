@@ -28,6 +28,7 @@ import com.semac.java_api.service.PalestranteFotoService;
 import com.semac.java_api.repository.ConfiguracaoInscricaoRepository;
 import com.semac.java_api.service.RegraXpService;
 import com.semac.java_api.service.TentativaCheckinService;
+import com.semac.java_api.service.XpService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -46,6 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -145,8 +147,18 @@ class RegrasEventoParticipanteTest {
         when(regraXpService.atrasoMetadeMinutos()).thenReturn(20L);
         when(regraXpService.atrasoZeroMinutos()).thenReturn(30L);
 
+        /* O crédito de verdade trava a linha no banco (XpService); aqui só
+           soma no objeto, que é o que os testes conferem. */
+        XpService xpService = mock(XpService.class);
+        doAnswer(chamada -> {
+            Pessoa pessoa = chamada.getArgument(0);
+            int delta = chamada.getArgument(1);
+            pessoa.setXp(Math.max(0, (pessoa.getXp() == null ? 0 : pessoa.getXp()) + delta));
+            return null;
+        }).when(xpService).creditar(any(), anyInt());
+
         inscricaoEventoService = new InscricaoEventoService(eventoRepository, eventoParticipanteRepository,
-                pessoaRepository, nivelRepository, conquistaService, tentativaCheckinService, regraXpService,
+                pessoaRepository, xpService, conquistaService, tentativaCheckinService, regraXpService,
                 new DiaIngressoService(pessoaRepository, eventoRepository, eventoParticipanteRepository,
                         mock(PessoaDiaIngressoRepository.class)),
                 mock(ConfiguracaoInscricaoRepository.class));
