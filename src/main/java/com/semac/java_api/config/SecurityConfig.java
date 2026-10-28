@@ -350,6 +350,9 @@ public class SecurityConfig {
                         // da concessão, já que revogar é desfazer uma concessão.
                         .requestMatchers(HttpMethod.GET, "/api/pessoa/*/conquistas").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         .requestMatchers(HttpMethod.DELETE, "/api/pessoa/*/conquistas/*").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
+                        // Página de resumo do participante no /admin (pontos, time,
+                        // conquistas e presenças) — mesmo público das conquistas.
+                        .requestMatchers(HttpMethod.GET, "/api/pessoa/*/resumo").hasAnyRole(PAPEIS_ADMIN_SEM_MEMBRO)
                         // Configuração do catálogo (texto, pontos, imagem, ativa) —
                         // mesmo público que edita níveis e regras de xp em Informações SEMAC.
                         .requestMatchers(HttpMethod.PUT, "/api/conquista/*").hasAnyRole(PAPEIS_GAMIFICACAO)

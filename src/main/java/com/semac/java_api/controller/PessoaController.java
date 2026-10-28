@@ -16,12 +16,14 @@ import com.semac.java_api.dto.MeuEventoResponseDTO;
 import com.semac.java_api.dto.ParticipanteResponseDTO;
 import com.semac.java_api.dto.PerfilResponseDTO;
 import com.semac.java_api.dto.RankingResponseDTO;
+import com.semac.java_api.dto.ResumoParticipanteAdminDTO;
 import com.semac.java_api.service.ConquistaService;
 import com.semac.java_api.model.EventoParticipante;
 import com.semac.java_api.service.DiaIngressoService;
 import com.semac.java_api.service.EventoService;
 import com.semac.java_api.service.InscricaoEventoService;
 import com.semac.java_api.service.PessoaService;
+import com.semac.java_api.service.ResumoParticipanteService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -50,6 +52,7 @@ public class PessoaController {
     private final DiaIngressoService diaIngressoService;
     private final InscricaoEventoService inscricaoEventoService;
     private final EventoService eventoService;
+    private final ResumoParticipanteService resumoParticipanteService;
 
     @Value("${app.upload.dir}")
     private String uploadDir;
@@ -58,12 +61,14 @@ public class PessoaController {
                             ConquistaService conquistaService,
                             DiaIngressoService diaIngressoService,
                             InscricaoEventoService inscricaoEventoService,
-                            EventoService eventoService) {
+                            EventoService eventoService,
+                            ResumoParticipanteService resumoParticipanteService) {
         this.pessoaService = pessoaService;
         this.conquistaService = conquistaService;
         this.diaIngressoService = diaIngressoService;
         this.inscricaoEventoService = inscricaoEventoService;
         this.eventoService = eventoService;
+        this.resumoParticipanteService = resumoParticipanteService;
     }
 
     /* Cadastro manual pela comissão (botão "Adicionar participante" na aba
@@ -146,6 +151,15 @@ public class PessoaController {
     public DiasIngressoResponseDTO escolherDiasIngresso(@AuthenticationPrincipal Jwt jwt,
                                                         @Valid @RequestBody EscolherDiasIngressoRequestDTO dto) {
         return diaIngressoService.salvar(idDoToken(jwt), dto.dias());
+    }
+
+    /* ── Resumo de um participante (página /admin/participante/{id}) ── */
+
+    /* Pontos, time, conquistas e presenças confirmadas numa chamada só.
+       Mesmo público das conquistas: diretores e presidência. */
+    @GetMapping("/{id}/resumo")
+    public ResumoParticipanteAdminDTO resumoDoParticipante(@PathVariable Integer id) {
+        return resumoParticipanteService.resumoParaAdmin(id);
     }
 
     /* ── Conquistas de um participante (painel de revogação) ────── */
