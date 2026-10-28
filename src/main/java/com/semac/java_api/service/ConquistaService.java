@@ -459,14 +459,15 @@ public class ConquistaService {
         }
     }
 
-    /* "Treta Saudável": presente em todos os debates da SEMAC. Mesmo
-       critério da Criatura das Trevas — denominador pelo catálogo,
-       concedida só quando o último já terminou, ninguém leva se não houver
-       nenhum cadastrado. */
+    /* "Távola Redonda": presente em todos os debates e mesas redondas da
+       SEMAC. Mesmo critério da Criatura das Trevas — denominador pelo
+       catálogo, concedida só quando o último já terminou, ninguém leva se
+       não houver nenhum cadastrado. */
     private void avaliarDebates(Pessoa participante, List<EventoParticipante> vinculos,
                                 List<Evento> catalogoQueConta, LocalDateTime agora) {
         List<Evento> debates = catalogoQueConta.stream()
-                .filter(evento -> evento.getTipoEvento().getCodigo() == CodigoTipoEvento.DEBATE)
+                .filter(evento -> evento.getTipoEvento().getCodigo() == CodigoTipoEvento.DEBATE
+                        || evento.getTipoEvento().getCodigo() == CodigoTipoEvento.MESA_REDONDA)
                 .toList();
 
         if (debates.isEmpty() || !todosEncerrados(debates, agora)) {
