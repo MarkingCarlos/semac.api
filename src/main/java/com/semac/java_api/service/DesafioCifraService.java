@@ -53,6 +53,11 @@ public class DesafioCifraService {
     private static final Map<LocalDate, LocalDateTime> PRORROGACOES = Map.of(
             LocalDate.of(2026, 10, 27), LocalDateTime.of(2026, 10, 28, 8, 0));
 
+    /* Cifras que valem xp diferente da regra geral (RegraXpService):
+       dia do desafio -> pontos ao decifrar. */
+    private static final Map<LocalDate, Integer> PONTOS_POR_DIA = Map.of(
+            LocalDate.of(2026, 10, 28), 65);
+
     private final DesafioCifraRepository desafioRepository;
     private final DesafioCifraJogoRepository jogoRepository;
     private final PessoaRepository pessoaRepository;
@@ -155,7 +160,7 @@ public class DesafioCifraService {
 
         boolean venceu = jogo.getEtapasConcluidas() == etapas.size();
         if (venceu) {
-            int xp = regraXpService.pontosCifraAcerto();
+            int xp = pontosDaCifra(desafio);
             jogo.setVenceu(true);
             jogo.setEncerradoEm(LocalDateTime.now());
             jogo.setXpCreditado(xp);
@@ -223,7 +228,7 @@ public class DesafioCifraService {
                 false,
                 false,
                 null,
-                regraXpService.pontosCifraAcerto());
+                pontosDaCifra(desafio));
     }
 
     /* Mesma comparação e mesma recusa de tamanho da partida valendo. */
@@ -248,6 +253,11 @@ public class DesafioCifraService {
 
     private DesafioCifra desafioDeHoje() {
         return desafioRepository.findByData(diaDoDesafio()).orElse(null);
+    }
+
+    private int pontosDaCifra(DesafioCifra desafio) {
+        Integer pontos = PONTOS_POR_DIA.get(desafio.getData());
+        return pontos != null ? pontos : regraXpService.pontosCifraAcerto();
     }
 
     /* "Hoje" para a Cifra: o dia do calendário, salvo quando a cifra de
@@ -312,7 +322,7 @@ public class DesafioCifraService {
                 encerrado,
                 venceu,
                 encerrado ? (jogo.getXpCreditado() == null ? 0 : jogo.getXpCreditado()) : null,
-                regraXpService.pontosCifraAcerto());
+                pontosDaCifra(desafio));
     }
 
     private DesafioCifraDiaDTO montarDia(DesafioCifra desafio, DesafioCifraJogo jogo, LocalDate hoje) {
