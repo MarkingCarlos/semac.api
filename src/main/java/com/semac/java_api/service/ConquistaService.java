@@ -387,30 +387,23 @@ public class ConquistaService {
         }
     }
 
-    /* "Minicurso Concluído": compareceu a todos os encontros de algum
-       minicurso em que se inscreveu.
+    /* "Minicurso Concluído": compareceu a todos os encontros de todos os
+       minicursos em que se inscreveu. Mesmo relógio das demais: só sai
+       quando o último deles já terminou — antes disso ainda há falta a
+       descobrir. Quem não se inscreveu em nenhum não leva.
 
-       Heurística consciente: não existe no banco nada que ligue os
-       encontros de um mesmo minicurso — cada encontro é um `evento`
-       próprio e o participante se inscreve em cada um (ver
-       InscricaoEventoService). O nome é o único vínculo disponível, então
-       é por ele que se agrupa. Minicurso de um encontro só cai no mesmo
-       caminho, com um grupo de tamanho 1. Se algum dia surgir um campo de
-       série/turma, é aqui que se troca. */
+       Cada encontro é um `evento` próprio com inscrição própria (ver
+       InscricaoEventoService), então basta olhar os vínculos de eventos
+       que exigem inscrição: todos encerrados e todos com presença. */
     private void avaliarMinicursoConcluido(Pessoa participante, List<EventoParticipante> vinculos, LocalDateTime agora) {
-        Map<String, List<EventoParticipante>> porMinicurso = new LinkedHashMap<>();
-        for (EventoParticipante vinculo : vinculos) {
-            if (!exigeInscricao(vinculo.getEvento())) {
-                continue;
-            }
-            porMinicurso.computeIfAbsent(vinculo.getEvento().getNome(), n -> new ArrayList<>()).add(vinculo);
-        }
+        List<EventoParticipante> encontros = vinculos.stream()
+                .filter(vinculo -> exigeInscricao(vinculo.getEvento()))
+                .toList();
 
-        boolean concluiuAlgum = porMinicurso.values().stream()
-                .anyMatch(encontros ->
-                        encontros.stream().allMatch(v -> jaEncerrou(v.getEvento(), agora))
-                                && encontros.stream().allMatch(this::compareceu));
-        if (concluiuAlgum) {
+        if (encontros.isEmpty() || !encontros.stream().allMatch(v -> jaEncerrou(v.getEvento(), agora))) {
+            return;
+        }
+        if (encontros.stream().allMatch(this::compareceu)) {
             conceder(participante, CatalogoConquistas.CODIGO_MINICURSO_CONCLUIDO);
         }
     }
