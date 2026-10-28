@@ -11,7 +11,6 @@ import com.semac.java_api.model.ConfiguracaoInscricao;
 import com.semac.java_api.repository.ConfiguracaoInscricaoRepository;
 import com.semac.java_api.repository.EventoParticipanteRepository;
 import com.semac.java_api.repository.EventoRepository;
-import com.semac.java_api.repository.NivelRepository;
 import com.semac.java_api.repository.PessoaRepository;
 import com.semac.java_api.repository.projection.InscritosEventoView;
 import org.springframework.http.HttpStatus;
@@ -66,7 +65,7 @@ public class InscricaoEventoService {
     private final EventoRepository eventoRepository;
     private final EventoParticipanteRepository eventoParticipanteRepository;
     private final PessoaRepository pessoaRepository;
-    private final NivelRepository nivelRepository;
+    private final XpService xpService;
     private final ConquistaService conquistaService;
     private final TentativaCheckinService tentativaCheckinService;
 
@@ -86,7 +85,7 @@ public class InscricaoEventoService {
     public InscricaoEventoService(EventoRepository eventoRepository,
                                   EventoParticipanteRepository eventoParticipanteRepository,
                                   PessoaRepository pessoaRepository,
-                                  NivelRepository nivelRepository,
+                                  XpService xpService,
                                   ConquistaService conquistaService,
                                   TentativaCheckinService tentativaCheckinService,
                                   RegraXpService regraXpService,
@@ -95,7 +94,7 @@ public class InscricaoEventoService {
         this.eventoRepository = eventoRepository;
         this.eventoParticipanteRepository = eventoParticipanteRepository;
         this.pessoaRepository = pessoaRepository;
-        this.nivelRepository = nivelRepository;
+        this.xpService = xpService;
         this.conquistaService = conquistaService;
         this.tentativaCheckinService = tentativaCheckinService;
         this.regraXpService = regraXpService;
@@ -390,7 +389,7 @@ public class InscricaoEventoService {
         eventoParticipanteRepository.save(inscricao);
 
         if (xpCreditado > 0) {
-            creditarXp(participante, xpCreditado);
+            xpService.creditar(participante, xpCreditado);
         }
 
         /* O check-in é o momento em que o quadro de presenças da pessoa
@@ -512,18 +511,6 @@ public class InscricaoEventoService {
             return pontosBase / 2;
         }
         return pontosBase;
-    }
-
-    /* Soma o xp na pessoa e recalcula o nível correspondente. Presença é
-       uma das três fontes de xp (com o Termo e as conquistas); confirmar
-       a inscrição não credita nada (ver PessoaService.atribuirRole). */
-    private void creditarXp(Pessoa participante, int xpCreditado) {
-        int xpAtual = participante.getXp() == null ? 0 : participante.getXp();
-        int novoXp = xpAtual + xpCreditado;
-        participante.setXp(novoXp);
-        nivelRepository.findTopByXpMinimoLessThanEqualOrderByXpMinimoDesc(novoXp)
-                .ifPresent(participante::setNivel);
-        pessoaRepository.save(participante);
     }
 
     /* ── Auxiliares ─────────────────────────────────────────────── */

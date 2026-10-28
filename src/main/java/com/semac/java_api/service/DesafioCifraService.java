@@ -7,7 +7,6 @@ import com.semac.java_api.model.DesafioCifraJogo;
 import com.semac.java_api.model.Pessoa;
 import com.semac.java_api.repository.DesafioCifraJogoRepository;
 import com.semac.java_api.repository.DesafioCifraRepository;
-import com.semac.java_api.repository.NivelRepository;
 import com.semac.java_api.repository.PessoaRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +60,7 @@ public class DesafioCifraService {
     private final DesafioCifraRepository desafioRepository;
     private final DesafioCifraJogoRepository jogoRepository;
     private final PessoaRepository pessoaRepository;
-    private final NivelRepository nivelRepository;
+    private final XpService xpService;
     private final RegraXpService regraXpService;
 
     /* Vitória pode render a conquista LIGEIRINHO (primeiro do dia). */
@@ -70,13 +69,13 @@ public class DesafioCifraService {
     public DesafioCifraService(DesafioCifraRepository desafioRepository,
                                DesafioCifraJogoRepository jogoRepository,
                                PessoaRepository pessoaRepository,
-                               NivelRepository nivelRepository,
+                               XpService xpService,
                                RegraXpService regraXpService,
                                ConquistaService conquistaService) {
         this.desafioRepository = desafioRepository;
         this.jogoRepository = jogoRepository;
         this.pessoaRepository = pessoaRepository;
-        this.nivelRepository = nivelRepository;
+        this.xpService = xpService;
         this.regraXpService = regraXpService;
         this.conquistaService = conquistaService;
     }
@@ -164,7 +163,7 @@ public class DesafioCifraService {
             jogo.setVenceu(true);
             jogo.setEncerradoEm(LocalDateTime.now());
             jogo.setXpCreditado(xp);
-            creditarXp(pessoa, xp);
+            xpService.creditar(pessoa, xp);
             log.info("Cifra do Dia {}: {} (id {}) decifrou, +{} xp.",
                     desafio.getData(), pessoa.getNome(), pessoa.getId(), xp);
         } else if (jogo.getTentativasUsadas() >= TOTAL_TENTATIVAS) {
@@ -379,15 +378,5 @@ public class DesafioCifraService {
                 .replaceAll("\\p{M}", "")
                 .replaceAll("\\s+", "")
                 .toUpperCase();
-    }
-
-    /* Mesmo critério de TermoService.creditarXp. */
-    private void creditarXp(Pessoa pessoa, int xp) {
-        int xpAtual = pessoa.getXp() == null ? 0 : pessoa.getXp();
-        int novoXp = xpAtual + xp;
-        pessoa.setXp(novoXp);
-        nivelRepository.findTopByXpMinimoLessThanEqualOrderByXpMinimoDesc(novoXp)
-                .ifPresent(pessoa::setNivel);
-        pessoaRepository.save(pessoa);
     }
 }

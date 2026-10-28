@@ -25,7 +25,6 @@ import com.semac.java_api.repository.DesafioCifraJogoRepository;
 import com.semac.java_api.repository.TermoJogoRepository;
 import com.semac.java_api.repository.EventoParticipanteRepository;
 import com.semac.java_api.repository.EventoRepository;
-import com.semac.java_api.repository.NivelRepository;
 import com.semac.java_api.repository.ParticipanteConquistaRepository;
 import com.semac.java_api.repository.PerguntaDebateRepository;
 import com.semac.java_api.repository.PessoaRepository;
@@ -60,7 +59,7 @@ import java.util.stream.Collectors;
    certo, sem motor de regras genérico — entram numa etapa seguinte.
 
    Xp de conquista segue o mesmo caminho do xp de presença (ver
-   InscricaoEventoService.creditarXp): soma em pessoa.xp e recalcula o
+   XpService.creditar): soma em pessoa.xp e recalcula o
    nível. A diferença é que aqui o valor creditado fica gravado no vínculo
    (ParticipanteConquista.xpCreditado), porque conquista pode ser revogada
    e o estorno precisa devolver o que foi dado de fato — não o que o
@@ -73,7 +72,7 @@ public class ConquistaService {
     private final PessoaRepository pessoaRepository;
     private final ConquistaRepository conquistaRepository;
     private final ParticipanteConquistaRepository participanteConquistaRepository;
-    private final NivelRepository nivelRepository;
+    private final XpService xpService;
     private final EventoParticipanteRepository eventoParticipanteRepository;
     private final EventoRepository eventoRepository;
     private final TrabalhoMostraRepository trabalhoMostraRepository;
@@ -87,7 +86,7 @@ public class ConquistaService {
     public ConquistaService(PessoaRepository pessoaRepository,
                             ConquistaRepository conquistaRepository,
                             ParticipanteConquistaRepository participanteConquistaRepository,
-                            NivelRepository nivelRepository,
+                            XpService xpService,
                             EventoParticipanteRepository eventoParticipanteRepository,
                             EventoRepository eventoRepository,
                             TrabalhoMostraRepository trabalhoMostraRepository,
@@ -100,7 +99,7 @@ public class ConquistaService {
         this.pessoaRepository = pessoaRepository;
         this.conquistaRepository = conquistaRepository;
         this.participanteConquistaRepository = participanteConquistaRepository;
-        this.nivelRepository = nivelRepository;
+        this.xpService = xpService;
         this.eventoParticipanteRepository = eventoParticipanteRepository;
         this.eventoRepository = eventoRepository;
         this.trabalhoMostraRepository = trabalhoMostraRepository;
@@ -678,7 +677,7 @@ public class ConquistaService {
         vinculo.setConcedidaPor(concedidaPor);
         participanteConquistaRepository.save(vinculo);
 
-        somarXp(pessoa, pontos);
+        xpService.creditar(pessoa, pontos);
         log.info("Conquista '{}' concedida a {} (id {}), {} pontos.",
                 conquista.getCodigo(), pessoa.getNome(), pessoa.getId(), pontos);
         return true;
@@ -699,7 +698,7 @@ public class ConquistaService {
 
         int estorno = vinculo.getXpCreditado() == null ? 0 : vinculo.getXpCreditado();
         participanteConquistaRepository.delete(vinculo);
-        somarXp(pessoa, -estorno);
+        xpService.creditar(pessoa, -estorno);
 
         log.info("Conquista '{}' revogada de {} (id {}), {} pontos estornados.",
                 conquista.getCodigo(), pessoa.getNome(), pessoa.getId(), estorno);
@@ -926,16 +925,5 @@ public class ConquistaService {
                 conquista.getImagemPosX(),
                 conquista.getImagemPosY(),
                 conquista.getImagemZoom());
-    }
-
-    /* Mesmo critério de InscricaoEventoService.creditarXp, aceitando
-       delta negativo (estorno). Nunca deixa o xp ficar abaixo de zero. */
-    private void somarXp(Pessoa pessoa, int delta) {
-        int xpAtual = pessoa.getXp() == null ? 0 : pessoa.getXp();
-        int novoXp = Math.max(0, xpAtual + delta);
-        pessoa.setXp(novoXp);
-        nivelRepository.findTopByXpMinimoLessThanEqualOrderByXpMinimoDesc(novoXp)
-                .ifPresent(pessoa::setNivel);
-        pessoaRepository.save(pessoa);
     }
 }

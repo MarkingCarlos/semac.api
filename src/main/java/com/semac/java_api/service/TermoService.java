@@ -6,7 +6,6 @@ import com.semac.java_api.model.TermoDia;
 import com.semac.java_api.model.TermoJogo;
 import com.semac.java_api.model.TermoPalavra;
 import com.semac.java_api.model.TermoTentativa;
-import com.semac.java_api.repository.NivelRepository;
 import com.semac.java_api.repository.PessoaRepository;
 import com.semac.java_api.repository.TermoDiaRepository;
 import com.semac.java_api.repository.TermoJogoRepository;
@@ -64,7 +63,7 @@ public class TermoService {
     private final TermoPalavraRepository palavraRepository;
     private final TermoJogoRepository jogoRepository;
     private final PessoaRepository pessoaRepository;
-    private final NivelRepository nivelRepository;
+    private final XpService xpService;
 
     /* Xp de uma vitória, creditado uma vez por dia (unique pessoa+dia em
        termo_jogo). Vem da regra TERMO_ACERTO, editável no /admin ->
@@ -83,7 +82,7 @@ public class TermoService {
                         TermoPalavraRepository palavraRepository,
                         TermoJogoRepository jogoRepository,
                         PessoaRepository pessoaRepository,
-                        NivelRepository nivelRepository,
+                        XpService xpService,
                         RegraXpService regraXpService,
                         DicionarioTermo dicionario,
                         ConquistaService conquistaService) {
@@ -91,7 +90,7 @@ public class TermoService {
         this.palavraRepository = palavraRepository;
         this.jogoRepository = jogoRepository;
         this.pessoaRepository = pessoaRepository;
-        this.nivelRepository = nivelRepository;
+        this.xpService = xpService;
         this.regraXpService = regraXpService;
         this.dicionario = dicionario;
         this.conquistaService = conquistaService;
@@ -215,7 +214,7 @@ public class TermoService {
             jogo.setEncerradoEm(LocalDateTime.now());
             if (venceu) {
                 jogo.setXpCreditado(xpVitoria);
-                creditarXp(pessoa, xpVitoria);
+                xpService.creditar(pessoa, xpVitoria);
                 log.info("Termo dia {}: {} (id {}) acertou, +{} xp.",
                         dia.getNumero(), pessoa.getNome(), pessoa.getId(), xpVitoria);
             } else {
@@ -567,16 +566,5 @@ public class TermoService {
         return Normalizer.normalize(texto.trim(), Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "")
                 .toUpperCase();
-    }
-
-    /* Mesmo critério de InscricaoEventoService.creditarXp: soma em
-       pessoa.xp e recalcula o nível alcançado. */
-    private void creditarXp(Pessoa pessoa, int xp) {
-        int xpAtual = pessoa.getXp() == null ? 0 : pessoa.getXp();
-        int novoXp = xpAtual + xp;
-        pessoa.setXp(novoXp);
-        nivelRepository.findTopByXpMinimoLessThanEqualOrderByXpMinimoDesc(novoXp)
-                .ifPresent(pessoa::setNivel);
-        pessoaRepository.save(pessoa);
     }
 }
