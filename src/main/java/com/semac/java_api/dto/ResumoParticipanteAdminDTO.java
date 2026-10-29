@@ -6,7 +6,9 @@ import java.util.List;
    pontos, time, conquistas e presenças numa chamada só.
    `time` é null enquanto os times não foram sorteados (ou a pessoa ficou
    de fora do sorteio). `presencas` traz só os check-ins confirmados
-   (status PRESENTE), do mais recente para o mais antigo. */
+   (status PRESENTE), do mais recente para o mais antigo.
+   `termosVencidos` e `cifrasVencidas` trazem só os desafios acertados,
+   também do mais recente para o mais antigo. */
 public record ResumoParticipanteAdminDTO(
         Integer id,
         String nome,
@@ -15,5 +17,7 @@ public record ResumoParticipanteAdminDTO(
         NivelResponseDTO nivel,
         TimeResumoParticipanteDTO time,
         List<ConquistaDoParticipanteDTO> conquistas,
-        List<PresencaResumoParticipanteDTO> presencas
+        List<PresencaResumoParticipanteDTO> presencas,
+        List<DesafioVencidoResumoParticipanteDTO> termosVencidos,
+        List<DesafioVencidoResumoParticipanteDTO> cifrasVencidas
 ) {}
