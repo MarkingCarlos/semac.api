@@ -22,7 +22,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,8 +39,9 @@ import java.util.stream.Collectors;
    - uma tentativa por pessoa por laboratório (ver
      RespostaQuizLaboratorioRepository.registrar), corrigida no servidor —
      a marca de correta nunca vai para o participante antes do envio;
-   - quem acerta todas ganha XP_GABARITO_LABORATORIO no ranking, uma vez
-     por laboratório;
+   - cada acerto vale XP_POR_ACERTO_LABORATORIO no ranking, creditado uma
+     vez por laboratório; a tela recebe só o placar ("3/5"), sem dizer
+     quais errou;
    - editar as perguntas depois não mexe em placar nem em XP já dados.
 
    Risco aceito, igual ao da Mostra: o QR pode ser fotografado e
@@ -49,8 +49,8 @@ import java.util.stream.Collectors;
 @Service
 public class LaboratorioQuizService {
 
-    /* XP de quem gabarita o quiz de um laboratório. */
-    static final int XP_GABARITO_LABORATORIO = 2;
+    /* XP de cada pergunta certa no quiz de um laboratório. */
+    static final int XP_POR_ACERTO_LABORATORIO = 1;
 
     private static final String ALFABETO_CODIGO_QR = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
     private static final int TAMANHO_CODIGO_QR = 12;
@@ -93,7 +93,7 @@ public class LaboratorioQuizService {
     }
 
     /* Corrige e grava a tentativa única. Precisa de uma escolha para cada
-       pergunta; a correção volta junto para a tela de resultado. */
+       pergunta; volta só o placar. */
     @Transactional
     public ResultadoQuizLaboratorioDTO responder(Integer pessoaId, String codigoQr,
                                                  RespostaQuizLaboratorioRequestDTO dto) {
@@ -112,11 +112,10 @@ public class LaboratorioQuizService {
             throw jaRespondeu();
         }
 
-        List<ResultadoQuizLaboratorioDTO.Correcao> correcao = corrigir(perguntas, dto);
-        int acertos = (int) correcao.stream().filter(ResultadoQuizLaboratorioDTO.Correcao::acertou).count();
+        int acertos = contarAcertos(perguntas, dto);
         int total = perguntas.size();
         boolean gabaritou = acertos == total;
-        int xp = gabaritou ? XP_GABARITO_LABORATORIO : 0;
+        int xp = acertos * XP_POR_ACERTO_LABORATORIO;
 
         int gravadas = respostaRepository.registrar(pessoaId, laboratorio.getId(), acertos, total, xp, LocalDateTime.now());
         if (gravadas == 0) {
@@ -126,7 +125,7 @@ public class LaboratorioQuizService {
         if (xp > 0) {
             xpService.creditar(pessoa, xp);
         }
-        return new ResultadoQuizLaboratorioDTO(acertos, total, gabaritou, xp, correcao);
+        return new ResultadoQuizLaboratorioDTO(acertos, total, gabaritou, xp);
     }
 
     /* ── Comissão: modo teste ────────────────────────────────────── */
@@ -151,9 +150,8 @@ public class LaboratorioQuizService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Este laboratório ainda não tem perguntas.");
         }
-        List<ResultadoQuizLaboratorioDTO.Correcao> correcao = corrigir(perguntas, dto);
-        int acertos = (int) correcao.stream().filter(ResultadoQuizLaboratorioDTO.Correcao::acertou).count();
-        return new ResultadoQuizLaboratorioDTO(acertos, perguntas.size(), acertos == perguntas.size(), 0, correcao);
+        int acertos = contarAcertos(perguntas, dto);
+        return new ResultadoQuizLaboratorioDTO(acertos, perguntas.size(), acertos == perguntas.size(), 0);
     }
 
     /* ── Auxiliares do quiz ──────────────────────────────────────── */
@@ -168,11 +166,11 @@ public class LaboratorioQuizService {
     }
 
     /* Exatamente uma escolha por pergunta do laboratório, de uma
-       alternativa dela; devolve a correção na ordem das perguntas. A tela
+       alternativa dela; devolve quantas acertou. A tela
        nunca manda outra coisa — envio fora disso foi montado à mão e é
        recusado, em vez de a API escolher em silêncio qual valeria. */
-    private static List<ResultadoQuizLaboratorioDTO.Correcao> corrigir(List<PerguntaLaboratorio> perguntas,
-                                                                      RespostaQuizLaboratorioRequestDTO dto) {
+    private static int contarAcertos(List<PerguntaLaboratorio> perguntas,
+                                     RespostaQuizLaboratorioRequestDTO dto) {
         Map<Integer, Integer> escolhaPorPergunta = new HashMap<>();
         for (RespostaQuizLaboratorioRequestDTO.Escolha escolha : dto.escolhas()) {
             if (escolhaPorPergunta.putIfAbsent(escolha.perguntaId(), escolha.alternativaId()) != null) {
@@ -187,7 +185,7 @@ public class LaboratorioQuizService {
                     "As perguntas mudaram. Abra o QR de novo para responder.");
         }
 
-        List<ResultadoQuizLaboratorioDTO.Correcao> correcao = new ArrayList<>();
+        int acertos = 0;
         for (PerguntaLaboratorio pergunta : perguntas) {
             Integer escolhida = escolhaPorPergunta.get(pergunta.getId());
             if (escolhida == null) {
@@ -205,9 +203,11 @@ public class LaboratorioQuizService {
                     .map(AlternativaPerguntaLaboratorio::getId)
                     .findFirst()
                     .orElse(null);
-            correcao.add(new ResultadoQuizLaboratorioDTO.Correcao(pergunta.getId(), escolhida, escolhida.equals(correta)));
+            if (escolhida.equals(correta)) {
+                acertos++;
+            }
         }
-        return correcao;
+        return acertos;
     }
 
     /* ── Comissão (/admin -> Quiz dos Laboratórios) ──────────────── */
@@ -297,7 +297,7 @@ public class LaboratorioQuizService {
     private static ResultadoQuizLaboratorioDTO placar(RespostaQuizLaboratorio resposta) {
         return new ResultadoQuizLaboratorioDTO(resposta.getAcertos(), resposta.getTotal(),
                 resposta.getTotal() > 0 && resposta.getAcertos().equals(resposta.getTotal()),
-                resposta.getXpCreditado(), null);
+                resposta.getXpCreditado());
     }
 
     private static ResponseStatusException jaRespondeu() {
