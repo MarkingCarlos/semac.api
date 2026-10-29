@@ -218,6 +218,11 @@ public class SecurityConfig {
                         // mostra ou esconde o glow e o botão "Mande sua pergunta".
                         .requestMatchers(HttpMethod.GET, "/api/configuracao-inscricao/perguntas-debate").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/configuracao-inscricao/perguntas-debate").hasAnyRole(PAPEIS_CONTEUDO)
+                        // Oculta o ranking (participantes e times) — sub-aba
+                        // Gamificação de Informações SEMAC. GET de qualquer logado:
+                        // o /participantes e o /time trocam o ranking por um aviso.
+                        .requestMatchers(HttpMethod.GET, "/api/configuracao-inscricao/ranking").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/configuracao-inscricao/ranking").hasAnyRole(PAPEIS_GAMIFICACAO)
                         // Perguntas dos debates: qualquer pessoa envia, com ou sem login
                         // (professores e convidados não têm conta) — página /perguntas e
                         // /participantes. Sem login, o abuso é freado por IP (RateLimitConfig).

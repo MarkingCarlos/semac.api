@@ -30,6 +30,7 @@ import com.semac.java_api.model.enums.Role;
 import com.semac.java_api.repository.CaixaRepository;
 import com.semac.java_api.repository.CamisaPedidoRepository;
 import com.semac.java_api.repository.CamisetaExtraRepository;
+import com.semac.java_api.repository.ConfiguracaoInscricaoRepository;
 import com.semac.java_api.repository.GanhadoresSorteioRepository;
 import com.semac.java_api.repository.NivelRepository;
 import com.semac.java_api.repository.ParticipanteConquistaRepository;
@@ -77,6 +78,7 @@ public class PessoaService {
     private final ParticipanteConquistaRepository participanteConquistaRepository;
     private final GanhadoresSorteioRepository ganhadoresSorteioRepository;
     private final PessoaDiaIngressoRepository pessoaDiaIngressoRepository;
+    private final ConfiguracaoInscricaoRepository configuracaoInscricaoRepository;
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher publicadorEventos;
 
@@ -90,6 +92,7 @@ public class PessoaService {
                          ParticipanteConquistaRepository participanteConquistaRepository,
                          GanhadoresSorteioRepository ganhadoresSorteioRepository,
                          PessoaDiaIngressoRepository pessoaDiaIngressoRepository,
+                         ConfiguracaoInscricaoRepository configuracaoInscricaoRepository,
                          PasswordEncoder passwordEncoder,
                          ApplicationEventPublisher publicadorEventos) {
         this.pessoaRepository = pessoaRepository;
@@ -102,6 +105,7 @@ public class PessoaService {
         this.participanteConquistaRepository = participanteConquistaRepository;
         this.ganhadoresSorteioRepository = ganhadoresSorteioRepository;
         this.pessoaDiaIngressoRepository = pessoaDiaIngressoRepository;
+        this.configuracaoInscricaoRepository = configuracaoInscricaoRepository;
         this.passwordEncoder = passwordEncoder;
         this.publicadorEventos = publicadorEventos;
     }
@@ -641,8 +645,11 @@ public class PessoaService {
                 proximoNivelNome = proximoNivel.getNome();
                 xpFaltante = proximoNivel.getXpMinimo() - xp;
             }
-            posicaoRanking = (int) pessoaRepository.countByRoleAndXpGreaterThan(Role.PARTICIPANTE, xp) + 1;
-            totalRanking = (int) pessoaRepository.countByRole(Role.PARTICIPANTE);
+            // Ranking oculto no /admin: o próprio XP continua, a posição não.
+            if (!rankingOculto()) {
+                posicaoRanking = (int) pessoaRepository.countByRoleAndXpGreaterThan(Role.PARTICIPANTE, xp) + 1;
+                totalRanking = (int) pessoaRepository.countByRole(Role.PARTICIPANTE);
+            }
         }
 
         return new PerfilResponseDTO(
@@ -665,6 +672,10 @@ public class PessoaService {
        usuário logado (idLogado) entra apenas pra marcar `voce` na resposta,
        nunca é usado pra filtrar ou alterar dado de ninguém. */
     public RankingResponseDTO buscarRanking(Integer idLogado) {
+        if (rankingOculto()) {
+            return RankingResponseDTO.ocultado();
+        }
+
         List<Pessoa> participantes = pessoaRepository.findByRoleAndXpIsNotNullOrderByXpDesc(Role.PARTICIPANTE);
 
         List<RankingParticipanteDTO> lista = new ArrayList<>();
@@ -680,7 +691,16 @@ public class PessoaService {
 
         String atualizadoEm = LocalTime.now().format(DateTimeFormatter.ofPattern("HH'h'mm"));
 
-        return new RankingResponseDTO(lista, lista.size(), atualizadoEm);
+        return new RankingResponseDTO(lista, lista.size(), atualizadoEm, false);
+    }
+
+    /* Interruptor "Ocultar ranking" do /admin (Informações SEMAC >
+       Gamificação), do ano corrente. Ano sem configuração conta como
+       visível. */
+    private boolean rankingOculto() {
+        return configuracaoInscricaoRepository.findByAno(LocalDate.now().getYear())
+                .map(config -> Boolean.TRUE.equals(config.getRankingOculto()))
+                .orElse(Boolean.FALSE);
     }
 
     private ParticipanteResponseDTO paraResposta(Pessoa pessoa) {

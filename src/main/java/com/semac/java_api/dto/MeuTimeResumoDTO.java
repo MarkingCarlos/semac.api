@@ -9,7 +9,9 @@ package com.semac.java_api.dto;
    aparece. `posicao` é entre `totalTimes` (empatados dividem a posição);
    `mascoteVersao` é o cache-buster da URL pública do mascote, null quando
    o time não tem mascote. `xpTime` é a média de xp por integrante
-   (arredondada), a mesma usada na posição. */
+   (arredondada), a mesma usada na posição. `rankingOculto` true: a
+   organização escondeu o ranking no /admin — `posicao`, `totalTimes` e
+   `xpTime` vêm zerados e o bloco mostra só o time. */
 public record MeuTimeResumoDTO(
         boolean revelado,
         Integer id,
@@ -18,9 +20,10 @@ public record MeuTimeResumoDTO(
         String mascoteVersao,
         int posicao,
         int totalTimes,
-        long xpTime
+        long xpTime,
+        boolean rankingOculto
 ) {
     public static MeuTimeResumoDTO naoRevelado() {
-        return new MeuTimeResumoDTO(false, null, null, null, null, 0, 0, 0);
+        return new MeuTimeResumoDTO(false, null, null, null, null, 0, 0, 0, false);
     }
 }

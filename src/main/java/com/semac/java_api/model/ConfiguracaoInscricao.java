@@ -56,4 +56,11 @@ public class ConfiguracaoInscricao {
        decide (ver V73__times_revelacao_programada.sql). */
     @Column(name = "times_revelacao_em")
     private LocalDateTime timesRevelacaoEm;
+
+    /* Esconde o ranking de XP — dos participantes e dos times — no
+       /participantes e no /time (/admin, Informações SEMAC > Gamificação).
+       O XP do próprio participante continua visível; o card de ranking da
+       dashboard do /admin (diretoria) não é afetado. */
+    @Column(nullable = false)
+    private Boolean rankingOculto = Boolean.FALSE;
 }

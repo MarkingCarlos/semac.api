@@ -86,7 +86,8 @@ public class TimeService {
         }
 
         Time time = integrante.getTime();
-        Map<Integer, Double> xpMedioPorTime = xpMedioPorTime();
+        boolean oculto = rankingOculto();
+        Map<Integer, Double> xpMedioPorTime = oculto ? Map.of() : xpMedioPorTime();
         return new MeuTimeDTO(
                 true,
                 true,
@@ -96,8 +97,9 @@ public class TimeService {
                 time.getCor(),
                 time.getMascoteArquivo(),
                 timeIntegranteRepository.countByTime_Id(time.getId()),
-                posicaoDoTime(time.getId(), xpMedioPorTime),
-                xpMedioArredondado(time.getId(), xpMedioPorTime)
+                oculto ? 0 : posicaoDoTime(time.getId(), xpMedioPorTime),
+                oculto ? 0 : xpMedioArredondado(time.getId(), xpMedioPorTime),
+                oculto
         );
     }
 
@@ -203,16 +205,18 @@ public class TimeService {
         }
 
         Time time = integrante.get().getTime();
-        Map<Integer, Double> xpMedioPorTime = xpMedioPorTime();
+        boolean oculto = rankingOculto();
+        Map<Integer, Double> xpMedioPorTime = oculto ? Map.of() : xpMedioPorTime();
         return new MeuTimeResumoDTO(
                 true,
                 time.getId(),
                 time.getNome(),
                 time.getCor(),
                 time.getMascoteArquivo(),
-                posicaoDoTime(time.getId(), xpMedioPorTime),
-                (int) timeRepository.count(),
-                xpMedioArredondado(time.getId(), xpMedioPorTime)
+                oculto ? 0 : posicaoDoTime(time.getId(), xpMedioPorTime),
+                oculto ? 0 : (int) timeRepository.count(),
+                oculto ? 0 : xpMedioArredondado(time.getId(), xpMedioPorTime),
+                oculto
         );
     }
 
@@ -230,6 +234,14 @@ public class TimeService {
         return configuracaoDoAno()
                 .map(config -> Boolean.TRUE.equals(config.getTimesAtivos())
                         || revelacaoProgramadaJaPassou(config.getTimesRevelacaoEm()))
+                .orElse(Boolean.FALSE);
+    }
+
+    /* Interruptor "Ocultar ranking" do /admin — vale para os times também.
+       Ano sem configuração conta como visível. */
+    private boolean rankingOculto() {
+        return configuracaoDoAno()
+                .map(config -> Boolean.TRUE.equals(config.getRankingOculto()))
                 .orElse(Boolean.FALSE);
     }
 

@@ -8,7 +8,9 @@ package com.semac.java_api.dto;
    `jaRevelado` true quando a pessoa já tinha aberto /time antes (a tela
    pula a animação de sorteio e diz "você já está no time").
    `mascoteVersao` é o nome do arquivo em disco, usado como cache-buster
-   na URL pública do mascote; null quando o time não tem mascote. */
+   na URL pública do mascote; null quando o time não tem mascote.
+   `rankingOculto` true: a organização escondeu o ranking no /admin —
+   `posicao` e `xpTime` vêm zerados e a tela não os mostra. */
 public record MeuTimeDTO(
         boolean ativo,
         boolean sorteado,
@@ -19,13 +21,14 @@ public record MeuTimeDTO(
         String mascoteVersao,
         long integrantes,
         int posicao,
-        long xpTime
+        long xpTime,
+        boolean rankingOculto
 ) {
     public static MeuTimeDTO desativado() {
-        return new MeuTimeDTO(false, false, false, null, null, null, null, 0, 0, 0);
+        return new MeuTimeDTO(false, false, false, null, null, null, null, 0, 0, 0, false);
     }
 
     public static MeuTimeDTO aguardandoSorteio() {
-        return new MeuTimeDTO(true, false, false, null, null, null, null, 0, 0, 0);
+        return new MeuTimeDTO(true, false, false, null, null, null, null, 0, 0, 0, false);
     }
 }

@@ -6,6 +6,8 @@ import com.semac.java_api.dto.EscolhaMinicursosRequestDTO;
 import com.semac.java_api.dto.EscolhaMinicursosResponseDTO;
 import com.semac.java_api.dto.PerguntasDebateRequestDTO;
 import com.semac.java_api.dto.PerguntasDebateResponseDTO;
+import com.semac.java_api.dto.RankingOcultoRequestDTO;
+import com.semac.java_api.dto.RankingOcultoResponseDTO;
 import com.semac.java_api.model.ConfiguracaoInscricao;
 import com.semac.java_api.repository.ConfiguracaoInscricaoRepository;
 import jakarta.validation.Valid;
@@ -104,6 +106,34 @@ public class ConfiguracaoInscricaoController {
 
         ConfiguracaoInscricao salva = repository.save(config);
         return new PerguntasDebateResponseDTO(salva.getAno(), salva.getPerguntasDebateAbertas());
+    }
+
+    /* Ranking de XP (participantes e times) oculto — editado em Informações
+       SEMAC > Gamificação. GET de qualquer usuário logado; ano sem
+       configuração volta visível. Quem esconde de fato é o backend
+       (PessoaService/TimeService), não só o front. */
+    @GetMapping("/ranking")
+    public RankingOcultoResponseDTO buscarRankingOculto(@RequestParam Integer ano) {
+        boolean oculto = repository.findByAno(ano)
+                .map(ConfiguracaoInscricao::getRankingOculto)
+                .orElse(Boolean.FALSE);
+        return new RankingOcultoResponseDTO(ano, oculto);
+    }
+
+    @PutMapping("/ranking")
+    public RankingOcultoResponseDTO salvarRankingOculto(@Valid @RequestBody RankingOcultoRequestDTO dto) {
+        ConfiguracaoInscricao config = repository.findByAno(dto.ano())
+                .orElseGet(() -> {
+                    ConfiguracaoInscricao nova = new ConfiguracaoInscricao();
+                    nova.setAno(dto.ano());
+                    nova.setInscricoesAbertas(Boolean.TRUE);
+                    return nova;
+                });
+
+        config.setRankingOculto(dto.rankingOculto());
+
+        ConfiguracaoInscricao salva = repository.save(config);
+        return new RankingOcultoResponseDTO(salva.getAno(), salva.getRankingOculto());
     }
 
     private ConfiguracaoInscricaoResponseDTO paraResposta(ConfiguracaoInscricao config) {
