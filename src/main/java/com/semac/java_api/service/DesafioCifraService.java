@@ -54,8 +54,7 @@ public class DesafioCifraService {
 
     /* Cifras que valem xp diferente da regra geral (RegraXpService):
        dia do desafio -> pontos ao decifrar. */
-    private static final Map<LocalDate, Integer> PONTOS_POR_DIA = Map.of(
-            LocalDate.of(2026, 10, 28), 65);
+    private static final Map<LocalDate, Integer> PONTOS_POR_DIA = Map.of();
 
     private final DesafioCifraRepository desafioRepository;
     private final DesafioCifraJogoRepository jogoRepository;

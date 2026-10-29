@@ -47,6 +47,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -407,14 +408,18 @@ public class ConquistaService {
         }
     }
 
-    /* "Criatura das Trevas": presente em todas as atividades noturnas da
-       SEMAC. Mesmo critério da Presença Total, restrito a esse tipo:
-       denominador pelo catálogo, concedida só quando a última já terminou,
-       e ninguém leva se não houver nenhuma cadastrada. */
+    /* "Criatura das Trevas": presente na Game Night da SEMAC. Só a Game
+       Night conta: as demais atividades noturnas (como a Oficina de
+       Impressão 3D, que tem poucas vagas) ficam de fora desta conquista,
+       mas seguem valendo para Presença Total e Dia Cheio. Mesmo critério
+       da Presença Total: denominador pelo catálogo, concedida só quando a
+       última já terminou, e ninguém leva se não houver nenhuma cadastrada. */
     private void avaliarAtividadesNoturnas(Pessoa participante, List<EventoParticipante> vinculos,
                                            List<Evento> catalogoQueConta, LocalDateTime agora) {
         List<Evento> noturnas = catalogoQueConta.stream()
                 .filter(evento -> evento.getTipoEvento().getCodigo() == CodigoTipoEvento.ATIVIDADES_NOTURNAS)
+                .filter(evento -> evento.getNome() != null
+                        && evento.getNome().toLowerCase(Locale.ROOT).contains("game night"))
                 .toList();
 
         if (noturnas.isEmpty() || !todosEncerrados(noturnas, agora)) {

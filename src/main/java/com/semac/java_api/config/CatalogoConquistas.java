@@ -102,7 +102,7 @@ public final class CatalogoConquistas {
             new ConquistaSemeada(
                     CODIGO_ATIVIDADES_NOTURNAS,
                     "Criatura das Trevas",
-                    "Esteja presente em todas as atividades noturnas da SEMAC.",
+                    "Esteja presente na Game Night da SEMAC.",
                     AUTOMATICA, 2, 5),
             new ConquistaSemeada(
                     CODIGO_ABERTURA_PRESENTE,
