@@ -37,7 +37,6 @@ public class PrevisaoService {
     private final PrevisaoItemRepository itemRepository;
     private final PrevisaoCategoriaRepository categoriaRepository;
     private final OrcamentoRepository orcamentoRepository;
-    private final CompraRepository compraRepository;
     private final PatrocinadorRepository patrocinadorRepository;
     private final DoadorRepository doadorRepository;
     private final CaixaRepository caixaRepository;
@@ -50,7 +49,6 @@ public class PrevisaoService {
     public PrevisaoService(PrevisaoItemRepository itemRepository,
                            PrevisaoCategoriaRepository categoriaRepository,
                            OrcamentoRepository orcamentoRepository,
-                           CompraRepository compraRepository,
                            PatrocinadorRepository patrocinadorRepository,
                            DoadorRepository doadorRepository,
                            CaixaRepository caixaRepository,
@@ -62,7 +60,6 @@ public class PrevisaoService {
         this.itemRepository = itemRepository;
         this.categoriaRepository = categoriaRepository;
         this.orcamentoRepository = orcamentoRepository;
-        this.compraRepository = compraRepository;
         this.patrocinadorRepository = patrocinadorRepository;
         this.doadorRepository = doadorRepository;
         this.caixaRepository = caixaRepository;
@@ -176,19 +173,23 @@ public class PrevisaoService {
         Orcamento orcamento = orcamentoVigente();
         Fatores fatores = fatoresVigentes();
         List<PrevisaoItem> itens = itemRepository.findAll();
-        List<Compra> compras = compraRepository.findAll();
 
-        /* Um item PAGO já virou compra: sai da previsão para não ser
-           contado duas vezes. */
+        /* A previsão é a única fonte dos números: item PAGO é o gasto
+           realizado e os demais são o que ainda está em aberto. Cada item
+           cai em um dos dois lados, então nada é contado duas vezes. A
+           tabela `compra` não entra mais nas contas — ler as duas fontes
+           fazia o total divergir da lista de itens. */
         Predicate<PrevisaoItem> emAberto = item -> item.getStatus() != StatusPrevisao.PAGO;
+        Predicate<PrevisaoItem> pago = item -> item.getStatus() == StatusPrevisao.PAGO;
 
         BigDecimal previstoAberto = itens.stream()
                 .filter(emAberto)
                 .map(item -> valorTotal(item, fatores))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal realizado = compras.stream()
-                .map(Compra::getValorTotal)
+        BigDecimal realizado = itens.stream()
+                .filter(pago)
+                .map(item -> valorTotal(item, fatores))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal projecaoTotal = previstoAberto.add(realizado);
@@ -201,15 +202,12 @@ public class PrevisaoService {
                         Collectors.reducing(BigDecimal.ZERO,
                                 item -> valorTotal(item, fatores), BigDecimal::add)));
 
-        /* Compras não têm categoria_id: `compra.categoria` é texto livre.
-           O casamento é pelo nome da categoria, e o que não casar cai
-           fora do gráfico por categoria (mas segue no total realizado). */
-        Map<String, BigDecimal> realizadoPorNomeCategoria = compras.stream()
-                .filter(compra -> compra.getCategoria() != null)
+        Map<Integer, BigDecimal> realizadoPorCategoria = itens.stream()
+                .filter(pago)
                 .collect(Collectors.groupingBy(
-                        compra -> compra.getCategoria().trim().toLowerCase(),
+                        item -> item.getCategoria().getId(),
                         Collectors.reducing(BigDecimal.ZERO,
-                                Compra::getValorTotal, BigDecimal::add)));
+                                item -> valorTotal(item, fatores), BigDecimal::add)));
 
         List<PrevisaoCategoriaResponseDTO> categorias =
                 categoriaRepository.findAllByOrderByOrdemAscNomeAsc().stream()
@@ -220,8 +218,7 @@ public class PrevisaoService {
                                 categoria.getTeto(),
                                 categoria.getOrdem(),
                                 previstoPorCategoria.getOrDefault(categoria.getId(), BigDecimal.ZERO),
-                                realizadoPorNomeCategoria.getOrDefault(
-                                        categoria.getNome().trim().toLowerCase(), BigDecimal.ZERO)))
+                                realizadoPorCategoria.getOrDefault(categoria.getId(), BigDecimal.ZERO)))
                         .toList();
 
         /* ── O que a comissão arrecadou ──

@@ -122,7 +122,20 @@ public class PrevisaoItemController {
            item, mas não os arquivos: os nomes são lidos antes e os
            arquivos apagados só depois que a exclusão passou. */
         List<String> arquivosComprovantes = comprovanteService.nomesArquivosDoItem(id);
+
+        /* Item PAGO aponta para a compra que gerou. Excluir só o item
+           deixaria a compra órfã, ainda somada no "realizado" sem nenhuma
+           previsão que a explique. A compra é lida antes e apagada depois
+           do item: enquanto ele apontar para ela, a FK bloqueia a exclusão
+           (mesma ordem de reverterParaPrevisto). */
+        Compra compra = itemRepository.findById(id)
+                .map(PrevisaoItem::getCompra)
+                .orElse(null);
+
         itemRepository.deleteById(id);
+        if (compra != null) {
+            compraRepository.delete(compra);
+        }
         comprovanteService.apagarArquivos(arquivosComprovantes);
         return ResponseEntity.noContent().build();
     }
